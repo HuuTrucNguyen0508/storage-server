@@ -1,0 +1,55 @@
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - file-storage-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+    networks:
+      - file-storage-network
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+    volumes:
+      # Mount F: drive for persistent storage
+      - F:\web_uploads:/app/uploads
+      - F:\web_uploads\database:/app/database
+    depends_on:
+      - database
+    networks:
+      - file-storage-network
+
+  database:
+    image: alpine:latest
+    command: /bin/sh -c "while true; do sleep 30; done"
+    volumes:
+      # Mount F: drive for database persistence
+      - F:\web_uploads\database:/data
+    networks:
+      - file-storage-network
+
+networks:
+  file-storage-network:
+    driver: bridge
+
+volumes:
+  file-storage-data:
+    driver: local

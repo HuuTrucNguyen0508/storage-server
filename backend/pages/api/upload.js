@@ -10,7 +10,7 @@ const db = DatabaseService.getInstance();
 export default function handler(req, res) {
   if (req.method === 'POST') {
     try {
-      // Optimized file upload for large files
+      // Collect all data chunks
       let bodyLength = 0;
       const chunks = [];
 
@@ -21,7 +21,7 @@ export default function handler(req, res) {
 
       req.on('end', () => {
         try {
-          // Parse multipart form data manually
+          // Parse multipart form data manually but handle binary data correctly
           const contentType = req.headers['content-type'];
 
           if (!contentType || !contentType.includes('multipart/form-data')) {
@@ -33,13 +33,16 @@ export default function handler(req, res) {
             return res.status(400).json({ error: 'No boundary found in multipart data' });
           }
 
-          // Reconstruct body from chunks for better memory efficiency
-          const body = Buffer.concat(chunks).toString();
-          const parts = body.split('--' + boundary);
+          // Convert to string for parsing but keep track of binary data
+          const body = Buffer.concat(chunks);
+          const bodyString = body.toString('binary');
+          const parts = bodyString.split('--' + boundary);
 
           let fileData = null;
           let filename = null;
           let fileContentType = null;
+          let headerStart = 0;
+          let headerEnd = 0;
 
           for (let i = 0; i < parts.length; i++) {
             const part = parts[i];
@@ -54,12 +57,24 @@ export default function handler(req, res) {
                   fileContentType = contentTypeMatch[1];
                 }
 
-                const headerEnd = part.indexOf('\r\n\r\n');
-                if (headerEnd !== -1) {
-                  fileData = part.substring(headerEnd + 4);
-                  fileData = fileData.replace(/\r\n$/, '');
+                // Find the end of headers (double CRLF)
+                const headerEndMatch = part.indexOf('\r\n\r\n');
+                if (headerEndMatch !== -1) {
+                  headerStart = headerEndMatch + 4; // Skip the double CRLF
+                  // Find the end of this part (before the next boundary or end)
+                  let dataEnd = part.length;
+                  if (i < parts.length - 1) {
+                    // Remove trailing CRLF if present
+                    if (part.endsWith('\r\n')) {
+                      dataEnd = part.length - 2;
+                    }
+                  }
+                  
+                  // Extract file data as string slice, then convert back to Buffer
+                  const fileDataString = part.slice(headerStart, dataEnd);
+                  fileData = Buffer.from(fileDataString, 'binary');
+                  break;
                 }
-                break;
               }
             }
           }
@@ -74,9 +89,8 @@ export default function handler(req, res) {
           const uniqueFilename = `${baseName}-${uuidv4()}${fileExtension}`;
           const filePath = path.join(db.uploadsDir, uniqueFilename);
 
-          // Save file to disk with better performance for large files
-          const fileBuffer = Buffer.from(fileData, 'binary');
-          fs.writeFileSync(filePath, fileBuffer);
+          // Write file data directly as Buffer (preserves binary data)
+          fs.writeFileSync(filePath, fileData);
 
           // Get file stats
           const stats = fs.statSync(filePath);

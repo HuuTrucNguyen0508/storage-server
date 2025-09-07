@@ -22,5 +22,8 @@ RUN pnpm build
 # Expose port
 EXPOSE 3000
 
+# Install a simple HTTP server
+RUN npm install -g serve
+
 # Start the application
-CMD ["pnpm", "preview", "--host", "0.0.0.0", "--port", "3000"]
+CMD ["serve", "-s", "dist", "-l", "3000"]

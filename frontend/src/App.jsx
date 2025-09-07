@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'http://localhost:8080/api' 
-  : 'http://localhost:8080/api'
+// Dynamic API URL based on current hostname
+const API_BASE_URL = `${window.location.protocol}//${window.location.host}/api`
 
 function App() {
   const [files, setFiles] = useState([])
@@ -59,18 +58,17 @@ function App() {
 
   const handleFileDownload = async (filename) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/files/${filename}`, {
-        responseType: 'blob',
-      })
+      // Use direct file serving through nginx (bypasses Next.js limitations)
+      const downloadUrl = `${window.location.protocol}//${window.location.host}/files/${filename}`
       
-      const url = window.URL.createObjectURL(new Blob([response.data]))
+      // Create a direct download link
       const link = document.createElement('a')
-      link.href = url
+      link.href = downloadUrl
       link.setAttribute('download', filename)
+      link.setAttribute('target', '_blank')
       document.body.appendChild(link)
       link.click()
       link.remove()
-      window.URL.revokeObjectURL(url)
     } catch (err) {
       setError('Failed to download file')
       console.error('Error downloading file:', err)

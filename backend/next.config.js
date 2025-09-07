@@ -7,6 +7,7 @@ const nextConfig = {
     bodyParser: {
       sizeLimit: '50mb',
     },
+    responseLimit: false, // Disable response size limit
   },
   images: {
     domains: ['localhost'],

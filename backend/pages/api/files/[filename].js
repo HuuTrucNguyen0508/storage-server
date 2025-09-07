@@ -32,9 +32,19 @@ export default function handler(req, res) {
       res.setHeader('Content-Type', file.mimeType);
       res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
       res.setHeader('Content-Length', file.size.toString());
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Cache-Control', 'no-cache');
 
-      // Stream the file
+      // Stream the file with error handling
       const fileStream = fs.createReadStream(filePath);
+      
+      fileStream.on('error', (streamError) => {
+        console.error('File stream error:', streamError);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Error reading file' });
+        }
+      });
+      
       fileStream.pipe(res);
     } catch (err) {
       console.error('Error downloading file:', err);

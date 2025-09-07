@@ -6,6 +6,9 @@ services:
     image: huutrucnguyen0508/storage-server-nginx:1.0.0
     ports:
       - "8080:80"
+    volumes:
+      # Mount uploads directory for direct file serving
+      - F:\web_uploads:/app/uploads
     depends_on:
       - frontend
       - backend
@@ -17,7 +20,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: huutrucnguyen0508/storage-server-frontend:1.0.0
+    image: huutrucnguyen0508/storage-server-frontend:1.0.1
     environment:
       - NODE_ENV=production
     networks:

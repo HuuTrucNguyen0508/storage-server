@@ -3,11 +3,22 @@ const DatabaseService = require('../../../lib/database.js');
 // Initialize database
 const db = DatabaseService.getInstance();
 
-// GET /api/files - List all files
+// GET /api/files - List all files or files in a specific folder
 export default function handler(req, res) {
   if (req.method === 'GET') {
     try {
-      const files = db.getAllFiles();
+      const { path: folderPath } = req.query;
+      
+      let files;
+      if (folderPath) {
+        // Get files in specific folder
+        const decodedPath = decodeURIComponent(folderPath);
+        files = db.getFilesByParent(decodedPath);
+      } else {
+        // Get all files
+        files = db.getAllFiles();
+      }
+      
       res.status(200).json(files);
     } catch (err) {
       console.error('Error fetching files:', err);

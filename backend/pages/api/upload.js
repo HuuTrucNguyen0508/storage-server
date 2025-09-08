@@ -83,11 +83,25 @@ export default function handler(req, res) {
             return res.status(400).json({ error: 'No file provided' });
           }
 
+          // Get folder path from form data
+          let folderPath = '/';
+          const folderPathMatch = bodyString.match(/name="folderPath"\r\n\r\n([^\r\n]+)/);
+          if (folderPathMatch) {
+            folderPath = folderPathMatch[1];
+          }
+
           // Generate unique filename with original name preserved
           const fileExtension = path.extname(filename);
           const baseName = path.basename(filename, fileExtension);
           const uniqueFilename = `${baseName}-${uuidv4()}${fileExtension}`;
-          const filePath = path.join(db.uploadsDir, uniqueFilename);
+          
+          // Create directory if it doesn't exist
+          const targetDir = path.join(db.uploadsDir, folderPath === '/' ? '' : folderPath);
+          if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+          }
+          
+          const filePath = path.join(targetDir, uniqueFilename);
 
           // Write file data directly as Buffer (preserves binary data)
           fs.writeFileSync(filePath, fileData);
@@ -101,7 +115,9 @@ export default function handler(req, res) {
             size: stats.size,
             mimeType: fileContentType || 'application/octet-stream',
             uploadedAt: new Date().toISOString(),
-            filePath: filePath
+            filePath: filePath,
+            path: folderPath === '/' ? `/${filename}` : `${folderPath}/${filename}`,
+            parentPath: folderPath
           };
 
           const success = db.saveFile(fileInfo);

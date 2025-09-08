@@ -20,7 +20,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: huutrucnguyen0508/storage-server-frontend:1.0.1
+    image: huutrucnguyen0508/storage-server-frontend:1.0.2
     environment:
       - NODE_ENV=production
     networks:
@@ -33,11 +33,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: huutrucnguyen0508/storage-server-backend:1.0.0
+    image: huutrucnguyen0508/storage-server-backend:1.0.1
     environment:
       - NODE_ENV=production
     volumes:
-      # Mount F: drive for persistent storage
+      # Mount F: drive for persistent storage with folder support
       - F:\web_uploads:/app/uploads
       - F:\web_uploads\database:/app/database
     depends_on:

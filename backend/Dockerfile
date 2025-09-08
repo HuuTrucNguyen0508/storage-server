@@ -26,8 +26,9 @@ COPY . .
 # Build the Next.js application
 RUN pnpm build
 
-# Create uploads directory
-RUN mkdir -p uploads database
+# Create uploads and database directories with proper permissions
+RUN mkdir -p uploads database && \
+    chmod -R 755 uploads database
 
 # Expose port
 EXPOSE 3001

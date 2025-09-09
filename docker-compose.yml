@@ -1,65 +1,234 @@
+version: '3.8'
+
 services:
-  nginx:
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile
-    image: huutrucnguyen0508/storage-server-nginx:1.0.0
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
     ports:
       - "8080:80"
+      - "8082:8080"
     volumes:
-      # Mount uploads directory for direct file serving
-      - F:\web_uploads:/app/uploads
-    depends_on:
-      - frontend
-      - backend
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
     networks:
       - file-storage-network
     restart: unless-stopped
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    image: huutrucnguyen0508/storage-server-frontend:1.0.2
+  filebrowser:
+    image: filebrowser/filebrowser:v2-s6
+    container_name: filebrowser
+    volumes:
+      # Mount F: drive content folder directly
+      - F:\content:/data
     environment:
-      - NODE_ENV=production
+      - FB_BASEURL=/
+      - FB_LOGLEVEL=INFO
+      - FB_DATABASE=/tmp/filebrowser.db
+      - FB_ROOT=/data
+      # Jaeger tracing
+      - JAEGER_AGENT_HOST=filebrowser-jaeger-agent
+      - JAEGER_AGENT_PORT=6831
+      - JAEGER_SERVICE_NAME=filebrowser
+      - JAEGER_SAMPLER_TYPE=const
+      - JAEGER_SAMPLER_PARAM=1
     networks:
       - file-storage-network
-    depends_on:
-      - backend
     restart: unless-stopped
+    labels:
+      # Traefik configuration
+      - "traefik.enable=true"
+      - "traefik.http.routers.filebrowser.rule=Host(`filebrowser.localhost`)"
+      - "traefik.http.routers.filebrowser.entrypoints=web"
+      - "traefik.http.services.filebrowser.loadbalancer.server.port=80"
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    image: huutrucnguyen0508/storage-server-backend:1.0.1
+  # Filebrowser metrics exporter
+  filebrowser-exporter:
+    image: prom/node-exporter:latest
+    container_name: filebrowser-exporter
+    ports:
+      - "9101:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.systemd'
+      - '--collector.processes'
+    networks:
+      - file-storage-network
+    restart: unless-stopped
+    depends_on:
+      - filebrowser
+
+  # Jaeger agent for filebrowser tracing
+  filebrowser-jaeger-agent:
+    image: jaegertracing/jaeger-agent:latest
+    container_name: filebrowser-jaeger-agent
+    ports:
+      - "6831:6831/udp"   # UDP agent
+      - "6832:6832/udp"   # UDP agent
+      - "14269:14268"     # HTTP agent (different port)
     environment:
-      - NODE_ENV=production
-    volumes:
-      # Mount F: drive for persistent storage with folder support
-      - F:\web_uploads:/app/uploads
-      - F:\web_uploads\database:/app/database
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=14268
+    command:
+      - '--reporter.grpc.host-port=jaeger:14250'
+      - '--reporter.grpc.tls.enabled=false'
+    networks:
+      - file-storage-network
+    restart: unless-stopped
     depends_on:
-      - database
+      - jaeger
+      - filebrowser
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # Jaeger collector (HTTP)
+      - "14250:14250"  # Jaeger collector (gRPC)
+      - "6831:6831/udp"  # Jaeger agent (UDP)
+      - "6832:6832/udp"  # Jaeger agent (UDP)
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    command:
+      - '--collector.grpc.host-port=:14250'
+      - '--collector.http.host-port=:14268'
+      - '--agent.udp.host-port=:6831'
+      - '--agent.udp.host-port=:6832'
     networks:
       - file-storage-network
     restart: unless-stopped
 
-  database:
-    image: alpine:latest
-    command: /bin/sh -c "while true; do sleep 30; done"
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
     volumes:
-      # Mount F: drive for database persistence
-      - F:\web_uploads\database:/data
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
     networks:
       - file-storage-network
     restart: unless-stopped
+
+  # Loki for log aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - file-storage-network
+    restart: unless-stopped
+
+  # Promtail for log shipping
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./monitoring/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - file-storage-network
+    restart: unless-stopped
+    depends_on:
+      - loki
+
+  # Windows Exporter for Windows metrics
+  windows-exporter:
+    image: prom/node-exporter:latest
+    container_name: windows-exporter
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.systemd'
+      - '--collector.processes'
+    networks:
+      - file-storage-network
+    restart: unless-stopped
+
+  # Docker metrics exporter
+  docker-exporter:
+    image: prom/node-exporter:latest
+    container_name: docker-exporter
+    ports:
+      - "9323:9100"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - file-storage-network
+    restart: unless-stopped
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - file-storage-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - loki
 
 networks:
   file-storage-network:
     driver: bridge
+    external: false
 
 volumes:
   file-storage-data:
+    driver: local
+  prometheus_data:
+    driver: local
+  loki_data:
+    driver: local
+  grafana_data:
     driver: local

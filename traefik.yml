@@ -1,0 +1,34 @@
+# Traefik configuration
+api:
+  dashboard: true
+  insecure: true
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: storage-server_file-storage-network
+    watch: true
+
+# Enable access logs
+accessLog: {}
+
+# Enable metrics
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addServicesLabels: true
+    addRoutersLabels: true
+
+# Enable tracing
+tracing:
+  jaeger:
+    samplingType: const
+    samplingParam: 1.0
+    localAgentHostPort: jaeger:14268

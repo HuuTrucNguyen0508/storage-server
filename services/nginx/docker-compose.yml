@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: huutrucnguyen0508/storage-server-nginx:1.0.0
+    ports:
+      - "8083:80"
+    volumes:
+      # Mount uploads directory for direct file serving
+      - F:\web_uploads:/app/uploads
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - file-storage-network
+    restart: unless-stopped
+
+networks:
+  file-storage-network:
+    external: true

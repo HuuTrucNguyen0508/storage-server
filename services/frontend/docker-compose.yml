@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: huutrucnguyen0508/storage-server-frontend:1.0.2
+    environment:
+      - NODE_ENV=production
+    networks:
+      - file-storage-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+networks:
+  file-storage-network:
+    external: true

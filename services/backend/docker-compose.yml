@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: huutrucnguyen0508/storage-server-backend:1.0.1
+    environment:
+      - NODE_ENV=production
+    volumes:
+      # Mount F: drive for persistent storage with folder support
+      - F:\web_uploads:/app/uploads
+      - F:\web_uploads\database:/app/database
+    depends_on:
+      - database
+    networks:
+      - file-storage-network
+    restart: unless-stopped
+
+  database:
+    image: alpine:latest
+    command: /bin/sh -c "while true; do sleep 30; done"
+    volumes:
+      # Mount F: drive for database persistence
+      - F:\web_uploads\database:/data
+    networks:
+      - file-storage-network
+    restart: unless-stopped
+
+networks:
+  file-storage-network:
+    external: true

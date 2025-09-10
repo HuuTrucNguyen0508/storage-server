@@ -1,4 +1,4 @@
-# Traefik configuration
+# Traefik static configuration
 api:
   dashboard: true
   insecure: true
@@ -13,22 +13,22 @@ providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
-    network: storage-server_file-storage-network
+    network: file-storage-network
     watch: true
+    allowEmptyServices: true
 
-# Enable access logs
 accessLog: {}
 
-# Enable metrics
 metrics:
   prometheus:
     addEntryPointsLabels: true
     addServicesLabels: true
     addRoutersLabels: true
 
-# Enable tracing
-tracing:
-  jaeger:
-    samplingType: const
-    samplingParam: 1.0
-    localAgentHostPort: jaeger:14268
+# tracing:
+#   serviceName: traefik
+#   jaeger:
+#     samplingType: const
+#     samplingParam: 1.0
+#     localAgentHostPort: jaeger:14268
+#     traceContextHeaderName: uber-trace-id

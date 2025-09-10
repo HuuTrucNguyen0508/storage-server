@@ -37,13 +37,6 @@ scrape_configs:
       - targets: ['windows-exporter:9100']
     scrape_interval: 30s
 
-  # Jaeger metrics
-  - job_name: 'jaeger'
-    static_configs:
-      - targets: ['jaeger:14269']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
-
   # Loki metrics
   - job_name: 'loki'
     static_configs:

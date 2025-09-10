@@ -1,0 +1,14 @@
+# Traefik dynamic configuration
+http:
+  services:
+    whoami:
+      loadBalancer:
+        servers:
+          - url: "http://whoami:80"
+
+  routers:
+    whoami:
+      rule: PathPrefix(`/whoami`)
+      entryPoints:
+        - "web"
+      service: "whoami"

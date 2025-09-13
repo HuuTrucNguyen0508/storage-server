@@ -1,0 +1,399 @@
+2025-09-13 18:17:36,139 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 18:17:36,141 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 0
+2025-09-13 18:17:36,146 INFO s.s.c.c.ConfigInitializer [main] Created settings file from template
+2025-09-13 18:17:36,148 INFO s.s.c.c.ConfigInitializer [main] Created custom_settings file: ./configs/custom_settings.yml
+2025-09-13 18:17:36,149 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 18:17:36,149 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 18:17:36,615 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 38 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 18:17:36,616 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 18:17:39,563 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 18:17:42,138 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 18:17:42,914 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 18:17:42,915 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 18:17:43,182 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 18:17:43,283 INFO s.s.c.c.TempFileConfiguration [main] Created temporary directory: /tmp/stirling-pdf/stirling-pdf
+2025-09-13 18:17:43,599 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 18:17:43,909 INFO s.s.c.s.TempFileCleanupService [main] Created LibreOffice temp directory: /tmp/stirling-pdf/stirling-pdf/libreoffice
+2025-09-13 18:17:43,910 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 18:17:43,911 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 18:17:44,394 INFO s.s.p.s.s.DatabaseService [main] Database export completed: configs/backup/db/backup_202509131817.sql
+2025-09-13 18:17:44,394 INFO s.s.p.s.InitialSecuritySetup [main] Default admin user created: admin
+2025-09-13 18:17:44,469 INFO s.s.p.s.s.DatabaseService [main] Database export completed: configs/backup/db/backup_202509131817.sql
+2025-09-13 18:17:44,503 INFO s.s.p.s.s.DatabaseService [main] Database export completed: configs/backup/db/backup_202509131817.sql
+2025-09-13 18:17:44,503 INFO s.s.p.s.InitialSecuritySetup [main] Internal API user created: STIRLING-PDF-BACKEND-API-USER
+2025-09-13 18:17:45,484 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 18:17:45,519 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 9.363 seconds (process running for 10.055)
+2025-09-13 18:17:45,521 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 18:17:45,525 INFO s.s.S.c.a.p.PipelineDirectoryProcessor [scheduling-1] Created directory: /./pipeline/watchedFolders
+2025-09-13 18:17:45,532 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 18:17:45,532 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 18:17:45,533 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 18:17:45,534 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 18:17:45,534 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 18:17:50,517 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 18:17:50,519 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 18:23:18,860 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 18:23:18,868 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 198
+2025-09-13 18:23:19,208 INFO s.s.c.c.ConfigInitializer [main] Settings file updated based on template changes.
+2025-09-13 18:23:19,209 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 18:23:19,211 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 18:23:19,659 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 38 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 18:23:19,660 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 18:23:22,547 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 18:23:25,318 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 18:23:25,868 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 18:23:25,868 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 18:23:26,036 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 18:23:26,138 INFO s.s.c.c.TempFileConfiguration [main] Created temporary directory: /tmp/stirling-pdf/stirling-pdf
+2025-09-13 18:23:26,626 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 18:23:26,928 INFO s.s.c.s.TempFileCleanupService [main] Created LibreOffice temp directory: /tmp/stirling-pdf/stirling-pdf/libreoffice
+2025-09-13 18:23:26,929 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 18:23:26,931 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 18:23:28,356 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 18:23:28,387 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 9.174 seconds (process running for 10.12)
+2025-09-13 18:23:28,390 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 18:23:28,393 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 18:23:28,397 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 18:23:28,398 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 18:23:28,404 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 18:23:28,404 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 18:23:28,405 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 18:25:44,437 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 18:25:44,444 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 198
+2025-09-13 18:25:44,860 INFO s.s.c.c.ConfigInitializer [main] Settings file updated based on template changes.
+2025-09-13 18:25:44,862 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 18:25:44,863 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 18:25:45,363 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 38 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 18:25:45,364 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 18:25:48,245 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 18:25:50,789 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 18:25:51,243 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 18:25:51,243 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 18:25:51,450 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 18:25:51,540 INFO s.s.c.c.TempFileConfiguration [main] Created temporary directory: /tmp/stirling-pdf/stirling-pdf
+2025-09-13 18:25:52,001 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 18:25:52,266 INFO s.s.c.s.TempFileCleanupService [main] Created LibreOffice temp directory: /tmp/stirling-pdf/stirling-pdf/libreoffice
+2025-09-13 18:25:52,266 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 18:25:52,268 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 18:25:53,566 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 18:25:53,601 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 8.735 seconds (process running for 9.747)
+2025-09-13 18:25:53,604 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 18:25:53,607 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 18:25:53,612 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 18:25:53,613 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 18:25:53,618 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 18:25:53,619 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 18:25:53,619 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 18:38:06,787 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 18:38:06,793 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 198
+2025-09-13 18:38:07,156 INFO s.s.c.c.ConfigInitializer [main] Settings file updated based on template changes.
+2025-09-13 18:38:07,157 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 18:38:07,158 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 18:38:07,585 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 38 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 18:38:07,586 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 18:38:11,592 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 18:38:14,136 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 18:38:14,711 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 18:38:14,711 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 18:38:14,956 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 18:38:15,073 INFO s.s.c.c.TempFileConfiguration [main] Created temporary directory: /tmp/stirling-pdf/stirling-pdf
+2025-09-13 18:38:15,600 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 18:38:15,909 INFO s.s.c.s.TempFileCleanupService [main] Created LibreOffice temp directory: /tmp/stirling-pdf/stirling-pdf/libreoffice
+2025-09-13 18:38:15,910 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 18:38:15,912 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 18:38:17,405 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 18:38:17,435 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 10.275 seconds (process running for 10.071)
+2025-09-13 18:38:17,437 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 18:38:17,440 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 18:38:17,444 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 18:38:17,445 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 18:38:17,450 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 18:38:17,451 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 18:38:17,451 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 18:45:20,014 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 18:45:20,020 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 198
+2025-09-13 18:45:20,353 INFO s.s.c.c.ConfigInitializer [main] Settings file updated based on template changes.
+2025-09-13 18:45:20,355 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 18:45:20,356 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 18:45:20,718 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 38 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 18:45:20,719 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 18:45:23,544 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 18:45:27,133 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 18:45:27,677 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 18:45:27,678 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 18:45:27,853 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 18:45:27,955 INFO s.s.c.c.TempFileConfiguration [main] Created temporary directory: /tmp/stirling-pdf/stirling-pdf
+2025-09-13 18:45:28,408 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 18:45:28,686 INFO s.s.c.s.TempFileCleanupService [main] Created LibreOffice temp directory: /tmp/stirling-pdf/stirling-pdf/libreoffice
+2025-09-13 18:45:28,687 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 18:45:28,689 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 18:45:29,990 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 18:45:30,016 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 9.659 seconds (process running for 9.467)
+2025-09-13 18:45:30,017 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 18:45:30,020 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 18:45:30,024 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 18:45:30,024 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 18:45:30,029 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 18:45:30,030 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 18:45:30,030 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 19:17:37,762 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 19:17:37,773 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 198
+2025-09-13 19:17:38,089 INFO s.s.c.c.ConfigInitializer [main] Settings file updated based on template changes.
+2025-09-13 19:17:38,090 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 19:17:38,091 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 19:17:38,463 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 38 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 19:17:38,464 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 19:17:41,332 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 19:17:43,859 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 19:17:44,377 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 19:17:44,377 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 19:17:44,589 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 19:17:44,688 INFO s.s.c.c.TempFileConfiguration [main] Created temporary directory: /tmp/stirling-pdf/stirling-pdf
+2025-09-13 19:17:45,249 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 19:17:45,534 INFO s.s.c.s.TempFileCleanupService [main] Created LibreOffice temp directory: /tmp/stirling-pdf/stirling-pdf/libreoffice
+2025-09-13 19:17:45,534 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 19:17:45,536 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 19:17:46,746 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 19:17:46,771 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 8.678 seconds (process running for 9.572)
+2025-09-13 19:17:46,774 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 19:17:46,777 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 19:17:46,781 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 19:17:46,781 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 19:17:46,786 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 19:17:46,787 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 19:17:46,787 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 19:48:45,831 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 19:48:45,831 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 19:48:45,831 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 19:58:58,518 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 19:58:58,524 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 198
+2025-09-13 19:58:58,876 INFO s.s.c.c.ConfigInitializer [main] Settings file updated based on template changes.
+2025-09-13 19:58:58,878 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 19:58:58,879 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 19:58:59,312 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 24 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 19:58:59,314 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 19:59:02,369 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 19:59:05,029 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 19:59:05,580 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 19:59:05,580 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 19:59:05,763 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 19:59:06,452 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 19:59:06,750 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 19:59:06,752 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 19:59:08,130 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 19:59:08,159 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 9.277 seconds (process running for 10.249)
+2025-09-13 19:59:08,162 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 19:59:08,166 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 19:59:08,170 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 19:59:08,170 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 19:59:08,176 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 19:59:08,177 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 19:59:08,177 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 19:59:50,270 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 19:59:50,276 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 198
+2025-09-13 19:59:50,618 INFO s.s.c.c.ConfigInitializer [main] Settings file updated based on template changes.
+2025-09-13 19:59:50,620 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 19:59:50,621 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 19:59:51,028 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 44 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 19:59:51,029 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 19:59:54,601 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 19:59:57,473 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 19:59:57,945 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 19:59:57,945 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 19:59:58,125 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 19:59:58,237 INFO s.s.c.c.TempFileConfiguration [main] Created temporary directory: /tmp/stirling-pdf/stirling-pdf
+2025-09-13 19:59:58,835 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 19:59:59,311 INFO s.s.c.s.TempFileCleanupService [main] Created LibreOffice temp directory: /tmp/stirling-pdf/stirling-pdf/libreoffice
+2025-09-13 19:59:59,312 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 19:59:59,315 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 20:00:01,111 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 20:00:01,151 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 10.528 seconds (process running for 10.987)
+2025-09-13 20:00:01,154 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 20:00:01,158 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 20:00:01,164 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 20:00:01,164 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 20:00:01,170 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 20:00:01,171 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 20:00:01,171 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 20:02:25,288 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 20:02:25,295 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 198
+2025-09-13 20:02:25,653 INFO s.s.c.c.ConfigInitializer [main] Settings file updated based on template changes.
+2025-09-13 20:02:25,654 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 20:02:25,655 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 20:02:26,963 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 38 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 20:02:26,964 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 20:02:29,923 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 20:02:32,779 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 20:02:33,311 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 20:02:33,312 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 20:02:33,502 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 20:02:33,616 INFO s.s.c.c.TempFileConfiguration [main] Created temporary directory: /tmp/stirling-pdf/stirling-pdf
+2025-09-13 20:02:34,122 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 20:02:34,428 INFO s.s.c.s.TempFileCleanupService [main] Created LibreOffice temp directory: /tmp/stirling-pdf/stirling-pdf/libreoffice
+2025-09-13 20:02:34,429 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 20:02:34,432 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 20:02:35,846 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 20:02:35,893 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 10.234 seconds (process running for 10.27)
+2025-09-13 20:02:35,896 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 20:02:35,899 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 20:02:35,904 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 20:02:35,904 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 20:02:35,909 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 20:02:35,910 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 20:02:35,910 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 20:03:02,506 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 20:03:02,512 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 198
+2025-09-13 20:03:02,867 INFO s.s.c.c.ConfigInitializer [main] Settings file updated based on template changes.
+2025-09-13 20:03:02,869 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 20:03:02,870 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 20:03:03,305 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 38 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 20:03:03,306 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 20:03:06,308 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 20:03:08,967 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 20:03:09,441 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 20:03:09,442 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 20:03:09,608 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 20:03:09,706 INFO s.s.c.c.TempFileConfiguration [main] Created temporary directory: /tmp/stirling-pdf/stirling-pdf
+2025-09-13 20:03:10,235 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 20:03:10,555 INFO s.s.c.s.TempFileCleanupService [main] Created LibreOffice temp directory: /tmp/stirling-pdf/stirling-pdf/libreoffice
+2025-09-13 20:03:10,555 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 20:03:10,558 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 20:03:11,922 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 20:03:11,955 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 9.082 seconds (process running for 10.06)
+2025-09-13 20:03:11,957 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 20:03:11,961 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 20:03:11,967 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 20:03:11,968 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 20:03:11,972 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 20:03:11,972 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 20:03:11,973 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 20:03:39,435 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 20:03:39,441 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 198
+2025-09-13 20:03:39,791 INFO s.s.c.c.ConfigInitializer [main] Settings file updated based on template changes.
+2025-09-13 20:03:39,792 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 20:03:39,793 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 20:03:40,206 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 38 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 20:03:40,207 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 20:03:43,122 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 20:03:45,935 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 20:03:46,449 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 20:03:46,450 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 20:03:46,673 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 20:03:46,779 INFO s.s.c.c.TempFileConfiguration [main] Created temporary directory: /tmp/stirling-pdf/stirling-pdf
+2025-09-13 20:03:47,320 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 20:03:47,600 INFO s.s.c.s.TempFileCleanupService [main] Created LibreOffice temp directory: /tmp/stirling-pdf/stirling-pdf/libreoffice
+2025-09-13 20:03:47,601 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 20:03:47,603 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 20:03:48,965 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 20:03:48,999 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 9.202 seconds (process running for 10.124)
+2025-09-13 20:03:49,002 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 20:03:49,006 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 20:03:49,010 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 20:03:49,011 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 20:03:49,016 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 20:03:49,017 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 20:03:49,017 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 20:04:37,810 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 20:04:37,815 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 198
+2025-09-13 20:04:38,147 INFO s.s.c.c.ConfigInitializer [main] Settings file updated based on template changes.
+2025-09-13 20:04:38,149 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 20:04:38,150 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 20:04:38,535 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 38 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 20:04:38,536 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 20:04:41,456 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 20:04:44,092 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 20:04:44,601 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 20:04:44,602 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 20:04:44,840 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 20:04:44,949 INFO s.s.c.c.TempFileConfiguration [main] Created temporary directory: /tmp/stirling-pdf/stirling-pdf
+2025-09-13 20:04:45,474 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 20:04:45,758 INFO s.s.c.s.TempFileCleanupService [main] Created LibreOffice temp directory: /tmp/stirling-pdf/stirling-pdf/libreoffice
+2025-09-13 20:04:45,758 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 20:04:45,760 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 20:04:47,221 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 20:04:47,254 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 9.101 seconds (process running for 10.004)
+2025-09-13 20:04:47,257 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 20:04:47,262 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 20:04:47,265 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 20:04:47,266 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 20:04:47,272 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 20:04:47,272 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 20:04:47,273 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 20:07:42,545 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 20:07:42,551 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 198
+2025-09-13 20:07:42,916 INFO s.s.c.c.ConfigInitializer [main] Settings file updated based on template changes.
+2025-09-13 20:07:42,918 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 20:07:42,919 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 20:07:43,316 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 38 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 20:07:43,317 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 20:07:46,209 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 20:07:48,960 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 20:07:49,511 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 20:07:49,512 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 20:07:49,692 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 20:07:49,791 INFO s.s.c.c.TempFileConfiguration [main] Created temporary directory: /tmp/stirling-pdf/stirling-pdf
+2025-09-13 20:07:50,324 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 20:07:50,614 INFO s.s.c.s.TempFileCleanupService [main] Created LibreOffice temp directory: /tmp/stirling-pdf/stirling-pdf/libreoffice
+2025-09-13 20:07:50,615 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 20:07:50,616 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 20:07:51,935 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 20:07:51,973 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 9.051 seconds (process running for 9.983)
+2025-09-13 20:07:51,975 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 20:07:51,979 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 20:07:51,983 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 20:07:51,984 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 20:07:51,988 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 20:07:51,989 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 20:07:51,989 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 20:08:27,398 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 20:08:27,404 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 198
+2025-09-13 20:08:27,740 INFO s.s.c.c.ConfigInitializer [main] Settings file updated based on template changes.
+2025-09-13 20:08:27,742 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 20:08:27,743 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 20:08:28,146 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 38 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 20:08:28,147 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 20:08:30,928 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 20:08:33,722 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 20:08:34,288 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 20:08:34,289 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 20:08:34,458 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 20:08:34,559 INFO s.s.c.c.TempFileConfiguration [main] Created temporary directory: /tmp/stirling-pdf/stirling-pdf
+2025-09-13 20:08:35,164 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 20:08:35,464 INFO s.s.c.s.TempFileCleanupService [main] Created LibreOffice temp directory: /tmp/stirling-pdf/stirling-pdf/libreoffice
+2025-09-13 20:08:35,465 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 20:08:35,469 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 20:08:37,739 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 20:08:37,774 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 10.029 seconds (process running for 10.082)
+2025-09-13 20:08:37,776 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 20:08:37,779 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 20:08:37,784 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 20:08:37,784 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 20:08:37,789 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 20:08:37,789 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 20:08:37,789 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files
+2025-09-13 20:09:23,422 INFO s.s.S.SPDFApplication [main] Additional features in jar
+2025-09-13 20:09:23,429 INFO s.s.c.c.ConfigInitializer [main] Current settings file line count: 198
+2025-09-13 20:09:23,760 INFO s.s.c.c.ConfigInitializer [main] Settings file updated based on template changes.
+2025-09-13 20:09:23,761 INFO s.s.S.SPDFApplication [main] Settings file: ./configs/settings.yml
+2025-09-13 20:09:23,762 INFO s.s.S.SPDFApplication [main] Custom settings file: ./configs/custom_settings.yml
+2025-09-13 20:09:24,150 INFO s.s.S.SPDFApplication [main] Starting SPDFApplication v1.3.2 using Java 21.0.8 with PID 38 (/app-security.jar started by stirlingpdfuser in /)
+2025-09-13 20:09:24,151 INFO s.s.S.SPDFApplication [main] The following 1 profile is active: "security"
+2025-09-13 20:09:27,069 INFO s.s.p.s.c.DatabaseConfig [main] Using default H2 database
+2025-09-13 20:09:29,675 INFO s.s.p.s.s.KeyPersistenceService [main] Source directory does not exist: configs/db/keys
+2025-09-13 20:09:30,127 INFO s.s.S.c.EndpointConfiguration [main] Disabled functional groups: enterprise
+2025-09-13 20:09:30,147 INFO s.s.S.c.EndpointConfiguration [main] Total disabled endpoints: 1. Disabled endpoints: url-to-pdf
+2025-09-13 20:09:30,361 INFO s.s.p.s.s.DatabaseService [main] Source directory does not exist: configs/db/backup
+2025-09-13 20:09:30,460 INFO s.s.c.c.TempFileConfiguration [main] Created temporary directory: /tmp/stirling-pdf/stirling-pdf
+2025-09-13 20:09:30,976 INFO s.s.c.u.FileMonitor [main] Monitoring directory: ./pipeline/watchedFolders
+2025-09-13 20:09:31,266 INFO s.s.c.s.TempFileCleanupService [main] Created LibreOffice temp directory: /tmp/stirling-pdf/stirling-pdf/libreoffice
+2025-09-13 20:09:31,267 INFO s.s.c.s.TempFileCleanupService [main] Running in Docker mode, using aggressive cleanup strategy
+2025-09-13 20:09:31,269 INFO s.s.c.s.TempFileCleanupService [main] Startup cleanup complete. Deleted 0 temporary files/directories
+2025-09-13 20:09:32,663 INFO s.s.c.s.JobQueue [main] Starting JobQueue lifecycle
+2025-09-13 20:09:32,701 INFO s.s.S.SPDFApplication [main] Started SPDFApplication in 8.937 seconds (process running for 9.861)
+2025-09-13 20:09:32,703 WARN s.s.c.u.FileMonitor [scheduling-1] not monitoring any directory, even the root directory itself: ./pipeline/watchedFolders
+2025-09-13 20:09:32,707 INFO s.s.c.u.FileMonitor [scheduling-1] Registered directory: ./pipeline/watchedFolders
+2025-09-13 20:09:32,712 INFO s.s.S.SPDFApplication [main] Stirling-PDF Started.
+2025-09-13 20:09:32,712 INFO s.s.S.SPDFApplication [main] Navigate to http://localhost:8080/
+2025-09-13 20:09:32,717 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Running scheduled temporary file cleanup
+2025-09-13 20:09:32,717 INFO s.s.c.u.TempFileManager [scheduling-1] Cleaned up 0 old temporary files
+2025-09-13 20:09:32,718 INFO s.s.c.s.TempFileCleanupService [scheduling-1] Cleaned up 0 registered temporary files

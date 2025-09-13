@@ -15,26 +15,20 @@ scrape_configs:
   # Traefik metrics
   - job_name: 'traefik'
     static_configs:
-      - targets: ['traefik:8080']
+      - targets: ['traefik:8082']
     metrics_path: '/metrics'
     scrape_interval: 10s
-
-  # Filebrowser metrics via exporter
-  - job_name: 'filebrowser'
-    static_configs:
-      - targets: ['filebrowser-exporter:9100']
-    scrape_interval: 30s
 
   # Docker container metrics
   - job_name: 'docker'
     static_configs:
-      - targets: ['docker-exporter:9100']
+      - targets: ['host.docker.internal:9323']
     scrape_interval: 30s
 
   # Windows system metrics
   - job_name: 'windows'
     static_configs:
-      - targets: ['windows-exporter:9100']
+      - targets: ['host.docker.internal:9182']
     scrape_interval: 30s
 
   # Loki metrics
@@ -43,3 +37,9 @@ scrape_configs:
       - targets: ['loki:3100']
     metrics_path: '/metrics'
     scrape_interval: 30s
+
+  - job_name: 'jaeger-v2'
+    static_configs:
+      - targets: ['jaeger:8888']  # Internal telemetry port
+    scrape_interval: 15s
+    metrics_path: /metrics

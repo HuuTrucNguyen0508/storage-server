@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 My Storage Server</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6Izc2NGJhMjtzdG9wLW9wYWNpdHk6MSIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIAogIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNDUiIGZpbGw9InVybCgjZ3JhZCkiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgCiAgPCEtLSBTZXJ2ZXIvQ2xvdWQgaWNvbiAtLT4KICA8cmVjdCB4PSIzMCIgeT0iMzUiIHdpZHRoPSI0MCIgaGVpZ2h0PSIyNSIgcng9IjMiIGZpbGw9IiNmZmYiIG9wYWNpdHk9IjAuOSIvPgogIDxyZWN0IHg9IjM1IiB5PSI0MCIgd2lkdGg9IjMwIiBoZWlnaHQ9IjE1IiByeD0iMiIgZmlsbD0idXJsKCNncmFkKSIvPgogIAogIDwhLS0gU3RvcmFnZSBsaW5lcyAtLT4KICA8bGluZSB4MT0iNDAiIHkxPSI0NSIgeDI9IjYwIiB5Mj0iNDUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KICA8bGluZSB4MT0iNDAiIHkxPSI1MCIgeDI9IjU1IiB5Mj0iNTAiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KICAKICA8IS0tIE5ldHdvcmsgZG90cyAtLT4KICA8Y2lyY2xlIGN4PSIyNSIgY3k9IjMwIiByPSIyIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjciLz4KICA8Y2lyY2xlIGN4PSI3NSIgY3k9IjMwIiByPSIyIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjciLz4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjIwIiByPSIyIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjciLz4KICAKICA8IS0tIENvbm5lY3Rpb24gbGluZXMgLS0+CiAgPGxpbmUgeDE9IjI1IiB5MT0iMzAiIHgyPSI0MCIgeTI9IjQwIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMSIgb3BhY2l0eT0iMC42Ii8+CiAgPGxpbmUgeDE9Ijc1IiB5MT0iMzAiIHgyPSI2MCIgeTI9IjQwIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMSIgb3BhY2l0eT0iMC42Ii8+CiAgPGxpbmUgeDE9IjUwIiB5MT0iMjAiIHgyPSI1MCIgeTI9IjM1IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMSIgb3BhY2l0eT0iMC42Ii8+Cjwvc3ZnPg==">
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            max-width: 900px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 { 
+            text-align: center; 
+            margin-bottom: 40px; 
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .service { 
+            margin: 25px 0; 
+            padding: 25px; 
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px; 
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .service:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        .service h3 { 
+            margin: 0 0 15px 0; 
+            color: #fff; 
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .service p { 
+            margin: 10px 0; 
+            color: rgba(255, 255, 255, 0.9); 
+            line-height: 1.6;
+        }
+        .service a { 
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white; 
+            text-decoration: none; 
+            padding: 12px 25px;
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .service a:hover { 
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+        .description {
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 1.2em;
+            color: rgba(255, 255, 255, 0.9);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 My Storage Server</h1>
+        <p class="description">Welcome to my personal cloud services! Choose a service below to get started.</p>
+        
+        <div class="service">
+            <h3>📁 File Browser</h3>
+            <p>Access and manage your files with a beautiful web interface. Upload, download, organize, and share files easily.</p>
+            <a href="/filebrowser" target="_blank">Open File Browser →</a>
+        </div>
+        
+        <div class="service">
+            <h3>📄 Stirling PDF</h3>
+            <p>Powerful PDF processing tools. Convert, merge, split, compress, and manipulate PDF files with advanced features.</p>
+            <a href="https://stirling-pdf.taila3d69a.ts.net" target="_blank">Open Stirling PDF →</a>
+        </div>
+        
+        <div class="service">
+            <h3>🧪 System Test</h3>
+            <p>Test service to verify that the routing and networking are working correctly.</p>
+            <a href="/whoami" target="_blank">Run Test →</a>
+        </div>
+    </div>
+</body>
+</html>

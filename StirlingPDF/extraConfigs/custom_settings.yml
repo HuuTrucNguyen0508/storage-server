@@ -1,0 +1,3 @@
+server:
+  base-url: https://aden-traefik.taila3d69a.ts.net/stirling-pdf
+  context-path: /stirling-pdf

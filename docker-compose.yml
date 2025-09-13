@@ -1,82 +1,137 @@
 services:
+  tsdproxy:
+    image: almeidapaulopt/tsdproxy:latest
+    container_name: tsdproxy
+    environment:
+      - TSD_AUTHKEY=${TS_SECRET}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - datadir:/data
+      - ${PWD}/config:/config
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+
   traefik:
     image: traefik:v3.5.2
     container_name: traefik
     ports:
-    - "8080:80" # Traefik web entrypoint (container 80 -> host 8080)
-    - "8082:8080" # Traefik dashboard (container 8080 -> host 8082)
-    command:
-      - "--api.dashboard=true"
-      - "--providers.docker=true"
-      - "--entrypoints.web.address=:80"
-      - "--tracing.openTelemetry=true"
-      - "--tracing.openTelemetry.address=jaeger:4317"
-      - "--tracing.openTelemetry.grpc=true"
-      - "--tracing.serviceName=traefik"
-    volumes:
-    - /var/run/docker.sock:/var/run/docker.sock:ro
-    - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - "8050:80"
+      - "8082:8080"
+      - "9100:9100"
     networks:
-    - file-storage-network
+      - file-storage-network
+    labels:
+      tsdproxy.enable: "true"
+      tsdproxy.name: "aden-traefik"
+      tsdproxy.ephemeral: "false"
+    command: 
+    - "--providers.docker=true" 
+    - "--entrypoints.web.address=:80" 
+    - "--entrypoints.websecure.address=:443" 
+    - "--entrypoints.metrics.address=:8082" 
+    - "--entrypoints.traefik.address=:8080"
+    volumes:
+      - ./traefik-v3.yml:/etc/traefik/traefik.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 
   filebrowser:
     image: filebrowser/filebrowser:v2-s6
     container_name: filebrowser
     volumes:
-    - F:\\content:/data
+      - F:\\content:/data
     environment:
-    - FB_BASEURL=/
-    - FB_LOGLEVEL=INFO
-    - FB_DATABASE=/tmp/filebrowser.db
-    - FB_ROOT=/data
+      - FB_BASEURL=/filebrowser
+      - FB_LOGLEVEL=INFO
+      - FB_DATABASE=/tmp/filebrowser.db
+      - FB_ROOT=/data
     networks:
-    - file-storage-network
+      - file-storage-network
     restart: unless-stopped
     labels:
-    - "traefik.enable=true"
-    - "traefik.http.routers.filebrowser.rule=Host(`filebrowser.localhost`)"
-    - "traefik.http.routers.filebrowser.entrypoints=web"
-    - "traefik.http.services.filebrowser.loadbalancer.server.port=80"
+      - "traefik.enable=true"
+      - "traefik.http.routers.filebrowser.rule=PathPrefix(`/filebrowser`)"
+      - "traefik.http.routers.filebrowser.entrypoints=web"
+      - "traefik.http.services.filebrowser.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.filebrowser-stripprefix.stripprefix.prefixes=/filebrowser"
+      - "traefik.http.routers.filebrowser.middlewares=filebrowser-stripprefix"
 
-  filebrowser-exporter:
-    image: prom/node-exporter:latest
-    container_name: filebrowser-exporter
-    ports:
-    - "9101:9100"
-    volumes:
-    - /proc:/host/proc:ro
-    - /sys:/host/sys:ro
-    - /:/rootfs:ro
-    command:
-    - '--path.procfs=/host/proc'
-    - '--path.rootfs=/rootfs'
-    - '--path.sysfs=/host/sys'
-    - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    - '--collector.systemd'
-    - '--collector.processes'
+  stirling-pdf:
+    image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:latest
+    container_name: stirling-pdf
     networks:
-    - file-storage-network
+      - file-storage-network
+    volumes:
+      - ./StirlingPDF/trainingData:/usr/share/tessdata # Required for extra OCR languages
+      - ./StirlingPDF/extraConfigs:/configs
+      - ./StirlingPDF/customFiles:/customFiles/
+      - ./StirlingPDF/logs:/logs/
+      - ./StirlingPDF/pipeline:/pipeline/
+    environment:
+      - DISABLE_ADDITIONAL_FEATURES=false
+      - LANGS=en_GB
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stirling-pdf.rule=PathPrefix(`/stirling-pdf`)"
+      - "traefik.http.routers.stirling-pdf.entrypoints=web"
+      - "traefik.http.services.stirling-pdf.loadbalancer.server.port=8080"
+      - "traefik.http.middlewares.stirling-pdf-stripprefix.stripprefix.prefixes=/stirling-pdf"
+      - "traefik.http.routers.stirling-pdf.middlewares=stirling-pdf-stripprefix"
+      - "tsdproxy.enable=true"
+      - "tsdproxy.name=stirling-pdf"
+      - "tsdproxy.ephemeral=false"
+
+  landing-page:
+    image: nginx:alpine
+    container_name: landing-page
+    networks:
+      - file-storage-network
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+      - ./favicon.svg:/usr/share/nginx/html/favicon.svg:ro
     restart: unless-stopped
-    depends_on:
-    - filebrowser
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.landing.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.landing.priority=1"
+      - "traefik.http.routers.landing.entrypoints=web"
+      - "traefik.http.services.landing.loadbalancer.server.port=80"
+      - "traefik.http.routers.favicon.rule=Path(`/favicon.svg`)"
+      - "traefik.http.routers.favicon.priority=10"
+      - "traefik.http.routers.favicon.entrypoints=web"
+      - "traefik.http.services.favicon.loadbalancer.server.port=80"
+
+  whoami:
+    image: traefik/whoami
+    container_name: whoami
+    networks:
+      - file-storage-network
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=PathPrefix(`/whoami`)"
+      - "traefik.http.routers.whoami.entrypoints=web"
+      - "traefik.http.services.whoami.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.whoami-stripprefix.stripprefix.prefixes=/whoami"
+      - "traefik.http.routers.whoami.middlewares=whoami-stripprefix"
+
 
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    image: jaegertracing/jaeger:2.10.0
     container_name: jaeger
     ports:
     - "16686:16686"
     - "14268:14268"
-    - "14269:14269"
-    - "14250:14250"
-    - "6831:6831/udp"
-    - "6832:6832/udp"
+    - "9411:9411"
+    - "5778:5778"
     - "4317:4317"
     - "4318:4318"
     environment:
     - COLLECTOR_OTLP_ENABLED=true
     - COLLECTOR_ZIPKIN_HOST_PORT=:9411
     - METRICS_BACKEND=prometheus
+    - METRICS_ENABLED=true
     - PROMETHEUS_SERVER_URL=http://prometheus:9090
     networks:
     - file-storage-network
@@ -129,44 +184,17 @@ services:
     depends_on:
     - loki
 
-
-  windows-exporter:
-    image: prom/node-exporter:latest
-    container_name: windows-exporter
-    ports:
-    - "9100:9100"
-    volumes:
-    - /proc:/host/proc:ro
-    - /sys:/host/sys:ro
-    - /:/rootfs:ro
-    command:
-    - '--path.procfs=/host/proc'
-    - '--path.rootfs=/rootfs'
-    - '--path.sysfs=/host/sys'
-    - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    - '--collector.systemd'
-    - '--collector.processes'
-    networks:
-    - file-storage-network
-    restart: unless-stopped
-
   docker-exporter:
-    image: prom/node-exporter:latest
+    image: gcr.io/cadvisor/cadvisor:latest
     container_name: docker-exporter
     ports:
-    - "9323:9100"
+      - "9323:8080"
     volumes:
-    - /var/run/docker.sock:/var/run/docker.sock:ro
-    - /proc:/host/proc:ro
-    - /sys:/host/sys:ro
-    - /:/rootfs:ro
-    command:
-    - '--path.procfs=/host/proc'
-    - '--path.rootfs=/rootfs'
-    - '--path.sysfs=/host/sys'
-    - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro  # only this is needed
+      - /sys:/sys:ro
     networks:
-    - file-storage-network
+      - file-storage-network
     restart: unless-stopped
 
   grafana:
@@ -192,12 +220,11 @@ services:
 networks:
   file-storage-network:
     driver: bridge
-    external: false
-
 
 volumes:
   file-storage-data:
     driver: local
+  datadir:
   prometheus_data:
     driver: local
   loki_data:

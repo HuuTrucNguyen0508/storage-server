@@ -1,0 +1,75 @@
+services:
+  filebrowser:
+    image: filebrowser/filebrowser:v2-s6
+    container_name: filebrowser
+    volumes:
+      - F:\\content:/data
+    environment:
+      - FB_BASEURL=/filebrowser
+      - FB_LOGLEVEL=INFO
+      - FB_DATABASE=/tmp/filebrowser.db
+      - FB_ROOT=/data
+    networks:
+      - file-storage-network
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.filebrowser.rule=PathPrefix(`/filebrowser`)"
+      - "traefik.http.routers.filebrowser.entrypoints=web"
+      - "traefik.http.services.filebrowser.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.filebrowser-stripprefix.stripprefix.prefixes=/filebrowser"
+      - "traefik.http.routers.filebrowser.middlewares=filebrowser-stripprefix"
+
+  stirling-pdf:
+    image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:latest
+    container_name: stirling-pdf
+    networks:
+      - file-storage-network
+    volumes:
+      - ../StirlingPDF/trainingData:/usr/share/tessdata # Required for extra OCR languages
+      - ../StirlingPDF/extraConfigs:/configs
+      - ../StirlingPDF/customFiles:/customFiles/
+      - ../StirlingPDF/logs:/logs/
+      - ../StirlingPDF/pipeline:/pipeline/
+    environment:
+      - DISABLE_ADDITIONAL_FEATURES=false
+      - LANGS=en_GB
+    labels:
+      - "tsdproxy.enable=true"
+      - "tsdproxy.name=stirling-pdf"
+      - "tsdproxy.ephemeral=false"
+      - "tsdproxy.container_port=8080"
+
+  whoami:
+    image: traefik/whoami
+    container_name: whoami
+    networks:
+      - file-storage-network
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=PathPrefix(`/whoami`)"
+      - "traefik.http.routers.whoami.entrypoints=web"
+      - "traefik.http.services.whoami.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.whoami-stripprefix.stripprefix.prefixes=/whoami"
+      - "traefik.http.routers.whoami.middlewares=whoami-stripprefix"
+
+  landing-page:
+    image: nginx:alpine
+    container_name: landing-page
+    networks:
+      - file-storage-network
+    volumes:
+      - ../index.html:/usr/share/nginx/html/index.html:ro
+      - ../favicon.svg:/usr/share/nginx/html/favicon.svg:ro
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.landing.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.landing.priority=1"
+      - "traefik.http.routers.landing.entrypoints=web"
+      - "traefik.http.services.landing.loadbalancer.server.port=80"
+
+networks:
+  file-storage-network:
+    driver: bridge

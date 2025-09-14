@@ -1,248 +1,157 @@
-# Isolated File Storage System
+# Storage Server
 
-A production-ready file storage system with React frontend, Next.js API backend, and SQLite database, all running in isolated Docker containers with persistent storage on SSD.
-
-## 🚀 Features
-
-- **Unlimited File Sizes**: No file size restrictions
-- **All File Types**: Supports APK, JSON, MD, images, documents, and more
-- **Persistent Storage**: Data stored on F: drive with Docker volumes
-- **SQLite Database**: Robust metadata storage with lowdb
-- **Docker Isolation**: Each component runs in its own container
-- **Nginx Reverse Proxy**: Handles CORS, rate limiting, and large file transfers
-- **Modern UI**: React with Tailwind CSS
-- **Real-time Updates**: Frontend automatically refreshes after operations
+A modular Docker Compose setup for a personal storage server with monitoring, applications, and Tailscale integration.
 
 ## 🏗️ Architecture
 
+This project is organized into modular Docker Compose files for better maintainability:
+
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Nginx         │    │   Backend       │
-│   (React)       │◄──►│   (Reverse      │◄──►│   (Next.js API) │
-│   Port: 3000    │    │   Proxy)        │    │   Port: 3001    │
-│                 │    │   Port: 8080    │    │                 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                                       │
-                                                       ▼
-                                               ┌─────────────────┐
-                                               │   Database      │
-                                               │   (SQLite)      │
-                                               │   F:/web_uploads│
-                                               └─────────────────┘
+├── docker-compose.yml           # Main compose with include directives
+├── apps/
+│   └── docker-compose.yml       # Application services (Filebrowser, Stirling PDF, etc.)
+├── monitoring/
+│   └── docker-compose.yml       # Monitoring services (Grafana, Prometheus, etc.)
+└── config/
+    ├── tsdproxy.yaml            # tsdproxy configuration
+    └── config.json              # Tailscale configuration
 ```
 
-## 🛠️ Tech Stack
+## 🚀 Quick Start
 
-- **Frontend**: React 18, Vite, Tailwind CSS
-- **Backend**: Next.js 14, Node.js 18
-- **Database**: SQLite with lowdb
-- **Proxy**: Nginx
-- **Containerization**: Docker & Docker Compose
-- **Package Manager**: pnpm
-
-## 📦 Quick Start
-
-### Prerequisites
-
-- Docker and Docker Compose
-- Windows with F: drive available
-- PowerShell
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd storage-server
-   ```
-
-2. **Start the system**
-   ```bash
-   docker-compose up -d
-   ```
-
-3. **Access the application**
-   - Frontend: http://localhost:8080
-   - API: http://localhost:8080/api
-
-### First Run
-
-The system will automatically:
-- Create necessary directories on F: drive
-- Initialize the SQLite database
-- Set up Docker volumes for persistent storage
-- Configure Nginx reverse proxy
-
-## 📁 File Operations
-
-### Upload Files
-- Drag and drop or click to select files
-- No file size limits
-- Supports all file types
-- Files are stored with unique names preserving original names
-
-### Download Files
-- Click the download button next to any file
-- Files download with their original names
-
-### Delete Files
-- Click the delete button to remove files
-- Files are removed from both filesystem and database
-
-## 🔧 Configuration
-
-### Storage Location
-Files are stored in: `F:\web_uploads`
-- `F:\web_uploads\uploads\` - Actual files
-- `F:\web_uploads\database\` - SQLite database
-
-### Environment Variables
-- `NODE_ENV=production` - Set for production mode
-- All services run in production mode for optimal performance
-
-### Nginx Configuration
-- No file size limits
-- Optimized for large file transfers
-- CORS enabled for all origins
-- Rate limiting configured
-
-## 🐳 Docker Services
-
-### Frontend Service
-- **Image**: Custom React build
-- **Port**: 3000 (internal)
-- **Dependencies**: Backend
-
-### Backend Service
-- **Image**: Custom Next.js build
-- **Port**: 3001 (internal)
-- **Dependencies**: Database
-- **Volumes**: F:/web_uploads
-
-### Nginx Service
-- **Image**: nginx:alpine
-- **Port**: 8080 (external)
-- **Dependencies**: Frontend, Backend
-
-### Database Service
-- **Image**: alpine:latest
-- **Purpose**: Volume management
-- **Volumes**: F:/web_uploads/database
-
-## 🔍 API Endpoints
-
-### Upload File
-```
-POST /api/upload
-Content-Type: multipart/form-data
-Body: file (binary)
-```
-
-### List Files
-```
-GET /api/files
-Response: Array of file objects
-```
-
-### Download File
-```
-GET /api/files/{filename}
-Response: File binary
-```
-
-### Delete File
-```
-DELETE /api/files/{filename}
-Response: Success message
-```
-
-## 🚨 Troubleshooting
-
-### Common Issues
-
-1. **Port 8080 already in use**
-   ```bash
-   # Change port in docker-compose.yml
-   ports:
-     - "8081:80"  # Use port 8081 instead
-   ```
-
-2. **F: drive not accessible**
-   - Ensure F: drive exists and is accessible
-   - Check Docker Desktop file sharing settings
-
-3. **Files not persisting**
-   - Verify Docker volumes are properly mounted
-   - Check F:\web_uploads directory permissions
-
-4. **Upload fails**
-   - Check Nginx logs: `docker logs storage-server-nginx-1`
-   - Check backend logs: `docker logs storage-server-backend-1`
-
-### Logs
-
+### Option 1: Deploy Everything (Recommended)
 ```bash
-# View all logs
-docker-compose logs
-
-# View specific service logs
-docker-compose logs frontend
-docker-compose logs backend
-docker-compose logs nginx
-```
-
-## 🔄 Maintenance
-
-### Restart Services
-```bash
-docker-compose restart
-```
-
-### Update System
-```bash
-docker-compose down
-docker-compose build --no-cache
+# Deploy all services at once using include
 docker-compose up -d
 ```
 
-### Clean Up
+### Option 2: Deploy Modularly
 ```bash
-# Remove containers and volumes
-docker-compose down -v
-
-# Clean Docker system
-docker system prune -f
+# Start specific services
+docker-compose up -d traefik tsdproxy                    # Infrastructure only
+docker-compose up -d filebrowser stirling-pdf whoami     # Apps only
+docker-compose up -d prometheus grafana loki            # Monitoring only
 ```
 
-## 📊 Performance
+## 🌐 Access Your Services
 
-- **File Size**: Unlimited (tested with 50MB+ files)
-- **Concurrent Users**: Handles multiple simultaneous uploads
-- **Storage**: Persistent across container restarts
-- **Memory**: Optimized for large file handling
+### Public Services (Shareable)
+- **Landing Page**: https://aden-traefik.taila3d69a.ts.net/
+- **File Browser**: https://aden-traefik.taila3d69a.ts.net/filebrowser
+- **Stirling PDF**: https://stirling-pdf.taila3d69a.ts.net
+- **System Test**: https://aden-traefik.taila3d69a.ts.net/whoami
 
-## 🔒 Security
+### Admin Services (Direct Access)
+- **Traefik Dashboard**: https://aden-traefik.taila3d69a.ts.net:8082
+- **Grafana**: https://aden-traefik.taila3d69a.ts.net:3000
+- **Prometheus**: https://aden-traefik.taila3d69a.ts.net:9090
 
-- CORS enabled for development
-- Rate limiting on API endpoints
-- File type validation
-- Secure file naming with UUIDs
+## 📁 Services Overview
 
-## 📝 License
+### Infrastructure (`docker-compose.yml`)
+- **Traefik**: Reverse proxy and load balancer
+- **tsdproxy**: Tailscale proxy for remote access
 
-This project is licensed under the MIT License.
+### Applications (`apps/docker-compose.yml`)
+- **Landing Page**: Centralized service hub
+- **Filebrowser**: Web-based file management
+- **Stirling PDF**: PDF processing tools
+- **Whoami**: System test service
 
-## 🤝 Contributing
+### Monitoring (`monitoring/docker-compose.yml`)
+- **Grafana**: Monitoring dashboards
+- **Prometheus**: Metrics collection
+- **Loki**: Log aggregation
+- **Jaeger**: Distributed tracing
+- **cAdvisor**: Container metrics
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+## 🔧 Management Commands
 
-## 📞 Support
+### Start Services
+```bash
+# All services
+docker-compose up -d
 
-For issues and questions:
-1. Check the troubleshooting section
-2. Review Docker logs
-3. Create an issue in the repository
+# Just infrastructure
+docker-compose up -d traefik tsdproxy
+
+# Just applications
+docker-compose up -d filebrowser stirling-pdf whoami landing-page
+
+# Just monitoring
+docker-compose up -d prometheus grafana loki promtail jaeger docker-exporter
+```
+
+### Stop Services
+```bash
+# All services
+docker-compose down
+
+# Specific services
+docker-compose stop filebrowser stirling-pdf
+```
+
+### View Logs
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f traefik
+
+# Service groups
+docker-compose logs -f filebrowser stirling-pdf whoami landing-page
+```
+
+## 🔐 Authentication
+
+### Tailscale Setup
+1. Ensure `TS_SECRET` environment variable is set
+2. Access authentication URLs when prompted in tsdproxy logs
+3. Complete authentication for each new service
+
+### Service Access
+- **Public services**: Accessible via Tailscale network
+- **Admin services**: Direct port access only
+
+## 📊 Monitoring
+
+The monitoring stack provides:
+- **System metrics**: CPU, memory, disk usage
+- **Container metrics**: Resource usage per container
+- **Application logs**: Centralized log collection
+- **Network tracing**: Request flow visualization
+
+Access Grafana at `:3000` with admin/admin credentials.
+
+## 🛠️ Configuration
+
+### Environment Variables
+- `TS_SECRET`: Tailscale auth key for tsdproxy
+
+### File Paths
+- Filebrowser data: `F:\content`
+- Stirling PDF configs: `./StirlingPDF/`
+- Monitoring configs: `./monitoring/`
+
+## 🔄 Updates
+
+### Update All Services
+```bash
+docker-compose pull
+docker-compose up -d
+```
+
+### Update Specific Services
+```bash
+docker-compose pull filebrowser stirling-pdf
+docker-compose up -d filebrowser stirling-pdf
+```
+
+## 📝 Notes
+
+- All services use the same Docker network (`file-storage-network`)
+- Traefik handles routing and SSL termination
+- tsdproxy provides Tailscale integration
+- Monitoring services are optional and can be started separately
+- Landing page provides centralized access to public services

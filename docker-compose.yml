@@ -1,17 +1,8 @@
-services:
-  tsdproxy:
-    image: almeidapaulopt/tsdproxy:latest
-    container_name: tsdproxy
-    environment:
-      - TSD_AUTHKEY=${TS_SECRET}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - datadir:/data
-      - ${PWD}/config:/config
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
+include:
+  - apps/docker-compose-apps.yml
+  - monitoring/docker-compose-monitoring.yml
 
+services:
   traefik:
     image: traefik:v3.5.2
     container_name: traefik
@@ -25,6 +16,7 @@ services:
       tsdproxy.enable: "true"
       tsdproxy.name: "aden-traefik"
       tsdproxy.ephemeral: "false"
+      tsdproxy.container_port: "80"
     command: 
     - "--providers.docker=true" 
     - "--entrypoints.web.address=:80" 
@@ -36,198 +28,24 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 
-  filebrowser:
-    image: filebrowser/filebrowser:v2-s6
-    container_name: filebrowser
-    volumes:
-      - F:\\content:/data
+  tsdproxy:
+    image: almeidapaulopt/tsdproxy:latest
+    container_name: tsdproxy
+    networks:
+      - file-storage-network
     environment:
-      - FB_BASEURL=/filebrowser
-      - FB_LOGLEVEL=INFO
-      - FB_DATABASE=/tmp/filebrowser.db
-      - FB_ROOT=/data
-    networks:
-      - file-storage-network
-    restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.filebrowser.rule=PathPrefix(`/filebrowser`)"
-      - "traefik.http.routers.filebrowser.entrypoints=web"
-      - "traefik.http.services.filebrowser.loadbalancer.server.port=80"
-      - "traefik.http.middlewares.filebrowser-stripprefix.stripprefix.prefixes=/filebrowser"
-      - "traefik.http.routers.filebrowser.middlewares=filebrowser-stripprefix"
-
-  stirling-pdf:
-    image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:latest
-    container_name: stirling-pdf
-    networks:
-      - file-storage-network
+      - TSD_AUTHKEY=${TS_SECRET}
     volumes:
-      - ./StirlingPDF/trainingData:/usr/share/tessdata # Required for extra OCR languages
-      - ./StirlingPDF/extraConfigs:/configs
-      - ./StirlingPDF/customFiles:/customFiles/
-      - ./StirlingPDF/logs:/logs/
-      - ./StirlingPDF/pipeline:/pipeline/
-    environment:
-      - DISABLE_ADDITIONAL_FEATURES=false
-      - LANGS=en_GB
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.stirling-pdf.rule=PathPrefix(`/stirling-pdf`)"
-      - "traefik.http.routers.stirling-pdf.entrypoints=web"
-      - "traefik.http.services.stirling-pdf.loadbalancer.server.port=8080"
-      - "traefik.http.middlewares.stirling-pdf-stripprefix.stripprefix.prefixes=/stirling-pdf"
-      - "traefik.http.routers.stirling-pdf.middlewares=stirling-pdf-stripprefix"
-      - "tsdproxy.enable=true"
-      - "tsdproxy.name=stirling-pdf"
-      - "tsdproxy.ephemeral=false"
-
-  landing-page:
-    image: nginx:alpine
-    container_name: landing-page
-    networks:
-      - file-storage-network
-    volumes:
-      - ./index.html:/usr/share/nginx/html/index.html:ro
-      - ./favicon.svg:/usr/share/nginx/html/favicon.svg:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - datadir:/data
+      - ${PWD}/config:/config
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.landing.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.landing.priority=1"
-      - "traefik.http.routers.landing.entrypoints=web"
-      - "traefik.http.services.landing.loadbalancer.server.port=80"
-      - "traefik.http.routers.favicon.rule=Path(`/favicon.svg`)"
-      - "traefik.http.routers.favicon.priority=10"
-      - "traefik.http.routers.favicon.entrypoints=web"
-      - "traefik.http.services.favicon.loadbalancer.server.port=80"
-
-  whoami:
-    image: traefik/whoami
-    container_name: whoami
-    networks:
-      - file-storage-network
-    restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.whoami.rule=PathPrefix(`/whoami`)"
-      - "traefik.http.routers.whoami.entrypoints=web"
-      - "traefik.http.services.whoami.loadbalancer.server.port=80"
-      - "traefik.http.middlewares.whoami-stripprefix.stripprefix.prefixes=/whoami"
-      - "traefik.http.routers.whoami.middlewares=whoami-stripprefix"
-
-
-  jaeger:
-    image: jaegertracing/jaeger:2.10.0
-    container_name: jaeger
     ports:
-    - "16686:16686"
-    - "14268:14268"
-    - "9411:9411"
-    - "5778:5778"
-    - "4317:4317"
-    - "4318:4318"
-    environment:
-    - COLLECTOR_OTLP_ENABLED=true
-    - COLLECTOR_ZIPKIN_HOST_PORT=:9411
-    - METRICS_BACKEND=prometheus
-    - METRICS_ENABLED=true
-    - PROMETHEUS_SERVER_URL=http://prometheus:9090
-    networks:
-    - file-storage-network
-    restart: unless-stopped
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    ports:
-    - "9090:9090"
-    volumes:
-    - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    - prometheus_data:/prometheus
-    command:
-    - '--config.file=/etc/prometheus/prometheus.yml'
-    - '--storage.tsdb.path=/prometheus'
-    - '--web.console.libraries=/etc/prometheus/console_libraries'
-    - '--web.console.templates=/etc/prometheus/consoles'
-    - '--storage.tsdb.retention.time=200h'
-    - '--web.enable-lifecycle'
-    networks:
-    - file-storage-network
-    restart: unless-stopped
-
-  loki:
-    image: grafana/loki:latest
-    container_name: loki
-    ports:
-    - "3100:3100"
-    volumes:
-    - ./monitoring/loki.yml:/etc/loki/local-config.yaml:ro
-    - loki_data:/loki
-    command: -config.file=/etc/loki/local-config.yaml
-    networks:
-    - file-storage-network
-    restart: unless-stopped
-
-
-  promtail:
-    image: grafana/promtail:latest
-    container_name: promtail
-    volumes:
-    - ./monitoring/promtail.yml:/etc/promtail/config.yml:ro
-    - /var/log:/var/log:ro
-    - /var/lib/docker/containers:/var/lib/docker/containers:ro
-    command: -config.file=/etc/promtail/config.yml
-    networks:
-    - file-storage-network
-    restart: unless-stopped
-    depends_on:
-    - loki
-
-  docker-exporter:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: docker-exporter
-    ports:
-      - "9323:8080"
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro  # only this is needed
-      - /sys:/sys:ro
-    networks:
-      - file-storage-network
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-    - "3000:3000"
-    volumes:
-    - grafana_data:/var/lib/grafana
-    - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
-    - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
-    environment:
-    - GF_SECURITY_ADMIN_PASSWORD=admin
-    - GF_USERS_ALLOW_SIGN_UP=false
-    networks:
-    - file-storage-network
-    restart: unless-stopped
-    depends_on:
-    - prometheus
-    - loki
-
+      - "8081:8080"
 
 networks:
   file-storage-network:
     driver: bridge
 
 volumes:
-  file-storage-data:
-    driver: local
   datadir:
-  prometheus_data:
-    driver: local
-  loki_data:
-    driver: local
-  grafana_data:
-    driver: local

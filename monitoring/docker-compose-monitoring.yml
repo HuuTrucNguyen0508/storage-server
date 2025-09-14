@@ -1,0 +1,110 @@
+services:
+  jaeger:
+    image: jaegertracing/jaeger:2.10.0
+    container_name: jaeger
+    ports:
+    - "16686:16686"
+    - "14268:14268"
+    - "9411:9411"
+    - "5778:5778"
+    - "4317:4317"
+    - "4318:4318"
+    environment:
+    - COLLECTOR_OTLP_ENABLED=true
+    - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    - METRICS_BACKEND=prometheus
+    - METRICS_ENABLED=true
+    - PROMETHEUS_SERVER_URL=http://prometheus:9090
+    networks:
+    - file-storage-network
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+    - "9090:9090"
+    volumes:
+    - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    - prometheus_data:/prometheus
+    command:
+    - '--config.file=/etc/prometheus/prometheus.yml'
+    - '--storage.tsdb.path=/prometheus'
+    - '--web.console.libraries=/etc/prometheus/console_libraries'
+    - '--web.console.templates=/etc/prometheus/consoles'
+    - '--storage.tsdb.retention.time=200h'
+    - '--web.enable-lifecycle'
+    networks:
+    - file-storage-network
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+    - "3100:3100"
+    volumes:
+    - ../monitoring/loki.yml:/etc/loki/local-config.yaml:ro
+    - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+    - file-storage-network
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+    - ../monitoring/promtail.yml:/etc/promtail/config.yml:ro
+    - /var/log:/var/log:ro
+    - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+    - file-storage-network
+    restart: unless-stopped
+    depends_on:
+    - loki
+
+  docker-exporter:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: docker-exporter
+    ports:
+      - "9323:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+    networks:
+      - file-storage-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+    - "3000:3000"
+    volumes:
+    - grafana_data:/var/lib/grafana
+    - ../monitoring/grafana/provisioning:/etc/grafana/provisioning
+    - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+    - GF_SECURITY_ADMIN_PASSWORD=admin
+    - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+    - file-storage-network
+    restart: unless-stopped
+    depends_on:
+    - prometheus
+    - loki
+
+networks:
+  file-storage-network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+    driver: local
+  loki_data:
+    driver: local
+  grafana_data:
+    driver: local

@@ -216,6 +216,15 @@ func (s *server) stop() {
 	s.cmd.Process.Kill()
 	<-s.exited
 	s.cmd = nil
+	s.checkLogs()
+}
+
+// checkLogs fails on a race the server reported, which would otherwise stay in a
+// log nothing reads.
+func (s *server) checkLogs() {
+	if strings.Contains(s.logs.String(), "DATA RACE") {
+		s.t.Errorf("the server reported a data race:\n%s", s.logs)
+	}
 }
 
 // kill sends SIGKILL and waits. restart boots on the same directories, which runs
@@ -230,6 +239,7 @@ func (s *server) kill() {
 	}
 	<-s.exited
 	s.cmd = nil
+	s.checkLogs()
 }
 
 // waitDied waits for a crash point to fire inside the server.

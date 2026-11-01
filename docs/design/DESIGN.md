@@ -243,7 +243,43 @@ Durable command keys and `commands.response_json`, which store sensitive respons
 
 ## Implementation reconciliation
 
-Nothing yet. No implementation has started.
+The server is implemented and the harness passes on the real binary. The sketch held: every named data shape survived, and no change was design-level. This section records where the code left the text above, and why the design still holds.
+
+**Harness.** `HARNESS_DIR=<dir> go test -tags harness -race -timeout 1h ./harness` runs the fast tier in about a minute. `HARNESS_LONG=1` adds the 6 GiB upload, the 5 GiB zip and the ten minute soak. `HARNESS_RACE=1` builds the server itself with the race detector, and the harness fails if a server log reports a race. Fault injection and held-open windows exist only in the `crashpoints` build, as `crash.Fault` and `crash.Gap`. `TestStartupProbes` runs the real binary under a seccomp filter that refuses each primitive, so no fake disk is involved.
+
+**Binding change 8 went one step further.** It covered opening the target. The harness then found the same race in the state check: `Admit` loaded a share, the owner renamed the target, and the stat of the old path made a working link return 410. A guest arriving during a rename saw a false `unavailable`. `vault.ShareByToken` and `vault.Shares` now load the row and stat its target under the read lock, and `access` holds the vault instead of a tree. `TestGuestAdmissionRacesARename` proves it.
+
+**Signatures that changed, each forced by a binding change.**
+
+| Sketch | Code | Why |
+|---|---|---|
+| `disk.Move(...) error` | `(renamed bool, err error)`, with `disk.ErrNotDurable` | Change 3 |
+| `Destination` passed to `upload.New` | `upload.Publisher`, which `*vault.Vault` satisfies | Change 2. `upload` has no handle on the live tree |
+| `scope{tree, pinned}` | `scope{tree, file}`, and `scope.open` | Change 8. A pinned path opened after the lock is the race itself, so a file share holds the descriptor. The handler in Usage now opens through the scope and spends a use before streaming |
+| `store.ConsumeGrant`, `grants.consumed_at` | `store.TakeItem`, `grant_items`. `Grant.Consumed` is derived from it | Change 9 |
+| `access.Admit` consumes | `Admit` decides, `Consume` spends | Change 9. Only the handler knows the item and whether it exists |
+| `access.New(ctx, db, files)` | `access.New(ctx, db, shares)` | See above |
+| `Describe(ctx, token)` | Also takes the grant cookie | A holder may finish an item after exhaustion, so a reload must not show the broken-link page |
+| `Thumbnails.Get(ctx, tree, path, w)` | `Get(ctx, file, w)` | Change 8 |
+| `vault.Recover(ctx) error` | Returns the action count as well | `storage_recovery_actions_total` |
+
+**Added, which the sketch did not name.** `disk.Path.Child` refuses the reserved name at the root for a name that came from outside, since `Join` cannot return an error. `disk.Info` gained `Inode`, `Dev` and `Denied`. `vault.Mkdir` exists so the namespace has one writer. `vault.CheckParents` lets an upload fail at creation rather than after the last byte. `upload.Counters` is gone, because the count needs a surface the manager does not know, and the api's body adapter counts instead. `upload.ErrScope` is gone, because a drop that cannot publish stays Complete with no error.
+
+**Decisions the design left open.**
+
+- A drop link's use is the first upload creation on a grant, recorded as the item `drop`. Change 9 defines only fetches, and API.md already said this. The use is taken before the spool directory is made, so a 507 from a full disk costs a guest that use.
+- On a folder link an item is the path at fetch time. A file renamed between two fetches counts as a new item.
+- argon2id uses 46 MiB, one pass, one thread, behind the two-slot semaphore. Two concurrent logins stay under the 128 MiB bound the harness holds the server to.
+- The limiter gives five free attempts, then a lock of 30 seconds that doubles to one hour. Keys are `owner`, `setup` and `share:<id>`. A stranger with a share link can therefore lock that one link's password prompt, which the design's global-key tradeoff already accepts.
+- Restore does not fall back to another folder when a file or symlink holds a parent's name. It returns 409 `exists` or 422 `symlink_refused`, and the item stays in the trash.
+- A name no `Path` can hold lists as `other` and cannot be acted on through the API. `DESIGN.md` said such entries can be moved and trashed, but a request cannot name them.
+- A guest's `Describe` walks a shared folder for the zip size the guest page shows, bounded at 2 seconds. A drop link reports no size.
+- The app shell gets its own CSP, listed in API.md, which the frontend build must fit.
+- The zip uses the 64 KiB buffer between `archive/zip` and the socket, not sendfile, because `archive/zip` needs to CRC every byte.
+
+**Known gaps.** A publish whose parent fsync failed reports unhealthy, but has no journal row, so a restart clears `/healthz` without retrying that fsync. `TestHostileUpload` asserts the headers on both surfaces. Its headless Chromium half waits for the frontend. `TestCompose` belongs to the ops step.
+
+**Text above that this supersedes.** The binding changes already override these lines, which remain in place as history: the PDF exception in Security boundaries and Open questions, one guest session as one use in Tradeoffs and Open questions, the exists-means-commit rule in Shape, and the cut of password change and of recovery in What it deliberately does not do and Open questions.
 
 ## Open questions and risks
 

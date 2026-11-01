@@ -89,7 +89,7 @@ export class UploadEngine {
     const latest = (await this.previous(item))[0];
     if (typeof latest?.uploadUrl !== "string") return;
     const res = await fetch(latest.uploadUrl, { method: "HEAD", headers: { "Tus-Resumable": "1.0.0" } }).catch(() => null);
-    if (res === null) return;
+    if (res === null || this.files.has(item.id)) return;
     if (!res.ok) {
       if (res.status === 404) this.dispatch({ type: "offsetKnown", id: item.id, stored: 0 });
       else this.dispatch({ type: "failed", id: item.id, reason: "The server refused this upload. Retry to publish it" });

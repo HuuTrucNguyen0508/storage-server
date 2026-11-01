@@ -10,8 +10,8 @@ function run(...actions: SelectionAction[]): Selection {
 const picked = (s: Selection) => selectedInOrder(s, order);
 
 describe("selection", () => {
-  it("shift-click extends from a plain click focus", () => {
-    expect(picked(run({ type: "focus", id: "b" }, { type: "extend", id: "d" }))).toEqual(["b", "c", "d"]);
+  it("shift-click extends from a plain click, after the row takes focus", () => {
+    expect(picked(run({ type: "focus", id: "b" }, { type: "click", id: "b" }, { type: "focus", id: "d" }, { type: "extend", id: "d" }))).toEqual(["b", "c", "d"]);
   });
 
   it("a checkbox click toggles without touching the others", () => {

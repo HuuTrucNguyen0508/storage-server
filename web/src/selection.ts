@@ -7,6 +7,7 @@ export interface Selection {
 
 export type SelectionAction =
   | { type: "focus"; id: string }
+  | { type: "click"; id: string }
   | { type: "toggle"; id: string }
   | { type: "extend"; id: string }
   | { type: "longPress"; id: string }
@@ -44,13 +45,15 @@ export function selectionReducer(state: Selection, action: SelectionAction, orde
   switch (action.type) {
     case "focus":
       return { ...state, focus: action.id };
+    case "click":
+      return { ...state, focus: action.id, anchor: action.id };
     case "toggle": {
       const ids = new Set(state.ids);
       if (!ids.delete(action.id)) ids.add(action.id);
       return { ...state, ids, anchor: action.id, focus: action.id, touchMode: state.touchMode && ids.size > 0 };
     }
     case "extend": {
-      const anchor = state.anchor ?? state.focus ?? action.id;
+      const anchor = state.anchor ?? action.id;
       return { ...state, ids: new Set(rangeOf(anchor, action.id, order)), anchor, focus: action.id };
     }
     case "longPress": {

@@ -102,3 +102,32 @@ test("dragging a row onto a folder moves it", async ({ ownerPage: page, server, 
   await (await row(page, "box")).getByRole("link", { name: "box" }).click();
   await expect(await row(page, "a.txt")).toBeVisible();
 });
+
+test("shift-click selects from the last plain click, on a cell or a checkbox", async ({ ownerPage: page, server, folder, request }) => {
+  for (const name of ["a", "b", "c", "d", "e"]) await seed(request, server, `${folder}/${name}.txt`, "x");
+  await gotoFolder(page, server, folder);
+  const selected = async () => {
+    const names = [];
+    for (const name of ["a", "b", "c", "d", "e"]) {
+      if ((await (await row(page, `${name}.txt`)).getAttribute("aria-selected")) === "true") names.push(name);
+    }
+    return names;
+  };
+  const cell = async (name: string) => (await row(page, `${name}.txt`)).locator(".cell.right");
+
+  await (await cell("b")).click();
+  await (await cell("d")).click({ modifiers: ["Shift"] });
+  expect(await selected()).toEqual(["b", "c", "d"]);
+  await page.keyboard.press("Escape");
+
+  await (await cell("b")).click();
+  await (await row(page, "d.txt")).locator(".sel").click({ modifiers: ["Shift"] });
+  expect(await selected()).toEqual(["b", "c", "d"]);
+  await page.keyboard.press("Escape");
+
+  await (await row(page, "a.txt")).locator(".sel").click();
+  await (await row(page, "a.txt")).locator(".sel").click();
+  await (await cell("c")).click();
+  await (await cell("e")).click({ modifiers: ["Shift"] });
+  expect(await selected()).toEqual(["c", "d", "e"]);
+});

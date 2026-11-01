@@ -280,7 +280,7 @@ export function FilesPage({ path, q }: { path: string; q: string }) {
         if (e.shiftKey) dispatch({ type: "extend", id: row.path });
         else if (e.ctrlKey || e.metaKey) dispatch({ type: "toggle", id: row.path });
         else if (touchModeRef.current) dispatch({ type: "toggle", id: row.path });
-        else dispatch({ type: "focus", id: row.path });
+        else dispatch({ type: "click", id: row.path });
       },
       onCheck: (e, row) => {
         e.stopPropagation();

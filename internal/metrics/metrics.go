@@ -1,5 +1,3 @@
-// Package metrics exposes Prometheus text format from atomic counters. The
-// label sets are closed enums, so no user path can reach a metric name or label.
 package metrics
 
 import (
@@ -23,8 +21,6 @@ const (
 	GuestSurface
 )
 
-// Registry is the process's counters. Gauges are read at scrape time from the
-// disk and the store, so they cannot drift from their source.
 type Registry struct {
 	transfer      [2][2]atomic.Int64
 	loginFailures atomic.Int64

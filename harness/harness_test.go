@@ -1,13 +1,5 @@
 //go:build harness
 
-// Package harness proves the brief against the real binary, a real socket and a
-// real filesystem. There are no mocks. Run on the disk type the server will use:
-//
-//	HARNESS_DIR=/path/on/real/disk go test -tags harness -timeout 2h ./harness
-//
-// TestMain builds cmd/storage-server twice: plain, and with -tags crashpoints.
-// HARNESS_LONG=1 adds the multi-gigabyte cases and the ten minute soak.
-// HARNESS_RACE=1 builds both binaries with the race detector.
 package harness
 
 import (
@@ -88,7 +80,6 @@ func run(m *testing.M) int {
 	return m.Run()
 }
 
-// server is the binary under test, on its own root and state directories.
 type server struct {
 	t                *testing.T
 	bin              string
@@ -219,16 +210,12 @@ func (s *server) stop() {
 	s.checkLogs()
 }
 
-// checkLogs fails on a race the server reported, which would otherwise stay in a
-// log nothing reads.
 func (s *server) checkLogs() {
 	if strings.Contains(s.logs.String(), "DATA RACE") {
 		s.t.Errorf("the server reported a data race:\n%s", s.logs)
 	}
 }
 
-// kill sends SIGKILL and waits. restart boots on the same directories, which runs
-// the recovery path.
 func (s *server) kill() {
 	s.t.Helper()
 	if s.cmd == nil {
@@ -242,7 +229,6 @@ func (s *server) kill() {
 	s.checkLogs()
 }
 
-// waitDied waits for a crash point to fire inside the server.
 func (s *server) waitDied() {
 	s.t.Helper()
 	select {
@@ -275,7 +261,6 @@ func (s *server) restart(env ...string) {
 	s.boot()
 }
 
-// peakRSS reads VmHWM from /proc, in bytes.
 func (s *server) peakRSS() int64 {
 	s.t.Helper()
 	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", s.cmd.Process.Pid))
@@ -312,7 +297,6 @@ func (s *server) setupCode() string {
 	return m[1]
 }
 
-// claim runs first-time setup and leaves s.owner logged in.
 func (s *server) claim() {
 	s.t.Helper()
 	s.owner.expect("POST", "/api/setup", map[string]string{"code": s.setupCode(), "password": ownerPassword}, 201)
@@ -344,7 +328,6 @@ func (s *server) exists(rel string) bool {
 	return err == nil
 }
 
-// journal counts move rows by reading the same file the server uses.
 func (s *server) journal() int {
 	s.t.Helper()
 	db, err := sql.Open("sqlite", "file:"+filepath.Join(s.state, "state.db")+"?mode=ro")
@@ -369,7 +352,6 @@ func (s *server) healthz() int {
 	return resp.StatusCode
 }
 
-// client is one browser: its own cookie jar against one listener.
 type client struct {
 	t    *testing.T
 	base string
@@ -526,7 +508,6 @@ func (s *server) trashItems() []trashItem {
 	return decodeJSON[[]trashItem](s.t, s.owner.expect("GET", "/api/trash", nil, 200))
 }
 
-// guest is one visitor to one link.
 type guest struct {
 	*client
 	token string
@@ -551,7 +532,6 @@ func (s *server) openGuest(token string) *guest {
 	return g
 }
 
-// fetch opens a link in a fresh browser and returns the bytes it serves.
 func (s *server) fetch(token string) string {
 	s.t.Helper()
 	g := s.openGuest(token)

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent, type FormEvent } from "react";
 import { ApiError, guest, postDownload, previewKindAt, type Entry, type GuestApi, type LinkFacts } from "../api";
 import { formatBytes, plural, untilPhrase } from "../format";
-import { baseName, crumbs, displayOrder, flatName, join, shareHref } from "../paths";
+import { baseName, crumbs, displayOrder, join, shareHref } from "../paths";
 import { Preview, type PreviewItem } from "../preview/Preview";
 import { useNow, useTitle } from "../ui/hooks";
 import { entryIcon, FolderIcon, Icon, Mark } from "../ui/icons";
@@ -153,7 +153,6 @@ function FolderPage({ facts, token, api }: { facts: LinkFacts; token: string; ap
   );
   if (failed instanceof ApiError && (failed.status === 410 || failed.code === "not_found") && path === "") return <Broken token={token} />;
 
-  // facts.size is the only recursive total there is, and only for the shared folder itself.
   const size = path === "" ? facts.size : null;
   const sizePart = size === null ? "" : `, ${formatBytes(size)}`;
   const meta = entries === null ? "" : `${plural(entries.length, "item")}${sizePart}. Shared with you.${stopsLine(facts, now)}`;
@@ -331,7 +330,7 @@ function SentRow({ item, engine }: { item: UploadItem; engine: UploadEngine }) {
 function DropPage({ facts, token, api }: { facts: LinkFacts; token: string; api: GuestApi }) {
   const title = facts.name || host;
   useTitle(title);
-  const engine = useMemo(() => new UploadEngine({ kind: "drop", token, endpoint: api.uploadEndpoint, destination: flatName }), [api, token]);
+  const engine = useMemo(() => new UploadEngine({ kind: "drop", token, endpoint: api.uploadEndpoint, destination: baseName }), [api, token]);
   const items = useSyncExternalStore(engine.subscribe, engine.snapshot);
   const [over, setOver] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -434,7 +433,6 @@ export function GuestApp({ token }: { token: string }) {
       try {
         const facts = await api.facts();
         if (facts.passwordRequired) {
-          // A reload must not ask again while the 12 hour grant is good.
           const held = facts.kind === "link" && (await holdsGrant(api, facts));
           settle(held ? { tag: "open", facts } : { tag: "password", facts });
           return;

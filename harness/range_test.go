@@ -14,7 +14,6 @@ import (
 
 const giantSize = 5 << 30
 
-// plantGiant makes a sparse file over 4 GiB with known bytes where the ranges land.
 func plantGiant(t *testing.T, s *server, rel string) *os.File {
 	t.Helper()
 	full := filepath.Join(s.root, rel)
@@ -35,9 +34,6 @@ func plantGiant(t *testing.T, s *server, rel string) *os.File {
 	return f
 }
 
-// TestRangeRead checks 206 and Content-Range at the start, middle and last byte
-// of a file over 4 GiB, a suffix range, If-Range with a stale validator, and 416.
-// Each body is compared with the same bytes read directly from disk.
 func TestRangeRead(t *testing.T) {
 	s := start(t)
 	s.claim()

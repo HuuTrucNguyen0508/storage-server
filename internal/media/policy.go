@@ -1,5 +1,3 @@
-// Package media decides how bytes leave the server: the content-type policy for
-// hostile files, thumbnails, and the streamed zip.
 package media
 
 import (
@@ -15,8 +13,6 @@ import (
 	"storage-server/internal/disk"
 )
 
-// Class is what the frontend may preview. It is derived from the same table as
-// the headers, so the app can never offer a preview the server refuses.
 type Class string
 
 const (
@@ -28,9 +24,6 @@ const (
 	ClassText  Class = "text"
 )
 
-// sandboxCSP makes a navigated document a script-free opaque origin. Every stored
-// byte gets it. PDF is no exception: the frontend renders it with pdfjs-dist on a
-// canvas, so no browser viewer needs a looser policy.
 const sandboxCSP = "sandbox; default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'"
 
 type rule struct {
@@ -38,10 +31,6 @@ type rule struct {
 	class       Class
 }
 
-// rules is keyed by lowercase extension and is the whole policy. The uploader's
-// claimed type is never read and the browser may not sniff. HTML, JS and CSS map
-// to text/plain, so a hostile page previews as its source. An unlisted extension
-// is application/octet-stream with attachment.
 var rules = map[string]rule{
 	".jpg": {"image/jpeg", ClassImage}, ".jpeg": {"image/jpeg", ClassImage},
 	".png": {"image/png", ClassImage}, ".gif": {"image/gif", ClassImage},
@@ -67,7 +56,6 @@ func ruleOf(name string) (rule, bool) {
 	return r, ok
 }
 
-// ClassOf is what a listing reports for a name.
 func ClassOf(name string) Class {
 	r, _ := ruleOf(name)
 	return r.class
@@ -97,9 +85,6 @@ func disposition(kind, name string) string {
 	return b.String()
 }
 
-// SetHeaders writes every header for stored bytes: type, CSP, nosniff,
-// disposition, CORP, no-referrer. It is the only code that sets them, and
-// serving a file without calling it is impossible because Serve calls it.
 func SetHeaders(h http.Header, name string, download bool) {
 	r, listed := ruleOf(name)
 	setCommon(h)
@@ -116,14 +101,12 @@ func SetHeaders(h http.Header, name string, download bool) {
 	}
 }
 
-// SetArchiveHeaders is SetHeaders for a generated zip.
 func SetArchiveHeaders(h http.Header, name string) {
 	setCommon(h)
 	h.Set("Content-Type", "application/zip")
 	h.Set("Content-Disposition", disposition("attachment", name))
 }
 
-// etag is strong, so If-Range works, and hashed, so it does not publish an inode.
 func etag(i disk.Info) string {
 	sum := sha256.Sum256(fmt.Appendf(nil, "%d/%d/%d/%d", i.Dev, i.Inode, i.Size, i.ModTime.UnixNano()))
 	return `"` + hex.EncodeToString(sum[:12]) + `"`
@@ -138,7 +121,6 @@ func Serve(w http.ResponseWriter, r *http.Request, f *disk.File, download bool) 
 	http.ServeContent(w, r, "", f.Info.ModTime, f.File)
 }
 
-// ServeThumb answers a generated JPEG with the same protective headers.
 func ServeThumb(w http.ResponseWriter, r *http.Request, c io.ReadSeeker, mod time.Time) {
 	setCommon(w.Header())
 	w.Header().Set("Content-Type", "image/jpeg")

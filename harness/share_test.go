@@ -145,8 +145,6 @@ func deny(t *testing.T, s *server, token string, status int, code string) {
 	s.guest(token).expectError("GET", "/api/public/"+token, nil, status, code)
 }
 
-// TestShareLifecycle covers rename, move, trash of the file and of an ancestor,
-// restore to a taken path, purge, revoke, expiry, wrong passwords and the limiter.
 func TestShareLifecycle(t *testing.T) {
 	s := start(t)
 	s.claim()
@@ -283,9 +281,6 @@ func TestShareLifecycle(t *testing.T) {
 	s.owner.expectError("POST", "/api/shares", map[string]string{"path": "brief.txt", "kind": "other"}, 400, "invalid_request")
 }
 
-// TestMaxUses races 40 guests on max_uses=3 and asserts exactly three got bytes,
-// a preview bot's GET spent nothing, and a video seek after exhaustion still works
-// for a holder.
 func TestMaxUses(t *testing.T) {
 	s := start(t)
 	s.claim()
@@ -392,8 +387,6 @@ func headerShape(h map[string][]string) string {
 	return strings.Join(parts, "\n")
 }
 
-// TestDropPrivacy asserts a drop guest cannot list, read, or learn the final name
-// on a collision, and that two guests uploading one name both keep their bytes.
 func TestDropPrivacy(t *testing.T) {
 	s := start(t)
 	s.claim()
@@ -520,10 +513,6 @@ sys.exit("bad entry %s" % bad if bad else 0)`
 	}
 }
 
-// TestStreamedZip downloads a folder and verifies with 7z and Python, 5 GiB in the
-// long tier, asserts peak RSS stays bounded, and that a read error mid-stream
-// aborts the connection. Info-ZIP unzip is expected to fail above 4 GiB, see
-// DESIGN.md.
 func TestStreamedZip(t *testing.T) {
 	s := start(t)
 	s.claim()

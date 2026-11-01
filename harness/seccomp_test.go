@@ -21,8 +21,6 @@ const (
 	seccompRetAllow      = 0x7fff0000
 )
 
-// denied maps a primitive to the x86-64 syscall number and the errno a kernel or
-// filesystem without it would give.
 var denied = map[string]struct {
 	nr    uint32
 	errno syscall.Errno
@@ -32,8 +30,6 @@ var denied = map[string]struct {
 	"fsync":     {74, syscall.EIO},
 }
 
-// execDenied installs a seccomp filter on this thread and execs the server under
-// it, so the startup probes meet a kernel that really refuses the call.
 func execDenied(name string) {
 	rule := denied[name]
 	runtime.LockOSThread()
@@ -58,9 +54,6 @@ func execDenied(name string) {
 	os.Exit(3)
 }
 
-// TestStartupProbes runs the real binary on a real root with each primitive
-// refused by seccomp. Change 4: it must refuse to start, name the primitive and
-// name the filesystem, and it must not fall back.
 func TestStartupProbes(t *testing.T) {
 	if runtime.GOARCH != "amd64" {
 		t.Skip("the seccomp numbers are for amd64")
@@ -100,8 +93,6 @@ func TestStartupProbes(t *testing.T) {
 	}
 }
 
-// TestProbeAcceptsThisFilesystem is the other half: with nothing denied, the same
-// launcher path boots. Without it a broken launcher would pass the test above.
 func TestProbeAcceptsThisFilesystem(t *testing.T) {
 	s := start(t)
 	if got := s.healthz(); got != 200 {

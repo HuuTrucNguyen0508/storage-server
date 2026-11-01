@@ -16,8 +16,6 @@ import (
 
 const canary = "CANARY-outside-the-root"
 
-// plant builds the E1 layout: a root with a shared folder, a canary outside it,
-// a canary in the reserved directory, and every kind of link and a FIFO.
 func plant(t *testing.T) (*Disk, string) {
 	t.Helper()
 	base := t.TempDir()
@@ -280,8 +278,6 @@ func TestOpenLeavesNoProbeBehind(t *testing.T) {
 	}
 }
 
-// A swapper flips a directory and a symlink out of the root under load. Every
-// open either reads the inside file or is refused. None reads the canary.
 func TestSwapRaceCannotEscape(t *testing.T) {
 	d, root := plant(t)
 	swap := filepath.Join(root, "swap")

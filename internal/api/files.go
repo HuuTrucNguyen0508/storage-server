@@ -36,9 +36,6 @@ func entryOf(i disk.Info) entryJSON {
 	return e
 }
 
-// content is one handler for the owner and for every guest. The difference
-// between the two surfaces is the scope the gate built. The use is spent only
-// after the file opened, so a 404 costs a guest nothing.
 func (a *API) content(w http.ResponseWriter, r *http.Request, c *call) {
 	f, item, err := c.scope.open(r.URL.Query().Get("path"))
 	if err != nil {
@@ -223,8 +220,6 @@ func (a *API) thumb(w http.ResponseWriter, r *http.Request, c *call) {
 	media.ServeThumb(a.counted(w, c), r, t, mod)
 }
 
-// zipItem names a zip for use counting: the same selection on the same grant is
-// the same item, whatever order the form listed it in.
 func zipItem(paths []disk.Path) string {
 	names := make([]string, 0, len(paths))
 	for _, p := range paths {
@@ -302,8 +297,6 @@ type hitJSON struct {
 
 var errSearchFull = errors.New("search is full")
 
-// search streams NDJSON so the first hits arrive before the walk ends. It stops
-// when the client disconnects, at 1000 hits, and it reads nothing but names.
 func (a *API) search(w http.ResponseWriter, r *http.Request, c *call) {
 	terms := strings.Fields(strings.ToLower(r.URL.Query().Get("q")))
 	if len(terms) == 0 {

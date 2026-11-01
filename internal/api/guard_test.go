@@ -14,15 +14,9 @@ import (
 	"testing"
 )
 
-// The disk package is the security boundary only if nothing goes around it.
-// This fails the build when another package imports a syscall layer or calls a
-// path-taking function. thumbs and store write to the state directory, which
-// holds no user input as a path, and live in files listed here.
 var mayTouchOS = map[string]bool{"internal/disk": true, "internal/store": true}
 var stateDirFile = map[string]bool{"internal/media/thumbs.go": true}
 
-// pathFuncs lists, per package, what takes a path string. The key is the import
-// path, so a renamed import cannot hide a call.
 var pathFuncs = map[string]*regexp.Regexp{
 	"os":            regexp.MustCompile(`^(Open|OpenFile|OpenRoot|OpenInRoot|Create|CreateTemp|Rename|Remove|RemoveAll|Mkdir|MkdirAll|MkdirTemp|ReadFile|WriteFile|ReadDir|Stat|Lstat|Symlink|Link|Readlink|Chmod|Chown|Lchown|Chtimes|Truncate|DirFS|CopyFS)$`),
 	"io/ioutil":     regexp.MustCompile(`^(ReadFile|WriteFile|ReadDir|TempFile|TempDir)$`),
@@ -30,9 +24,6 @@ var pathFuncs = map[string]*regexp.Regexp{
 	"net/http":      regexp.MustCompile(`^(ServeFile|Dir)$`),
 }
 
-// violations scans one file. It resolves each import to its real path before
-// looking at a call, and it treats a dot import of a watched package as a
-// violation, because no selector would be left to inspect.
 func violations(filename string, src any, syscallAllowed bool) ([]string, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, filename, src, 0)

@@ -19,14 +19,11 @@ import (
 const (
 	tusVersion  = "1.0.0"
 	readTimeout = 60 * time.Second
-	// dropItem is the one use a drop guest's grant takes.
-	dropItem = "drop"
+	dropItem    = "drop"
 )
 
 var errClientStopped = errors.New("the client stopped sending")
 
-// uploadScope binds an upload to the session or to the admitted share. A drop
-// guest holding another share's upload ID gets 404.
 func uploadScope(c *call) upload.Scope {
 	if c.admission != nil {
 		return upload.Scope{Drop: c.admission.Share.ID}
@@ -34,8 +31,6 @@ func uploadScope(c *call) upload.Scope {
 	return upload.Scope{}
 }
 
-// body adapts a request to upload.Stream, renewing a 60 second read deadline on
-// each read so a stalled client cannot hold the upload forever.
 type body struct {
 	r       *http.Request
 	rc      *http.ResponseController
@@ -50,7 +45,6 @@ func (b *body) Read(p []byte) (int, error) {
 	if err := b.rc.SetReadDeadline(time.Now().Add(readTimeout)); err != nil {
 		return 0, fmt.Errorf("%w: %w", errClientStopped, err)
 	}
-	// An Interrupt that landed before the renewal above would otherwise be lost.
 	if b.stopped.Load() {
 		return 0, errClientStopped
 	}
@@ -88,8 +82,6 @@ func metadata(header, key string) (string, bool) {
 	return "", false
 }
 
-// uploadPath parses the destination. A drop accepts one name and nothing else,
-// so this refuses a separator before anything looks at the folder.
 func uploadPath(r *http.Request, c *call) (disk.Path, error) {
 	raw, ok := metadata(r.Header.Get("Upload-Metadata"), "path")
 	if !ok {
@@ -112,8 +104,6 @@ func setStored(w http.ResponseWriter, st upload.Status) {
 	}
 }
 
-// The tus core protocol with the creation and termination extensions. Header
-// parsing lives here and stops here.
 func (a *API) uploadCreate(w http.ResponseWriter, r *http.Request, c *call) {
 	setTus(w)
 	if err := checkTus(r); err != nil {

@@ -1,8 +1,3 @@
-/**
- * The uploads tray as one reducer. The state of an item is a tagged union, so
- * "paused but still sending" cannot be written down. `stored` is bytes the server
- * confirmed, `sent` is bytes handed to the connection.
- */
 export type UploadState =
   | { tag: "queued"; stored: number }
   | { tag: "sending"; stored: number; sent: number }
@@ -14,7 +9,6 @@ export type UploadState =
 
 export interface UploadItem {
   id: string;
-  /** Destination relative to the root, or one flat name on a drop link. */
   path: string;
   name: string;
   size: number;
@@ -107,7 +101,6 @@ export function uploadsReducer(items: readonly UploadItem[], event: UploadEvent)
   }
 }
 
-/** A reload loses every File handle, so whatever was unfinished waits for the file. */
 export function restorable(items: readonly UploadItem[]): UploadItem[] {
   return items.flatMap((item) =>
     item.state.tag === "done" ? [] : [{ ...item, state: { tag: "needs-file" as const, stored: storedOf(item.state) } }],

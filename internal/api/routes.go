@@ -1,6 +1,3 @@
-// Package api is the HTTP shell. It parses requests into domain types, calls one
-// domain method, and maps the error. routes is the single list of the API: the
-// listeners are filtered views of it, and a test compares it to API.md.
 package api
 
 import (
@@ -9,7 +6,6 @@ import (
 	"storage-server/internal/access"
 )
 
-// Gate is who may reach a route.
 type Gate int
 
 const (
@@ -21,9 +17,6 @@ const (
 	GuestDrop
 )
 
-// reachesGuest reports whether a route exists on the guest listener. Owner
-// routes are absent from that mux, so Funnel exposes them to nobody, whatever a
-// proxy path rule or a middleware bug might do.
 func (g Gate) reachesGuest() bool { return g != Owner }
 
 func (g Gate) act() access.Act {
@@ -41,7 +34,7 @@ type route struct {
 	path              string
 	gate              Gate
 	serve             func(*API, http.ResponseWriter, *http.Request, *call)
-	stream            bool // no JSON decode limit, rolling deadlines
+	stream            bool
 	ownerOnlyListener bool
 }
 

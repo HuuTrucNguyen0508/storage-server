@@ -10,8 +10,6 @@ import (
 	"testing"
 )
 
-// TestFirstRun asserts the server refuses login and setup without the logged code,
-// and the code stops working after one use.
 func TestFirstRun(t *testing.T) {
 	s := start(t)
 	type session struct {

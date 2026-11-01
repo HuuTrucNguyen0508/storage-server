@@ -72,7 +72,6 @@ func openat2(dir int, path string, flags int, mode uint32) (int, error) {
 	}
 }
 
-// translate maps errno to the package's vocabulary.
 func translate(err error) error {
 	switch {
 	case err == nil:
@@ -98,9 +97,7 @@ func translate(err error) error {
 // Tree is a directory file descriptor. Every method resolves relative to that
 // descriptor, so a Tree keeps pointing at its folder across a rename.
 type Tree struct {
-	fd int
-	// root marks the storage root itself, the one directory where ReservedDir
-	// is hidden.
+	fd   int
 	root bool
 }
 
@@ -116,7 +113,6 @@ func (t *Tree) openDir(p Path) (int, error) {
 	return fd, translate(err)
 }
 
-// openParent opens p's directory. A parent that is a file means p does not exist.
 func (t *Tree) openParent(dir Path) (int, error) {
 	fd, err := t.openDir(dir)
 	if errors.Is(err, ErrNotDirectory) {

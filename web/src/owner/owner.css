@@ -1,4 +1,3 @@
-/* ---------- app frame ---------- */
 .app { display: grid; grid-template-columns: var(--rail-w) minmax(0, 1fr); min-height: 100dvh; }
 .rail {
   padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-6);
@@ -26,7 +25,6 @@
 .key { font-family: var(--font-ui); color: var(--ink-2); font-size: var(--text-sm); }
 .content { padding: var(--space-6); max-width: var(--content-max); width: 100%; }
 
-/* ---------- the place: path + name ---------- */
 .place { margin-bottom: var(--space-5); }
 .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); color: var(--ink-2); font-size: var(--text-sm); min-height: 28px; }
 .crumbs .trail, .crumbs .crumb { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
@@ -53,14 +51,12 @@
 .rename:focus-visible { box-shadow: var(--focus-ring); }
 .more-cell { display: grid; place-items: center; }
 
-/* ---------- ghost rows ---------- */
 .row.ghost { color: var(--ink-2); padding-bottom: 6px; }
 .row.ghost .name > .ic { color: var(--ink-3); }
 .row.ghost .cell.span { grid-column: 3 / -1; text-align: left; }
 .row.ghost > .bar { position: absolute; left: 44px; right: var(--space-4); bottom: 6px; height: 3px; }
 .row .sub.warn-text { color: var(--warn); }
 
-/* ---------- menu ---------- */
 .menu {
   position: fixed; inset: auto; margin: 0; padding: var(--space-1); min-width: 180px;
   background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: var(--shadow);
@@ -71,7 +67,6 @@
 .menu button.danger, .menu button.danger .ic { color: var(--danger); }
 @media (max-width: 720px) { .menu button { height: 44px; } }
 
-/* ---------- selection bar: opaque on purpose, rows must not read through it ---------- */
 .selbar {
   position: fixed; left: calc(50% + var(--rail-w) / 2); bottom: var(--space-6); transform: translateX(-50%); z-index: 20;
   display: flex; align-items: center; gap: var(--space-1); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
@@ -86,7 +81,6 @@
 @keyframes rise { from { transform: translate(-50%, 12px); } }
 @media (prefers-reduced-motion: reduce) { .selbar { animation: none; } }
 
-/* ---------- uploads tray ---------- */
 .tray { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); min-height: 0; }
 .tray h2 { font-size: var(--text-sm); font-weight: 500; display: flex; justify-content: space-between; gap: var(--space-2); color: var(--ink); }
 .tray h2 span { color: var(--ink-2); font-weight: 400; }
@@ -109,7 +103,6 @@
 .uptray-phone .txt { font-size: var(--text-xs); color: var(--ink-2); white-space: nowrap; }
 .uptray-phone:focus-visible { border-radius: var(--radius-md); }
 
-/* ---------- drop ring ---------- */
 .dropring {
   position: fixed; inset: var(--space-3); border: 2px solid var(--accent); border-radius: var(--radius-lg); z-index: 40;
   background: color-mix(in srgb, var(--accent-tint) 70%, transparent); pointer-events: none; display: grid; place-items: center;
@@ -117,10 +110,8 @@
 }
 .dropring p { background: var(--ink); color: var(--bg); padding: var(--space-3) var(--space-5); border-radius: 999px; font-weight: 500; box-shadow: var(--shadow-lg); }
 
-/* ---------- tabs ---------- */
 .tabs { display: none; }
 
-/* ---------- sheet forms ---------- */
 .target { display: flex; align-items: center; gap: var(--space-2); color: var(--ink-2); font-size: var(--text-sm); margin-top: var(--space-1); overflow-wrap: anywhere; }
 .opt { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--line); min-height: 56px; }
 .opt:first-of-type { border-top: 0; }
@@ -149,7 +140,6 @@ form .opt:first-child { margin-top: var(--space-2); }
 .move-list button:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 0; }
 .move-none { padding: var(--space-3); }
 
-/* ---------- links, trash, sessions ---------- */
 .filters { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap; }
 .filters .btn { height: 36px; }
 .linkrow, .trashrow, .sessionrow { min-height: 56px; }
@@ -166,7 +156,6 @@ form .opt:first-child { margin-top: var(--space-2); }
 .panel .seg { align-self: flex-start; }
 .stack { display: grid; gap: var(--space-4); margin-top: var(--space-2); }
 
-/* ---------- sign in and setup ---------- */
 .gate { display: grid; place-items: start center; min-height: 100dvh; padding: var(--space-16) var(--space-4); }
 .pw-card { width: min(100%, 420px); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: var(--space-6); }
 .pw-card .host { display: flex; align-items: center; gap: var(--space-2); color: var(--ink-2); font-size: var(--text-sm); margin-bottom: var(--space-4); }

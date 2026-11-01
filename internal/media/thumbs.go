@@ -30,7 +30,6 @@ const (
 // the decoder lacks, SVG, or a picture too large to decode safely.
 var ErrNoThumbnail = errors.New("no thumbnail for this file")
 
-// Thumbnails renders and caches JPEG previews under the state directory.
 type Thumbnails struct {
 	dir   string
 	limit chan struct{}

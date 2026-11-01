@@ -1,5 +1,3 @@
-// Package store owns the SQLite file: account, sessions, shares, grants, the
-// move journal and the limiter. SQL and rows stay private to this package.
 package store
 
 import (
@@ -29,17 +27,14 @@ const rewriteTargets = `
 UPDATE shares SET target = ?2 || substr(target, length(?1) + 1)
 WHERE target = ?1 OR substr(target, 1, length(?1) + 1) = ?1 || '/'`
 
-// deleteTargets removes every share at or under ?1, for a purged trash item.
 const deleteTargets = `
 DELETE FROM shares
 WHERE target = ?1 OR substr(target, 1, length(?1) + 1) = ?1 || '/'`
 
-// takeUse admits one more use. Zero rows changed means exhausted.
 const takeUse = `
 UPDATE shares SET uses = uses + 1
 WHERE id = ?1 AND (max_uses IS NULL OR uses < max_uses)`
 
-// recordItem marks an item fetched. Zero rows changed means the grant holds it.
 const recordItem = `
 INSERT INTO grant_items (grant_id, item) VALUES (?1, ?2) ON CONFLICT DO NOTHING`
 
@@ -414,7 +409,6 @@ func (s *Store) TakeItem(ctx context.Context, g GrantID, sh ShareID, item string
 	})
 }
 
-// BeginMove records intent before the rename.
 func (s *Store) BeginMove(ctx context.Context, from, to disk.Location, inode uint64) (MoveID, error) {
 	res, err := s.db.ExecContext(ctx,
 		`INSERT INTO pending_moves (from_loc, to_loc, src_inode, started_at) VALUES (?, ?, ?, ?)`,
@@ -505,7 +499,6 @@ func (s *Store) ClearLimiter(ctx context.Context, key string) error {
 	return err
 }
 
-// Prune deletes expired sessions and grants.
 func (s *Store) Prune(ctx context.Context, now time.Time) error {
 	return s.inTx(ctx, func(tx *sql.Tx) error {
 		for _, q := range []string{`DELETE FROM sessions WHERE expires_at <= ?`, `DELETE FROM grants WHERE expires_at <= ?`} {

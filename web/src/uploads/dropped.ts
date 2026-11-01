@@ -2,7 +2,6 @@ import type { PickedFile } from "./engine";
 
 export interface Dropped {
   files: PickedFile[];
-  /** Relative paths of folders with nothing in them, which uploads alone would lose. */
   emptyFolders: string[];
 }
 

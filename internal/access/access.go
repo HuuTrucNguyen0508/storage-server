@@ -1,6 +1,3 @@
-// Package access decides who may do what: the owner account, sessions, the
-// setup code, the login limiter, and guest admission to a share. The admission
-// rule is one pure function, Decide, so the link states are a table test.
 package access
 
 import (
@@ -27,7 +24,6 @@ const (
 	SessionTTL = 30 * 24 * time.Hour
 	GrantTTL   = 12 * time.Hour
 
-	// MinPasswordBytes is a promise in API.md.
 	MinPasswordBytes = 8
 
 	freeAttempts = 5
@@ -71,7 +67,6 @@ const (
 	Upload
 )
 
-// State is derived from a share row, the clock and the disk. Nothing stores it.
 type State int
 
 const (
@@ -86,7 +81,6 @@ func (s State) String() string {
 	return [...]string{"active", "expired", "exhausted", "suspended", "missing"}[s]
 }
 
-// Decision is the outcome of Decide.
 type Decision int
 
 const (
@@ -148,8 +142,6 @@ func goneError(st State) error {
 	return ErrUnavailable
 }
 
-// lockFor is the limiter's schedule: five free attempts, then a lock that starts
-// at 30 seconds and doubles to an hour.
 func lockFor(failures int) time.Duration {
 	if failures < freeAttempts {
 		return 0
@@ -161,14 +153,11 @@ func lockFor(failures int) time.Duration {
 	return min(firstLock<<shift, longestLock)
 }
 
-// Admission is what an admitted guest request carries into a handler.
 type Admission struct {
 	Share store.Share
 	Grant store.Grant
 }
 
-// Shares is the vault's read-locked view of a share and its target, so a state is
-// never derived from a target that moved after it was loaded.
 type Shares interface {
 	ShareByToken(ctx context.Context, t store.Token) (sh store.Share, targetExists bool, err error)
 }
@@ -178,7 +167,7 @@ type Service struct {
 	shares Shares
 
 	mu    sync.Mutex
-	setup string // held in memory only, regenerated each boot while unclaimed
+	setup string
 }
 
 // New logs a fresh setup code when no owner exists.
@@ -230,8 +219,6 @@ func (s *Service) SetupRequired(ctx context.Context) (bool, error) {
 	return !ok, err
 }
 
-// attempt runs verify through the limiter. A locked key returns before verify,
-// so a lockout also skips argon2.
 func (s *Service) attempt(ctx context.Context, key string, fail error, verify func() (bool, error)) error {
 	st, err := s.db.Limiter(ctx, key)
 	if err != nil {
@@ -484,8 +471,6 @@ const (
 	argonKeyLen  = 32
 )
 
-// hashSlots bounds concurrent argon2 runs, so a burst of guesses cannot exhaust
-// memory.
 var hashSlots = make(chan struct{}, 2)
 
 func derive(ctx context.Context, password string, salt []byte, t, m uint32, p uint8, n uint32) ([]byte, error) {

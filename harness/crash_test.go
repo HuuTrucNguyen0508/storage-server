@@ -19,7 +19,6 @@ import (
 
 const payload = "the payload a guest was promised"
 
-// scene is one crash run's fixture: a file in a folder, a link to each.
 type scene struct {
 	s          *server
 	file, dir  share
@@ -37,7 +36,6 @@ func newScene(t *testing.T, env ...string) *scene {
 	return &scene{s: s, file: s.share("dir/file.txt", "link", nil), dir: s.share("dir", "link", nil)}
 }
 
-// request runs an action the crash point will kill, and returns once it has.
 func (c *scene) request(act func()) {
 	c.s.t.Helper()
 	done := make(chan struct{})
@@ -50,12 +48,10 @@ func (c *scene) request(act func()) {
 	<-done
 }
 
-// post tolerates a dead server, because the crash point kills it mid-request.
 func (c *scene) post(path string, in any) {
 	c.s.owner.do("POST", path, in)
 }
 
-// snapshot is everything recovery decides, so two recoveries can be compared.
 func (c *scene) snapshot() string {
 	s := c.s
 	s.t.Helper()
@@ -83,7 +79,6 @@ func (c *scene) snapshot() string {
 	return strings.Join(lines, "\n")
 }
 
-// converge restarts twice and asserts that a second recovery changes nothing.
 func (c *scene) converge() {
 	s := c.s
 	s.t.Helper()
@@ -106,7 +101,6 @@ func (c *scene) converge() {
 	}
 }
 
-// linkServes asserts both links reach the original bytes at the file's current name.
 func (c *scene) linkServes(name string) {
 	s := c.s
 	s.t.Helper()
@@ -170,14 +164,11 @@ func spoolEntries(s *server) []string {
 }
 
 type crashCase struct {
-	name string
-	// arrange runs on a healthy server, before the crash point is armed.
+	name    string
 	arrange func(c *scene)
-	// act is the request the point kills.
-	act func(c *scene)
-	// finish is the client's retry after restart, and the end state it reaches.
-	finish func(c *scene)
-	points []crash.Point
+	act     func(c *scene)
+	finish  func(c *scene)
+	points  []crash.Point
 }
 
 var movePoints = []crash.Point{crash.MoveAfterIntent, crash.MoveAfterRename, crash.MoveAfterCommit}
@@ -301,12 +292,6 @@ func crashCases() []crashCase {
 	}
 }
 
-// TestCrashMatrix runs each scenario once per crash point it reaches, on the
-// crashpoints build, with CRASH_AT set: trash, restore, move, rename, purge and
-// upload. After SIGKILL and restart it asserts: a second recovery changes nothing,
-// no partial file in the tree, every trash item restorable, every share resolves
-// to the file it resolved to before, and a retried request reaches the same end
-// state.
 func TestCrashMatrix(t *testing.T) {
 	covered := map[crash.Point]bool{}
 	for _, tc := range crashCases() {
@@ -332,8 +317,6 @@ func TestCrashMatrix(t *testing.T) {
 	}
 }
 
-// journaledMove leaves a journaled rename in the database, with the server dead,
-// so the test can rearrange the disk behind the app before recovery runs.
 func journaledMove(t *testing.T, point crash.Point) *scene {
 	t.Helper()
 	c := newScene(t)
@@ -348,8 +331,6 @@ func journaledMove(t *testing.T, point crash.Point) *scene {
 	return c
 }
 
-// TestRecoveryByIdentity covers the three outcomes of binding change 1. Each was
-// a wrong answer when recovery only asked whether the destination existed.
 func TestRecoveryByIdentity(t *testing.T) {
 	t.Run("the destination holds the inode, so the move commits", func(t *testing.T) {
 		c := journaledMove(t, crash.MoveAfterRename)
@@ -401,9 +382,6 @@ func TestRecoveryByIdentity(t *testing.T) {
 	})
 }
 
-// TestFailedFsyncKeepsTheJournal is binding change 3. A rename whose parent fsync
-// fails has happened and is not yet safe. The row stays, shares stay, the request
-// errors, /healthz reports it, and restart finishes the move.
 func TestFailedFsyncKeepsTheJournal(t *testing.T) {
 	s := startBin(t, crashBin, "FAIL_AT="+string(crash.ParentFsync))
 	s.claim()
@@ -440,9 +418,6 @@ func TestFailedFsyncKeepsTheJournal(t *testing.T) {
 	}
 }
 
-// TestGuestOpenRacesARename is binding change 8. The guest's resolve pauses inside
-// the read lock. The owner renames the target and an upload publishes private
-// bytes at the old path. The guest must still get the shared file.
 func TestGuestOpenRacesARename(t *testing.T) {
 	s := startBin(t, crashBin, "PAUSE_AT="+string(crash.GuestAfterLoad)+"=600ms")
 	s.claim()
@@ -472,9 +447,6 @@ func TestGuestOpenRacesARename(t *testing.T) {
 	}
 }
 
-// TestGuestAdmissionRacesARename pauses a guest between loading a share and
-// checking its target. A rename in that gap must not make a working link look
-// missing, so the two steps share the read lock.
 func TestGuestAdmissionRacesARename(t *testing.T) {
 	s := startBin(t, crashBin, "PAUSE_AT="+string(crash.AdmitAfterLoad)+"=500ms")
 	s.claim()
@@ -497,10 +469,6 @@ func TestGuestAdmissionRacesARename(t *testing.T) {
 	}
 }
 
-// TestDropsFollowAFolderUnderRenames is binding change 2. Publishing and renaming
-// race for real. No request may see the folder as missing mid-rename, every upload
-// must land in the folder as it is at that moment, so none is stranded, and no
-// stale folder comes back.
 func TestDropsFollowAFolderUnderRenames(t *testing.T) {
 	s := start(t)
 	s.claim()
@@ -560,10 +528,6 @@ func TestDropsFollowAFolderUnderRenames(t *testing.T) {
 	}
 }
 
-// TestKillSoak runs mixed operations on the plain binary with SIGKILL at random
-// times, checking the same invariants after each restart: ten minutes in the long
-// tier and 20 seconds otherwise. A link serves its own bytes or is suspended in
-// the trash. No file is ever missing and no journal row survives recovery.
 func TestKillSoak(t *testing.T) {
 	duration := 20 * time.Second
 	if longTier {

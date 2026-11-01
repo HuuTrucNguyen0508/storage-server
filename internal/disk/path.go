@@ -1,7 +1,3 @@
-// Package disk is the security boundary. It is the only package that issues
-// syscalls against the storage root, and every path it resolves goes through
-// openat2 with RESOLVE_BENEATH|RESOLVE_NO_SYMLINKS, so the kernel refuses a
-// symlink at any component, including one swapped in mid-request.
 package disk
 
 import (
@@ -38,7 +34,6 @@ var (
 // no control character, not "." or "..".
 type Name struct{ s string }
 
-// ParseName is the only way to build a Name from untrusted input.
 func ParseName(raw string) (Name, error) {
 	if raw == "" || raw == "." || raw == ".." || len(raw) > maxNameBytes || !utf8.ValidString(raw) {
 		return Name{}, ErrInvalidPath
@@ -81,7 +76,6 @@ func isReserved(name string) bool { return strings.EqualFold(name, ReservedDir) 
 func (p Path) String() string { return p.s }
 func (p Path) IsRoot() bool   { return p.s == "" }
 
-// Join appends one validated component.
 func (p Path) Join(n Name) Path {
 	if p.IsRoot() {
 		return Path{n.s}
@@ -89,7 +83,6 @@ func (p Path) Join(n Name) Path {
 	return Path{p.s + "/" + n.s}
 }
 
-// Under places q beneath p.
 func (p Path) Under(q Path) Path {
 	switch {
 	case q.IsRoot():
@@ -136,12 +129,8 @@ func (p Path) Contains(q Path) bool {
 	return p.IsRoot() || q.s == p.s || strings.HasPrefix(q.s, p.s+"/")
 }
 
-// TrashID names one trash item. It is the item's directory name.
 type TrashID string
 
-// Location is where a share's target physically is. A trashed share target is
-// not a flag: it is a Location inside the trash, so trash and restore are moves
-// and "suspended" is derived rather than stored.
 type Location struct {
 	trash TrashID
 	rel   Path
@@ -188,8 +177,6 @@ func ParseLocation(s string) (Location, error) {
 	return Location{}, fmt.Errorf("location %q: %w", s, ErrInvalidPath)
 }
 
-// Candidates yields name, then "name (1).ext", "name (2).ext". Upload publish
-// and restore both try these against Move until one is free.
 func Candidates(n Name) func(yield func(Name) bool) {
 	return func(yield func(Name) bool) {
 		if !yield(n) {
@@ -210,7 +197,6 @@ func Candidates(n Name) func(yield func(Name) bool) {
 	}
 }
 
-// splitExt keeps a leading dot with the stem, so ".bashrc" has no extension.
 func splitExt(name string) (stem, ext string) {
 	i := strings.LastIndexByte(name, '.')
 	if i <= 0 {

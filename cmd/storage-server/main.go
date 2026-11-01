@@ -139,7 +139,6 @@ func run() error {
 	})
 }
 
-// healthcheck exists for a scratch image with no shell or curl.
 func healthcheck() error {
 	_, port, err := net.SplitHostPort(env("OWNER_ADDR", ":8080"))
 	if err != nil {
@@ -157,8 +156,6 @@ func healthcheck() error {
 	return nil
 }
 
-// resetOwner is the password recovery. The next boot logs a new setup code, so a
-// running server must be restarted after it.
 func resetOwner() error {
 	state := os.Getenv("STATE_DIR")
 	if state == "" {
@@ -212,7 +209,6 @@ func gauges(d *disk.Disk, db *store.Store, v *vault.Vault, u *upload.Manager) fu
 	}
 }
 
-// sweep runs at start and hourly. Each sweep is idempotent.
 func sweep(ctx context.Context, every time.Duration, v *vault.Vault, u *upload.Manager, db *store.Store, t *media.Thumbnails) {
 	once := func(now time.Time) {
 		for name, err := range map[string]error{
@@ -239,8 +235,6 @@ func sweep(ctx context.Context, every time.Duration, v *vault.Vault, u *upload.M
 	}
 }
 
-// serve runs one http.Server per listener. ReadHeaderTimeout is set and
-// ReadTimeout is not, because uploads use rolling per-read deadlines.
 func serve(ctx context.Context, listeners map[string]http.Handler) error {
 	failed := make(chan error, len(listeners))
 	var servers []*http.Server

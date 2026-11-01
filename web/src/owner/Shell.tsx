@@ -22,12 +22,6 @@ export function useShell(): ShellValue {
 
 let engine: UploadEngine | null = null;
 
-/** One engine for the whole signed-in session, so uploads survive changing pages. */
-function ownerEngine(): UploadEngine {
-  engine ??= new UploadEngine({ kind: "owner", endpoint: "/api/uploads", destination: (path) => path });
-  return engine;
-}
-
 function NavLink({ to, icon, label, count, current }: { to: string; icon: IconName; label: string; count: number | null; current: boolean }) {
   return (
     <a href={to} aria-current={current ? "page" : undefined} onClick={(e) => followLink(e, to)}>
@@ -103,7 +97,10 @@ function SearchBox({ route }: { route: Route }) {
 export function Shell({ route, children }: { route: Route; children: ReactNode }) {
   const [counts, setCounts] = useState<{ links: number; trash: number } | null>(null);
   const [tick, setTick] = useState(0);
-  const value = useMemo(() => ({ engine: ownerEngine(), refreshCounts: () => setTick((n) => n + 1) }), []);
+  const value = useMemo(() => {
+    engine ??= new UploadEngine({ kind: "owner", endpoint: "/api/uploads", destination: (path) => path });
+    return { engine, refreshCounts: () => setTick((n) => n + 1) };
+  }, []);
 
   useEffect(() => {
     let live = true;

@@ -27,7 +27,6 @@ button:disabled { cursor: default; }
 .muted { color: var(--ink-2); }
 .small { font-size: var(--text-xs); }
 
-/* ---------- buttons ---------- */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
   height: var(--control-h); padding: 0 var(--space-4);
@@ -57,7 +56,6 @@ a.btn:hover { text-decoration: none; }
   .btn.icon, .btn.small.icon { width: var(--control-h-phone); }
 }
 
-/* ---------- fields ---------- */
 .field {
   display: flex; align-items: center; gap: var(--space-2); height: var(--control-h);
   padding: 0 var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--radius-md);
@@ -73,7 +71,6 @@ label.lbl { display: block; font-weight: 500; margin-bottom: var(--space-2); }
 .hint { color: var(--ink-2); font-size: var(--text-xs); margin-top: var(--space-1); }
 .error { color: var(--danger); font-size: var(--text-sm); margin-top: var(--space-1); }
 
-/* ---------- switch ---------- */
 .switch { display: inline-flex; align-items: center; gap: var(--space-3); min-height: 44px; cursor: pointer; position: relative; }
 .switch .track {
   width: 36px; height: 22px; border-radius: 11px; background: var(--ink-2); position: relative; flex: none;
@@ -88,7 +85,6 @@ label.lbl { display: block; font-weight: 500; margin-bottom: var(--space-2); }
 .switch input:checked + .track::after { transform: translateX(14px); }
 .switch input:focus-visible + .track { box-shadow: var(--focus-ring); }
 
-/* ---------- checkbox ---------- */
 .cb {
   width: 20px; height: 20px; border-radius: var(--radius-sm); border: 1.5px solid var(--line-strong);
   background: var(--surface); display: inline-grid; place-items: center; color: var(--accent-ink); flex: none;
@@ -97,7 +93,6 @@ label.lbl { display: block; font-weight: 500; margin-bottom: var(--space-2); }
 .cb.on { background: var(--accent); border-color: var(--accent); }
 .cb.on .ic { opacity: 1; }
 
-/* ---------- list rows, shared by owner and guest ---------- */
 .list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; }
 .head, .row {
   display: grid; grid-template-columns: 44px minmax(0, 1fr) 150px 96px 44px; align-items: center; gap: var(--space-2);
@@ -142,7 +137,6 @@ label.lbl { display: block; font-weight: 500; margin-bottom: var(--space-2); }
 @keyframes slide { to { background-position: 11.3px 0; } }
 @media (prefers-reduced-motion: reduce) { .bar .flight { animation: none; } }
 
-/* ---------- sheets ---------- */
 dialog { color: inherit; }
 dialog.sheet {
   border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); color: var(--ink);
@@ -165,7 +159,6 @@ dialog.sheet[open] { animation: fadein var(--dur-base) var(--ease-out); }
 }
 @keyframes sheet-up { from { transform: translateY(24px); opacity: 0; } }
 
-/* ---------- toasts ---------- */
 .toast-slot { position: fixed; left: var(--space-6); bottom: var(--space-6); z-index: 50; pointer-events: none; }
 .toast {
   display: flex; align-items: center; gap: var(--space-4); pointer-events: auto; min-height: 44px;
@@ -180,7 +173,6 @@ dialog.sheet[open] { animation: fadein var(--dur-base) var(--ease-out); }
   .toast .btn { height: 44px; }
 }
 
-/* ---------- preview overlay ---------- */
 dialog.overlay {
   position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: 0; padding: 0;
   background: var(--scrim); color: #fff; overflow: hidden;
@@ -235,7 +227,6 @@ dialog.overlay::backdrop { background: transparent; }
   .doc { padding: var(--space-4); }
 }
 
-/* ---------- empty state ---------- */
 .empty { padding: var(--space-12) var(--space-6); max-width: 44ch; }
 .empty .glyph { color: var(--ink-3); margin-bottom: var(--space-4); }
 .empty h2 { font-size: var(--text-xl); font-weight: 600; letter-spacing: -0.01em; }

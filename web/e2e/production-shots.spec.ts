@@ -61,7 +61,6 @@ for (const theme of ["light", "dark"] as const) {
     const trashed = await request.post(`${server.owner}/api/files/trash`, { data: { paths: [`${base}/old-site-backup.tar`] } });
     expect(trashed.status()).toBe(200);
 
-    // A real in-flight upload held at its second chunk, so the ghost row and tray are the real thing.
     await page.route("**/api/uploads/*", async (route) => {
       const req = route.request();
       if (req.method() === "PATCH" && Number(req.headers()["upload-offset"]) > 0) return route.abort("connectionreset");

@@ -39,10 +39,6 @@ export function shareHref(token: string, path: string): string {
   return path === "" ? `/s/${token}` : `/s/${token}?path=${encodeURIComponent(path)}`;
 }
 
-export function flatName(relativePath: string): string {
-  return baseName(relativePath);
-}
-
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
 /** The server sorts by bytes, which puts Z before a. People expect folders first, then names. */

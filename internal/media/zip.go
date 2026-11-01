@@ -38,7 +38,6 @@ type zipper struct {
 	taken map[string]bool
 }
 
-// topName keeps two selected items with one base name, such as a/x and b/x, apart.
 func (z *zipper) topName(p disk.Path) string {
 	e, _ := p.Entry()
 	base := entryName(e.Name.String())

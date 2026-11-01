@@ -1,12 +1,3 @@
-// Package upload owns the spool. An upload has no database row. Its state is
-// what is on disk under .storage-server/spool/<id>/, and phaseOf derives it:
-//
-//	meta.json     written once at creation, immutable
-//	data          the bytes; its size is the only resume offset
-//	publish.json  the chosen destination, written before the rename
-//
-// Publishing goes through vault.Publish, so this package never writes the live
-// tree. It speaks in offsets and lengths. Tus headers stay in the api package.
 package upload
 
 import (
@@ -28,7 +19,6 @@ import (
 	"storage-server/internal/vault"
 )
 
-// TTL is how long an idle upload, or a published tombstone, stays in the spool.
 const (
 	IdleTTL      = 7 * 24 * time.Hour
 	TombstoneTTL = 24 * time.Hour
@@ -53,7 +43,6 @@ var (
 
 type ID string
 
-// ParseID validates an upload ID from a URL.
 func ParseID(raw string) (ID, error) {
 	if b, err := hex.DecodeString(raw); err != nil || len(b) != 16 {
 		return "", ErrNotFound
@@ -99,7 +88,6 @@ type Status struct {
 	Stored disk.Path // set when Published and the scope is the owner
 }
 
-// phaseOf is the state machine. It is pure so every crash state is a table test.
 func phaseOf(size, length int64, hasData, hasPublish bool) Phase {
 	switch {
 	case !hasData && hasPublish:
@@ -119,7 +107,6 @@ type Stream interface {
 	Interrupt()
 }
 
-// Publisher is the vault's side of a finished upload.
 type Publisher interface {
 	Publish(ctx context.Context, p vault.Publication) (disk.Path, error)
 	CheckParents(dir disk.Path) error
@@ -143,7 +130,6 @@ func New(spool *disk.Tree, v Publisher, minFree func(int64) error) *Manager {
 	return &Manager{spool: spool, vault: v, minFree: minFree, writers: map[ID]*writer{}}
 }
 
-// record is meta.json.
 type record struct {
 	Path   string        `json:"path"`
 	Length int64         `json:"length"`
@@ -273,16 +259,12 @@ func (m *Manager) statusOf(id ID, rec record) (Status, error) {
 	return st, nil
 }
 
-// interrupt stops a live writer. It calls Interrupt under the lock, and release
-// deletes the writer under the same lock, so Interrupt can only reach a handler
-// that is still running. A late one would poison a keep-alive connection.
 func (m *Manager) interrupt(w *writer) {
 	w.stream.Interrupt()
 	m.mu.Unlock()
 	<-w.done
 }
 
-// stop interrupts any live writer and waits for it to exit.
 func (m *Manager) stop(id ID) {
 	for {
 		m.mu.Lock()
@@ -295,8 +277,6 @@ func (m *Manager) stop(id ID) {
 	}
 }
 
-// claim makes body the upload's one writer. It cancels only a live writer, so a
-// finished handler's keep-alive connection is never cut by the next takeover.
 func (m *Manager) claim(id ID, body Stream) (release func()) {
 	for {
 		m.mu.Lock()
@@ -406,8 +386,6 @@ func (m *Manager) copy(w io.Writer, body io.Reader, room int64) (int64, error) {
 	}
 }
 
-// finish publishes for a client. A drop whose share is suspended or gone stays
-// Complete with no error, because a guest must not learn why.
 func (m *Manager) finish(ctx context.Context, id ID, rec record) (Status, error) {
 	st, err := m.publish(ctx, id, rec)
 	if rec.Drop != "" && (errors.Is(err, vault.ErrUnavailable) || errors.Is(err, vault.ErrShareGone)) {
@@ -416,7 +394,6 @@ func (m *Manager) finish(ctx context.Context, id ID, rec record) (Status, error)
 	return st, err
 }
 
-// publish moves complete bytes into the tree.
 func (m *Manager) publish(ctx context.Context, id ID, rec record) (Status, error) {
 	st := Status{Phase: Complete, Offset: rec.Length, Length: rec.Length}
 	path, err := disk.ParsePath(rec.Path)
@@ -451,7 +428,6 @@ func (m *Manager) publish(ctx context.Context, id ID, rec record) (Status, error
 	return st, nil
 }
 
-// Cancel removes meta.json, then the directory.
 func (m *Manager) Cancel(ctx context.Context, s Scope, id ID) error {
 	m.stop(id)
 	if _, err := m.load(s, id); err != nil {
@@ -467,9 +443,6 @@ func (m *Manager) remove(id ID) error {
 	return m.spool.RemoveAll(id.dir())
 }
 
-// settle converges one spool directory. Anything without a readable meta.json is
-// doomed. Complete bytes are offered to the vault again, and a complete drop
-// upload whose share no longer exists is removed. ok is false when nothing is left.
 func (m *Manager) settle(ctx context.Context, name string) (id ID, st Status, ok bool) {
 	id, err := ParseID(name)
 	if err != nil {
@@ -531,8 +504,6 @@ func (m *Manager) Recover(ctx context.Context) error {
 	return nil
 }
 
-// sweeping holds an upload's writer slot, so a retried PATCH cannot publish the
-// same bytes at the same moment. Interrupting it does nothing: the PATCH waits.
 type sweeping struct{}
 
 func (sweeping) Read([]byte) (int, error) { return 0, io.EOF }
@@ -602,7 +573,6 @@ func (m *Manager) expired(id ID, phase Phase, now time.Time) (bool, error) {
 	return now.Sub(last) >= IdleTTL, nil
 }
 
-// Stats is what /metrics reads: bytes held in the spool and uploads being written.
 func (m *Manager) Stats(ctx context.Context) (bytes uint64, active int, err error) {
 	err = m.spool.Walk(ctx, disk.Path{}, func(_ disk.Path, info disk.Info) error {
 		bytes += uint64(info.Size)

@@ -1,6 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
-/** A modal `<dialog>`: the browser traps focus, handles Escape and returns focus afterwards. */
 export function Sheet({ title, onClose, children, className = "" }: { title: string; onClose: () => void; children: ReactNode; className?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {

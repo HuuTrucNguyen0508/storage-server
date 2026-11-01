@@ -28,8 +28,8 @@ const (
 
 type Config struct {
 	PublicURL string // base of the owner app, its scheme decides the Secure cookie flag
-	ShareURL  string // base printed into share links
-	Shell     fs.FS  // built frontend, served at / and /s/{token}
+	ShareURL  string
+	Shell     fs.FS
 }
 
 type API struct {
@@ -58,7 +58,6 @@ func (a *API) Guest() http.Handler {
 	return a.mux(func(r route) bool { return r.gate.reachesGuest() && !r.ownerOnlyListener }, metrics.GuestSurface)
 }
 
-// Ops serves /metrics on a port compose never publishes.
 func (a *API) Ops() http.Handler {
 	m := http.NewServeMux()
 	m.Handle("GET /metrics", a.metrics)
@@ -108,8 +107,6 @@ func (w *apiWriter) ReadFrom(r io.Reader) (int64, error) {
 }
 func (w *apiWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
-// gated is the only way to reach a handler. It builds the call, so a handler has
-// no way to run without the check its route declares.
 func (a *API) gated(rt route, s metrics.Surface) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !rt.stream {
@@ -162,17 +159,11 @@ func cookieValue(r *http.Request, name string) string {
 	return ""
 }
 
-// scope is what a request is confined to. An owner scope is the whole Files
-// tree. A folder share is a Sub tree. A file share holds the one file the vault
-// opened, so a guest's path parameter has nothing else it could name.
 type scope struct {
 	tree *disk.Tree
 	file *disk.File
 }
 
-// open turns the raw path parameter into a file inside the scope, and names the
-// item it is for use counting. The gate also closes a file share's descriptor,
-// which is harmless because a second Close only returns an error.
 func (s scope) open(raw string) (*disk.File, string, error) {
 	if s.file != nil {
 		return s.file, "file", nil
@@ -185,8 +176,6 @@ func (s scope) open(raw string) (*disk.File, string, error) {
 	return f, p.String(), err
 }
 
-// folder is the tree of a scope that has one. A file link has none, so listing
-// and zipping one is the same 404 as any route the link kind does not allow.
 func (s scope) folder() (*disk.Tree, error) {
 	if s.tree == nil {
 		return nil, access.ErrWrongKind
@@ -194,8 +183,6 @@ func (s scope) folder() (*disk.Tree, error) {
 	return s.tree, nil
 }
 
-// call is what the gate hands a handler. A handler cannot exist without having
-// been gated, because the gate builds its only inputs.
 type call struct {
 	scope     scope
 	admission *access.Admission
@@ -203,7 +190,6 @@ type call struct {
 	surface   metrics.Surface
 }
 
-// spend takes a use for a guest's first fetch of an item. HEAD reads no bytes.
 func (a *API) spend(r *http.Request, c *call, item string) error {
 	if c.admission == nil || r.Method == http.MethodHead {
 		return nil
@@ -297,7 +283,6 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	}
 }
 
-// decode parses a JSON body. allowEmpty lets a route's every field be optional.
 func decode(r *http.Request, v any, allowEmpty bool) error {
 	err := json.NewDecoder(r.Body).Decode(v)
 	if errors.Is(err, io.EOF) && allowEmpty {
@@ -349,8 +334,6 @@ func setShellHeaders(h http.Header) {
 	h.Set("Referrer-Policy", "no-referrer")
 }
 
-// shell serves the built frontend. A guest listener serves the page only at
-// /s/{token}, and the static assets that page loads, which are public anyway.
 func (a *API) shell(owner bool) http.Handler {
 	notFound := func(w http.ResponseWriter, r *http.Request) {
 		a.fail(w, r, requestError{http.StatusNotFound, "not_found", "not found"})

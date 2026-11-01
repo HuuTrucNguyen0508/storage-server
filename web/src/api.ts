@@ -1,8 +1,3 @@
-/**
- * The only module that speaks HTTP to the JSON API. Wire shapes end here: a
- * response is parsed into the types below, or it throws.
- */
-
 export type EntryKind = "file" | "dir" | "symlink" | "other";
 export type PreviewKind = "image" | "video" | "audio" | "pdf" | "text";
 
@@ -99,7 +94,6 @@ export class ApiError extends Error {
   }
 }
 
-/** A response that does not match the contract. A bug, never a user error. */
 export class WireError extends Error {
   constructor(what: string) {
     super(`unexpected response: ${what}`);
@@ -149,8 +143,9 @@ function nullable<T>(o: Json, key: string, read: (o: Json, key: string) => T): T
 
 function oneOf<const T extends string>(o: Json, key: string, allowed: readonly T[]): T {
   const v = str(o, key);
-  if (!(allowed as readonly string[]).includes(v)) throw new WireError(`${key} is ${JSON.stringify(v)}`);
-  return v as T;
+  const match = allowed.find((candidate) => candidate === v);
+  if (match === undefined) throw new WireError(`${key} is ${JSON.stringify(v)}`);
+  return match;
 }
 
 const ENTRY_KINDS = ["file", "dir", "symlink", "other"] as const;
@@ -237,12 +232,8 @@ function parseResults<T>(v: unknown, read: (o: Json) => T): ItemResult<T>[] {
 
 function parseSearchHit(o: Json): SearchHit {
   return {
-    preview: parseEntry(o).preview,
+    ...parseEntry(o),
     path: str(o, "path"),
-    name: str(o, "name"),
-    kind: oneOf(o, "kind", ENTRY_KINDS),
-    size: num(o, "size"),
-    modTime: date(o, "modTime"),
   };
 }
 
@@ -397,7 +388,6 @@ export function contentKind(contentType: string | null): PreviewKind | null {
   return null;
 }
 
-/** What a preview can show of a file, from the policy's own Content-Type. HEAD spends no guest use. */
 export async function previewKindAt(url: string): Promise<PreviewKind | null> {
   return contentKind((await call(url, { method: "HEAD" })).headers.get("Content-Type"));
 }
@@ -426,9 +416,6 @@ export function guest(token: string) {
   };
 }
 
-export const OWNER_UPLOADS = "/api/uploads";
-
-/** Posts a form into a hidden frame so a failure answer never replaces the page. */
 export function postDownload(url: string, paths: readonly string[]): void {
   const frame = "download-frame";
   if (document.getElementById(frame) === null) {

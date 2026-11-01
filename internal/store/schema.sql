@@ -1,5 +1,3 @@
--- Connection pragmas, set in store.Open: journal_mode=WAL, synchronous=FULL,
--- foreign_keys=ON, busy_timeout=5000.
 -- Times are Unix seconds. Secrets that a client presents are stored as SHA-256.
 
 CREATE TABLE owner (
@@ -40,9 +38,6 @@ CREATE TABLE grants (
 
 CREATE INDEX grants_by_share ON grants (share_id);
 
--- What a grant has fetched. The first row for an item is what takes one use. An
--- item is "file" on a file link, a path on a folder link, "zip:<hash>" for a zip
--- and "drop" for a drop link's first upload.
 CREATE TABLE grant_items (
   grant_id TEXT NOT NULL REFERENCES grants (id) ON DELETE CASCADE,
   item     TEXT NOT NULL,

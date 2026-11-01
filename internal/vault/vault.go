@@ -1,13 +1,3 @@
-// Package vault owns everything that changes where a thing lives: rename, move,
-// trash, restore, purge, upload publish, and the share rows that must follow. It
-// is the single writer of the live namespace's structure, and it is the only
-// caller of disk.Move for the trash and for the live tree.
-//
-// One rule converges every crash: journal the intent with the source's inode,
-// rename, then commit the share rewrite. On restart the disk decides, by inode.
-// The destination holds the inode: commit. The source still holds it: drop the
-// intent. Neither: something outside the app replaced both paths, so the shares
-// that pointed there are deleted.
 package vault
 
 import (
@@ -28,7 +18,6 @@ import (
 	"storage-server/internal/store"
 )
 
-// Retention is how long a trash item lives.
 const Retention = 30 * 24 * time.Hour
 
 const (
@@ -61,7 +50,6 @@ type meta struct {
 	DeletedAt    time.Time `json:"deletedAt"`
 }
 
-// Outcome is one element of a multi-select result.
 type Outcome struct {
 	From  disk.Path
 	To    disk.Path
@@ -69,8 +57,6 @@ type Outcome struct {
 	Err   error
 }
 
-// Vault holds mu for every namespace change, and for reading across a guest's
-// target resolve. mu is never held across a request body or a download stream.
 type Vault struct {
 	disk      *disk.Disk
 	db        *store.Store
@@ -92,7 +78,6 @@ func newID() string {
 	return hex.EncodeToString(b[:])
 }
 
-// ParseID validates a trash ID from a URL.
 func ParseID(raw string) (disk.TrashID, error) {
 	if b, err := hex.DecodeString(raw); err != nil || len(b) != 16 {
 		return "", disk.ErrNotFound
@@ -116,9 +101,6 @@ func (v *Vault) locate(l disk.Location) (*disk.Tree, disk.Path) {
 	return v.disk.Trash, trashPath(id, itemName).Under(rel)
 }
 
-// relocate is the one implementation of journal, rename, commit. Rename, Move,
-// Trash and Restore all reach the disk through it, with v.mu held. A client
-// disconnect must not stop it halfway, so it ignores ctx cancellation.
 func (v *Vault) relocate(ctx context.Context, from, to disk.Location) error {
 	ctx = context.WithoutCancel(ctx)
 	srcTree, srcPath := v.locate(from)
@@ -211,8 +193,6 @@ func (v *Vault) moveOne(ctx context.Context, e disk.Entry, toDir disk.Path) (dis
 	return target.Path(), nil
 }
 
-// Mkdir goes through the vault so that a folder cannot appear in the middle of a
-// relocate's check and rename.
 func (v *Vault) Mkdir(p disk.Path) error {
 	v.mu.Lock()
 	defer v.mu.Unlock()
@@ -404,7 +384,6 @@ func (v *Vault) PurgeAll(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-// Sweep purges items past Retention.
 func (v *Vault) Sweep(ctx context.Context, now time.Time) error {
 	items, err := v.ListTrash(ctx)
 	if err != nil {
@@ -419,8 +398,6 @@ func (v *Vault) Sweep(ctx context.Context, now time.Time) error {
 	return errors.Join(errs...)
 }
 
-// CreateShare checks the target and inserts under the lock, so a target cannot
-// move between the check and the insert.
 func (v *Vault) CreateShare(ctx context.Context, sh store.Share, target disk.Path) (store.Share, error) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
@@ -455,8 +432,6 @@ func (v *Vault) targetExists(l disk.Location) bool {
 	return err == nil && (info.Kind == disk.KindFile || info.Kind == disk.KindDir)
 }
 
-// ShareByToken loads a share and stats its target under the read lock. Done apart,
-// a rename between the two would make a working link look missing.
 func (v *Vault) ShareByToken(ctx context.Context, t store.Token) (store.Share, bool, error) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
@@ -468,13 +443,11 @@ func (v *Vault) ShareByToken(ctx context.Context, t store.Token) (store.Share, b
 	return sh, v.targetExists(sh.Target), nil
 }
 
-// Listed is one row of the owner's link list.
 type Listed struct {
 	Share  store.Share
 	Exists bool
 }
 
-// Shares is ShareByToken for the whole list.
 func (v *Vault) Shares(ctx context.Context) ([]Listed, error) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
@@ -549,9 +522,8 @@ func (v *Vault) Original(l disk.Location) string {
 	return original.Under(rel).String()
 }
 
-// Publication is one finished upload leaving the spool.
 type Publication struct {
-	From disk.Entry // inside the spool
+	From disk.Entry
 	// Drop names the share to publish into. Empty means the owner, and Path is
 	// then relative to the storage root. For a drop, Path is relative to the
 	// share's folder as it is now, so the upload follows a moved folder.
@@ -703,9 +675,6 @@ func (v *Vault) recoverMove(ctx context.Context, m store.PendingMove) error {
 	return v.db.ForgetMove(ctx, m)
 }
 
-// syncParents retries the durability a failed fsync left open. A journal row is
-// deleted only after both parents are durable. A source parent that has since
-// disappeared has nothing left to sync.
 func (v *Vault) syncParents(m store.PendingMove) error {
 	for _, l := range []disk.Location{m.From, m.To} {
 		tree, p := v.locate(l)

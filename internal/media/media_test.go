@@ -209,7 +209,6 @@ func TestThumbnailFitsAndCaches(t *testing.T) {
 	}
 }
 
-// withOrientation inserts an EXIF APP1 segment after the JPEG start marker.
 func withOrientation(jpg []byte, o uint16) []byte {
 	var e bytes.Buffer
 	e.WriteString("Exif\x00\x00II*\x00")

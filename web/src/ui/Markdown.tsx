@@ -1,10 +1,5 @@
 import type { ReactNode } from "react";
 
-/**
- * A small Markdown reader that produces React elements, so there is no HTML
- * string anywhere to escape: a `<script>` in the file renders as those characters.
- * Images render as links, because the app loads no third-party asset.
- */
 type Block =
   | { tag: "heading"; level: 1 | 2 | 3 | 4; text: string }
   | { tag: "paragraph"; text: string }

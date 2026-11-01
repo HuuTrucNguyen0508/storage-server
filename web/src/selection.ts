@@ -1,7 +1,3 @@
-/**
- * One selection model for mouse, keyboard and touch. Every input turns into an
- * action here, and `order` is always the list as the owner currently sees it.
- */
 export interface Selection {
   ids: ReadonlySet<string>;
   anchor: string | null;

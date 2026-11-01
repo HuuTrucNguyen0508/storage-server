@@ -75,8 +75,6 @@ func path(t *testing.T, raw string) disk.Path {
 	return p
 }
 
-// stream is a body that yields its bytes, then either EOF or a stall until
-// interrupted, so a takeover can be driven without a socket.
 type stream struct {
 	r           io.Reader
 	stall       bool

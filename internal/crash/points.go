@@ -1,7 +1,5 @@
 package crash
 
-// Point is one crash site. All is the only list: the harness iterates it, so a
-// new Point gets a crash test without a second edit.
 type Point string
 
 const (
@@ -27,14 +25,10 @@ var All = []Point{
 	UploadAfterCreate, UploadMidAppend, UploadAfterSync, UploadAfterIntent, UploadAfterPublish,
 }
 
-// Fault is a syscall failure SIGKILL cannot produce. Only the crashpoints build
-// can trigger one, so the harness can reach the fsync-failed path on a healthy disk.
 type Fault string
 
 const ParentFsync Fault = "move.parent-fsync"
 
-// Gap is a window the harness holds open, so a race that would need luck runs
-// the same way every time.
 type Gap string
 
 const (

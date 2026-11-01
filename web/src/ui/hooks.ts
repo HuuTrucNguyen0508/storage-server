@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 
 export type Loaded<T> = { tag: "loading" } | { tag: "ready"; value: T } | { tag: "failed"; error: unknown };
 
-/** Runs `load` when `key` changes. A slow answer for an old key never lands on a new one. */
 export function useLoad<T>(key: string, load: () => Promise<T>): { state: Loaded<T>; reload: () => Promise<void> } {
   const [state, setState] = useState<Loaded<T>>({ tag: "loading" });
   const latest = useRef(load);
@@ -53,11 +52,6 @@ export function useTitle(title: string): void {
 
 let dismissCounter = 0;
 
-/**
- * Lets the system back gesture leave a mode: entering pushes a history entry and
- * back fires `dismiss`. Leaving by other means pops that entry, unless a
- * navigation already covered it.
- */
 export function useBackDismiss(active: boolean, dismiss: () => void): void {
   const latest = useRef(dismiss);
   latest.current = dismiss;

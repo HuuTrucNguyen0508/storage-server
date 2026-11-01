@@ -124,8 +124,6 @@ type factsJSON struct {
 	ExpiresAt        *time.Time  `json:"expiresAt"`
 }
 
-// folderSize is what a guest's Download all button names. It has a budget, since
-// a link preview bot can reach it, and reports nil when the walk runs out.
 func folderSize(ctx context.Context, t *disk.Tree) *int64 {
 	ctx, cancel := context.WithTimeout(ctx, describeBudget)
 	defer cancel()

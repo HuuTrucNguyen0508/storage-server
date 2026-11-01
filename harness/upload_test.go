@@ -31,7 +31,6 @@ func tusHeaders(extra ...string) []string {
 	return append([]string{"Tus-Resumable", "1.0.0"}, extra...)
 }
 
-// tusCreate returns the upload's path.
 func tusCreate(c *client, route, path string, length int64) string {
 	c.t.Helper()
 	r := c.expect("POST", route, nil, 201, tusHeaders(
@@ -64,15 +63,12 @@ func tusPatch(c *client, url string, offset int64, body []byte) reply {
 		"Upload-Offset", strconv.FormatInt(offset, 10))...)
 }
 
-// upload sends one whole file through tus and returns the stored path.
 func (s *server) upload(path, body string) string {
 	s.t.Helper()
 	url := tusCreate(s.owner, "/api/uploads", path, int64(len(body)))
 	return tusPatch(s.owner, url, 0, []byte(body)).header.Get("X-Stored-Path")
 }
 
-// seeded produces the same bytes for the same offset, so any resume point can be
-// served and the final hash can be computed without storing the file.
 type seeded struct{ seed uint64 }
 
 const seedBlock = mib
@@ -120,8 +116,6 @@ func hashFile(t *testing.T, path string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// rawPatch writes the head of a PATCH and part of its body on a bare socket, so
-// the test decides exactly when the connection dies.
 func rawPatch(t *testing.T, addr, url, cookie string, offset, contentLength int64, part []byte) net.Conn {
 	t.Helper()
 	conn, err := net.Dial("tcp", addr)
@@ -153,8 +147,6 @@ func (s *server) spoolData(url string) string {
 	return filepath.Join(s.root, ".storage-server/spool", url[strings.LastIndexByte(url, '/')+1:], "data")
 }
 
-// headEqualsDisk asks for the offset, then reads the file. HEAD stops any writer
-// first, so the two must agree.
 func headEqualsDisk(t *testing.T, s *server, c *client, url string) int64 {
 	t.Helper()
 	offset := tusOffset(c, url)
@@ -180,13 +172,6 @@ func sendTo(t *testing.T, c *client, url string, g seeded, from, to, chunk int64
 	}
 }
 
-// TestUploadResume sends seeded ChaCha8 through tus, 6 GiB in the long tier and
-// 96 MiB otherwise. It cuts the socket at two offsets, SIGKILLs the server at a
-// third, simulates a page reload by resuming from the saved upload URL in a fresh
-// client, and stalls one writer to force a takeover. It asserts the final
-// SHA-256, that HEAD equals the bytes on disk after each fault, that no partial
-// file was ever visible in the folder (a poller lists it throughout), and that
-// VmHWM stays under 128 MiB.
 func TestUploadResume(t *testing.T) {
 	total, chunk := int64(96*mib), int64(8*mib)
 	if longTier {
@@ -282,8 +267,6 @@ func TestUploadResume(t *testing.T) {
 	s.checkRSS(128 * mib)
 }
 
-// waitOffsetAdvance gives the server time to drain a cut request, then checks
-// HEAD against the disk. A cut can leave the offset where it was.
 func waitOffsetAdvance(t *testing.T, s *server, c *client, url string, from int64) int64 {
 	t.Helper()
 	time.Sleep(50 * time.Millisecond)

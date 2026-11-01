@@ -84,9 +84,6 @@ func TestGuestListener(t *testing.T) {
 	}
 }
 
-// plantAttack lays out, directly on disk, every link kind and a FIFO. The canary
-// sits outside the root, in the reserved directory, and in a sibling of the
-// shared folder.
 func plantAttack(t *testing.T, s *server) {
 	t.Helper()
 	outside := filepath.Join(s.dir, "outside")
@@ -120,11 +117,6 @@ func plantAttack(t *testing.T, s *server) {
 	}
 }
 
-// TestSymlinkEscape plants, directly on disk, relative, absolute, directory and
-// reserved-dir symlinks, a share-scope sideways link and a FIFO. It tries each
-// through every route that takes a path, on both surfaces, plus ".." forms and
-// encoded forms. A swapper flips a directory and symlink under load. It asserts
-// no response contains the canary and no request hangs.
 func TestSymlinkEscape(t *testing.T) {
 	s := start(t)
 	s.claim()
@@ -316,10 +308,6 @@ func TestURLPathTraversalDoesNotReachTheShell(t *testing.T) {
 
 const wantCSP = "sandbox; default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'"
 
-// TestHostileUpload uploads HTML, SVG and a PDF with JavaScript through a drop
-// link and asserts the exact response headers on both surfaces. Its browser half
-// loads each URL by direct navigation and inside an iframe in headless Chromium,
-// and needs the frontend, so a later step owns it.
 func TestHostileUpload(t *testing.T) {
 	s := start(t)
 	s.claim()

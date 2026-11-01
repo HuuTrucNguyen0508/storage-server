@@ -8,8 +8,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// Disk owns the storage root. Files is what the API can name. Trash and Spool
-// are private areas with one owner each: vault owns Trash, upload owns Spool.
 type Disk struct {
 	Files *Tree
 	Trash *Tree

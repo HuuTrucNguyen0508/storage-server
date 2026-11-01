@@ -34,7 +34,6 @@ function reasonOf(error: Error): string {
     const code = (JSON.parse(response.getBody()) as { error?: { code?: string } }).error?.code;
     if (code !== undefined && code in FAILURE_WORDS) return FAILURE_WORDS[code] as string;
   } catch {
-    /* a body that is not JSON came from a proxy, which says nothing useful */
   }
   return "The server refused this upload";
 }
@@ -70,7 +69,6 @@ export class UploadEngine {
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(this.items.filter((i) => i.state.tag !== "done")));
     } catch {
-      /* a full or blocked localStorage costs only resume after reload */
     }
   }
 

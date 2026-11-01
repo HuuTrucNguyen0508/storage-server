@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { baseName, crumbs, displayOrder, encodePath, filesHref, flatName, isMarkdown, join, parent, parseRoute, shareHref } from "./paths";
+import { baseName, crumbs, displayOrder, encodePath, filesHref, isMarkdown, join, parent, parseRoute, shareHref } from "./paths";
 
 describe("paths", () => {
   it("joins onto the root without a leading slash", () => {
@@ -49,7 +49,7 @@ describe("paths", () => {
   });
 
   it("flattens a dropped folder's path to its file name", () => {
-    expect(flatName("holiday/day 1/a.jpg")).toBe("a.jpg");
+    expect(baseName("holiday/day 1/a.jpg")).toBe("a.jpg");
   });
 
   it("lists folders first, then names as a person reads them", () => {

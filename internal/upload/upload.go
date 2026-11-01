@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -38,6 +39,9 @@ const (
 	dataFile    = "data"
 	publishFile = "publish.json"
 	bufferSize  = 1 << 20
+
+	stagingSuffix = ".new"
+	stagingTTL    = time.Hour
 )
 
 var (
@@ -179,7 +183,7 @@ func (m *Manager) Create(ctx context.Context, s Scope, path disk.Path, length in
 	if err != nil {
 		return "", Status{}, err
 	}
-	staging, err := disk.ParsePath(string(id) + ".new")
+	staging, err := disk.ParsePath(string(id) + stagingSuffix)
 	if err != nil {
 		return "", Status{}, err
 	}
@@ -527,7 +531,15 @@ func (m *Manager) Recover(ctx context.Context) error {
 	return nil
 }
 
-// Sweep expires idle uploads and old tombstones. It leaves a live writer alone.
+// sweeping holds an upload's writer slot, so a retried PATCH cannot publish the
+// same bytes at the same moment. Interrupting it does nothing: the PATCH waits.
+type sweeping struct{}
+
+func (sweeping) Read([]byte) (int, error) { return 0, io.EOF }
+func (sweeping) Interrupt()               {}
+
+// Sweep expires idle uploads and old tombstones. It leaves a live writer alone,
+// and a staging directory young enough to belong to a Create in progress.
 func (m *Manager) Sweep(ctx context.Context, now time.Time) error {
 	entries, err := m.entries()
 	if err != nil {
@@ -535,20 +547,29 @@ func (m *Manager) Sweep(ctx context.Context, now time.Time) error {
 	}
 	var errs []error
 	for _, e := range entries {
+		if strings.HasSuffix(e.Name, stagingSuffix) && now.Sub(e.ModTime) < stagingTTL {
+			continue
+		}
 		if m.live(ID(e.Name)) {
 			continue
 		}
-		id, st, ok := m.settle(ctx, e.Name)
-		if !ok {
-			continue
-		}
-		if idle, err := m.expired(id, st.Phase, now); err != nil {
-			errs = append(errs, err)
-		} else if idle {
-			errs = append(errs, m.remove(id))
-		}
+		errs = append(errs, m.sweepOne(ctx, e.Name, now))
 	}
 	return errors.Join(errs...)
+}
+
+func (m *Manager) sweepOne(ctx context.Context, name string, now time.Time) error {
+	release := m.claim(ID(name), sweeping{})
+	defer release()
+	id, st, ok := m.settle(ctx, name)
+	if !ok {
+		return nil
+	}
+	idle, err := m.expired(id, st.Phase, now)
+	if err != nil || !idle {
+		return err
+	}
+	return m.remove(id)
 }
 
 func (m *Manager) live(id ID) bool {

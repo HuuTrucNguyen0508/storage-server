@@ -458,3 +458,53 @@ func TestLargeChunkStaysInOrder(t *testing.T) {
 		t.Fatalf("published %d bytes, want %d", len(got), len(payload))
 	}
 }
+
+func TestSweepLeavesAYoungStagingDirectoryAlone(t *testing.T) {
+	e := setup(t)
+	e.spool(t, "abcd.new/meta.json", "{}")
+	if err := e.m.Sweep(context.Background(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if got := e.spoolNames(t); got != "abcd.new" {
+		t.Fatalf("a Create in progress lost its directory: %q", got)
+	}
+	if err := e.m.Sweep(context.Background(), time.Now().Add(stagingTTL+time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if got := e.spoolNames(t); got != "" {
+		t.Fatalf("an abandoned staging directory stayed: %q", got)
+	}
+}
+
+func TestSweepAndARetriedPatchPublishOnce(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	if err := os.WriteFile(filepath.Join(e.root, "taken.txt"), []byte("old"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for range 20 {
+		id, _, err := e.m.Create(ctx, Scope{}, path(t, "taken.txt"), 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := e.d.Spool.WriteDurable(id.file(dataFile), []byte("new")); err != nil {
+			t.Fatal(err)
+		}
+		done := make(chan error, 1)
+		go func() { done <- e.m.Sweep(ctx, time.Now()) }()
+		st, err := e.m.Append(ctx, Scope{}, id, 3, body(""))
+		if err != nil {
+			t.Fatalf("Append = %+v, %v", st, err)
+		}
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+		final, err := e.m.Status(ctx, Scope{}, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := e.read(t, final.Stored.String()); got != "new" {
+			t.Fatalf("Stored = %q holds %q", final.Stored, got)
+		}
+	}
+}

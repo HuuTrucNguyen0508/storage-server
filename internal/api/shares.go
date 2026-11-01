@@ -29,25 +29,25 @@ type shareJSON struct {
 	CreatedAt   time.Time  `json:"createdAt"`
 }
 
-func (a *API) shareOf(sh store.Share) shareJSON {
+func (a *API) shareOf(sh store.Share, exists bool) shareJSON {
 	return shareJSON{
 		ID: string(sh.ID), Kind: string(sh.Kind),
 		URL:  strings.TrimRight(a.cfg.ShareURL, "/") + "/s/" + string(sh.Token),
-		Path: a.vault.Original(sh.Target), State: a.access.StateNow(sh).String(),
+		Path: a.vault.Original(sh.Target), State: access.StateOf(sh, time.Now(), exists).String(),
 		Uses: sh.Uses, MaxUses: sh.MaxUses, ExpiresAt: sh.ExpiresAt,
 		HasPassword: sh.PasswordHash != "", CreatedAt: sh.CreatedAt,
 	}
 }
 
 func (a *API) listShares(w http.ResponseWriter, r *http.Request, c *call) {
-	shares, err := a.db.ListShares(r.Context())
+	shares, err := a.vault.Shares(r.Context())
 	if err != nil {
 		a.fail(w, r, err)
 		return
 	}
 	out := make([]shareJSON, 0, len(shares))
-	for _, sh := range shares {
-		out = append(out, a.shareOf(sh))
+	for _, l := range shares {
+		out = append(out, a.shareOf(l.Share, l.Exists))
 	}
 	writeJSON(w, http.StatusOK, out)
 }
@@ -102,7 +102,7 @@ func (a *API) createShare(w http.ResponseWriter, r *http.Request, c *call) {
 		a.fail(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, a.shareOf(created))
+	writeJSON(w, http.StatusCreated, a.shareOf(created, true))
 }
 
 func (a *API) revokeShare(w http.ResponseWriter, r *http.Request, c *call) {

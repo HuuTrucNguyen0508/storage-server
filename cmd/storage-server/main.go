@@ -118,7 +118,7 @@ func run() error {
 	if err := uploads.Recover(ctx); err != nil {
 		return err
 	}
-	acc, err := access.New(ctx, db, d.Files)
+	acc, err := access.New(ctx, db, v)
 	if err != nil {
 		return err
 	}

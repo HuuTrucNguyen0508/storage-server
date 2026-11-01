@@ -376,12 +376,10 @@ func (v *Vault) commitPurge(ctx context.Context, id disk.TrashID) error {
 func (v *Vault) removeTrash(id disk.TrashID) error {
 	item := trashPath(id, itemName)
 	if children, err := v.disk.Trash.List(item); err == nil && len(children) > 0 {
-		first, err := disk.ParseName(children[0].Name)
-		if err != nil {
-			return err
-		}
-		if err := v.disk.Trash.RemoveAll(item.Join(first)); err != nil {
-			return err
+		if first, err := disk.ParseName(children[0].Name); err == nil {
+			if err := v.disk.Trash.RemoveAll(item.Join(first)); err != nil {
+				return err
+			}
 		}
 	}
 	crash.Hit(crash.PurgeMidRemove)
@@ -447,6 +445,48 @@ var (
 	ErrNotShareable    = errors.New("only a file or a folder can be shared")
 	ErrDropNeedsFolder = errors.New("a drop link needs a folder")
 )
+
+func (v *Vault) targetExists(l disk.Location) bool {
+	p, live := l.LivePath()
+	if !live {
+		return true
+	}
+	info, err := v.disk.Files.Stat(p)
+	return err == nil && (info.Kind == disk.KindFile || info.Kind == disk.KindDir)
+}
+
+// ShareByToken loads a share and stats its target under the read lock. Done apart,
+// a rename between the two would make a working link look missing.
+func (v *Vault) ShareByToken(ctx context.Context, t store.Token) (store.Share, bool, error) {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	sh, err := v.db.ShareByToken(ctx, t)
+	if err != nil {
+		return store.Share{}, false, err
+	}
+	return sh, v.targetExists(sh.Target), nil
+}
+
+// Listed is one row of the owner's link list.
+type Listed struct {
+	Share  store.Share
+	Exists bool
+}
+
+// Shares is ShareByToken for the whole list.
+func (v *Vault) Shares(ctx context.Context) ([]Listed, error) {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	shares, err := v.db.ListShares(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Listed, 0, len(shares))
+	for _, sh := range shares {
+		out = append(out, Listed{sh, v.targetExists(sh.Target)})
+	}
+	return out, nil
+}
 
 // Opened is a guest's descriptor on a share's target: Dir for a folder, File for
 // a file. Exactly one is set. It keeps following what it opened, wherever that

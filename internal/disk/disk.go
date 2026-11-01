@@ -42,8 +42,9 @@ func Open(dir string) (*Disk, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open storage root %s: %w", dir, err)
 	}
+	filesystem := filesystemName(fd)
 	refuse := func(primitive string, err error) error {
-		return fmt.Errorf("storage root %s on %s: %s failed: %w. storage-server needs it and has no fallback", dir, filesystemName(fd), primitive, err)
+		return fmt.Errorf("storage root %s on %s: %s failed: %w. storage-server needs it and has no fallback", dir, filesystem, primitive, err)
 	}
 	probe, err := openat2(fd, ".", unix.O_RDONLY|unix.O_DIRECTORY, 0)
 	if err != nil {

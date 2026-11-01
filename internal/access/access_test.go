@@ -12,6 +12,7 @@ import (
 
 	"storage-server/internal/disk"
 	"storage-server/internal/store"
+	"storage-server/internal/vault"
 )
 
 var (
@@ -123,7 +124,7 @@ func setup(t *testing.T) env {
 	t.Cleanup(func() { db.Close() })
 	log := slog.Default()
 	slog.SetDefault(slog.New(slog.DiscardHandler))
-	s, err := New(context.Background(), db, d.Files)
+	s, err := New(context.Background(), db, vault.New(d, db))
 	slog.SetDefault(log)
 	if err != nil {
 		t.Fatal(err)

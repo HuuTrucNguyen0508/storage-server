@@ -448,3 +448,17 @@ func TestCheckParents(t *testing.T) {
 		}
 	}
 }
+
+func TestPurgeRemovesAChildNoPathCanName(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	e.write(t, "a/\x01bad", "x")
+	out := e.v.Trash(ctx, []disk.Entry{entry(t, "a")}, time.Now())
+	if err := e.v.Purge(ctx, out[0].Trash); err != nil {
+		t.Fatal(err)
+	}
+	left, _ := os.ReadDir(filepath.Join(e.root, disk.ReservedDir, "trash"))
+	if len(left) != 0 {
+		t.Fatalf("trash holds %v", left)
+	}
+}

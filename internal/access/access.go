@@ -20,7 +20,6 @@ import (
 
 	"golang.org/x/crypto/argon2"
 
-	"storage-server/internal/disk"
 	"storage-server/internal/store"
 )
 
@@ -168,17 +167,23 @@ type Admission struct {
 	Grant store.Grant
 }
 
+// Shares is the vault's read-locked view of a share and its target, so a state is
+// never derived from a target that moved after it was loaded.
+type Shares interface {
+	ShareByToken(ctx context.Context, t store.Token) (sh store.Share, targetExists bool, err error)
+}
+
 type Service struct {
-	db    *store.Store
-	files *disk.Tree
+	db     *store.Store
+	shares Shares
 
 	mu    sync.Mutex
 	setup string // held in memory only, regenerated each boot while unclaimed
 }
 
 // New logs a fresh setup code when no owner exists.
-func New(ctx context.Context, db *store.Store, files *disk.Tree) (*Service, error) {
-	s := &Service{db: db, files: files}
+func New(ctx context.Context, db *store.Store, shares Shares) (*Service, error) {
+	s := &Service{db: db, shares: shares}
 	required, err := s.SetupRequired(ctx)
 	if err != nil {
 		return nil, err
@@ -370,23 +375,14 @@ func (s *Service) RevokeSession(ctx context.Context, id store.SessionID) error {
 	return s.db.DeleteSession(ctx, id)
 }
 
-func (s *Service) stateOf(sh store.Share, now time.Time) State {
-	exists := true
-	if p, live := sh.Target.LivePath(); live {
-		info, err := s.files.Stat(p)
-		exists = err == nil && (info.Kind == disk.KindFile || info.Kind == disk.KindDir)
-	}
-	return StateOf(sh, now, exists)
-}
-
 // Open checks the password through the limiter and mints a grant. It spends no use.
 func (s *Service) Open(ctx context.Context, t store.Token, password string) (Cookie, error) {
-	sh, err := s.db.ShareByToken(ctx, t)
+	sh, exists, err := s.shares.ShareByToken(ctx, t)
 	if err != nil {
 		return Cookie{}, err
 	}
 	now := time.Now()
-	if st := s.stateOf(sh, now); st != Active {
+	if st := StateOf(sh, now, exists); st != Active {
 		return Cookie{}, goneError(st)
 	}
 	if sh.PasswordHash != "" {
@@ -423,7 +419,7 @@ func (s *Service) grant(ctx context.Context, cookie string) (*store.Grant, error
 // the state and applies Decide. Spending waits for Consume, because only the
 // handler knows which item was asked for and whether it exists.
 func (s *Service) Admit(ctx context.Context, t store.Token, grantCookie string, act Act) (Admission, error) {
-	sh, err := s.db.ShareByToken(ctx, t)
+	sh, exists, err := s.shares.ShareByToken(ctx, t)
 	if err != nil {
 		return Admission{}, err
 	}
@@ -432,7 +428,7 @@ func (s *Service) Admit(ctx context.Context, t store.Token, grantCookie string, 
 		return Admission{}, err
 	}
 	now := time.Now()
-	st := s.stateOf(sh, now)
+	st := StateOf(sh, now, exists)
 	switch Decide(sh, st, g, act, now) {
 	case Allow, AllowAndConsume:
 		return Admission{Share: sh, Grant: *g}, nil
@@ -456,12 +452,12 @@ func (s *Service) Consume(ctx context.Context, a Admission, item string) error {
 // Describe gives the public facts about a link without a grant. A guest holding
 // a consumed grant can still reload an Exhausted link it may finish.
 func (s *Service) Describe(ctx context.Context, t store.Token, grantCookie string) (store.Share, State, error) {
-	sh, err := s.db.ShareByToken(ctx, t)
+	sh, exists, err := s.shares.ShareByToken(ctx, t)
 	if err != nil {
 		return store.Share{}, 0, err
 	}
 	now := time.Now()
-	st := s.stateOf(sh, now)
+	st := StateOf(sh, now, exists)
 	if st == Exhausted {
 		g, err := s.grant(ctx, grantCookie)
 		if err != nil {
@@ -480,10 +476,6 @@ func (s *Service) Describe(ctx context.Context, t store.Token, grantCookie strin
 	}
 	return sh, st, nil
 }
-
-// StateNow is what the owner's link list shows. It answers for a row the caller
-// already holds, so a list of links is one query plus one stat each.
-func (s *Service) StateNow(sh store.Share) State { return s.stateOf(sh, time.Now()) }
 
 const (
 	argonTime    = 1

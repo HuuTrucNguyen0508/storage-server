@@ -1,0 +1,4 @@
+ts	phase	decision	why	evidence	result
+2026-11-01T11:59:24Z	frame	treat 'redo it completely' as a real app plus a small Compose stack, not a re-tidied Compose file	repo description is 'a server to share files', and the running stack was off-the-shelf parts around an abandoned app; this covers both readings since PDF tools, Tailscale and monitoring survive as profiles	docs/design/brief.md	open
+2026-11-01T11:59:24Z	frame	put the new project in ~/Documents/Code/storage-server on branch rewrite and land it by PR into the existing repo	a second GitHub repo cannot share the name under this account, and force-pushing main is outside the full-send grant	commit 3662e45	tree cleared, old code at 6012c66
+2026-11-01T11:59:24Z	frame	leave old secrets in git history and flag them	Stirling JWT private keys are in public history; scrubbing needs a force-push of main, which full send does not grant	/tmp/ss-orig StirlingPDF/extraConfigs/backup/keys	open, report to owner

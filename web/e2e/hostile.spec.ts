@@ -64,10 +64,10 @@ test("the same files stay inert for a guest on the guest origin", async ({ serve
   await page.goto(share.url);
   await page.getByRole("button", { name: "evil.html" }).click();
   await expect(page.getByRole("dialog", { name: "Preview of evil.html" }).locator(".doc pre")).toContainText("<script>");
-  await page.keyboard.press("Escape");
+  await Promise.all([page.waitForEvent("framenavigated"), page.keyboard.press("Escape")]);
   await page.getByRole("button", { name: "evil.svg" }).click();
   await expect.poll(() => page.locator("dialog img").evaluate((img: HTMLImageElement) => img.complete)).toBe(true);
-  await page.keyboard.press("Escape");
+  await Promise.all([page.waitForEvent("framenavigated"), page.keyboard.press("Escape")]);
   expect(await pwned(page)).toBe(null);
   await page.reload();
   expect(await pwned(page)).toBe(null);

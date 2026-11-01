@@ -1,0 +1,2 @@
+mv: cannot move 'x/f' to 'x/sub/f': Invalid cross-device link
+rename across mount: [Errno 18] Invalid cross-device link: 'x/f' -> 'x/sub/f'

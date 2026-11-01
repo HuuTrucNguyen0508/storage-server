@@ -1,0 +1,59 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      ROOT_DIR: /data
+      STATE_DIR: /state
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      SHARE_URL: ${SHARE_URL:-http://localhost:8080}
+      MIN_FREE_BYTES: ${MIN_FREE_BYTES:-5368709120}
+    volumes:
+      - ${STORAGE_ROOT:?set STORAGE_ROOT in .env}:/data
+      - ${STATE_DIR:-./state}:/state
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "/storage-server", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+
+  tailscale:
+    profiles: [tailscale]
+    image: tailscale/tailscale:stable
+    restart: unless-stopped
+    hostname: ${TS_HOSTNAME:-storage}
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "true"
+      TS_SERVE_CONFIG: /config/${TS_EXPOSE:-tailnet}.json
+    volumes:
+      - tailscale:/var/lib/tailscale
+      - ./deploy/tailscale:/config:ro
+
+  pdf:
+    profiles: [pdf]
+    image: stirlingtools/stirling-pdf:latest
+    restart: unless-stopped
+    environment:
+      SYSTEM_ROOTURIPATH: /pdf
+      SECURITY_ENABLELOGIN: "false"
+
+  prometheus:
+    profiles: [monitoring]
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9091}:9090"
+
+volumes:
+  tailscale:
+  prometheus:

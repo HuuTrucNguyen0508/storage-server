@@ -1,0 +1,60 @@
+
+light
+pair                               fg       bg        ratio  need  result   use
+ink on bg                          #1B201E  #EEF0EC   14.40  4.5   pass     primary text on canvas
+ink on surface                     #1B201E  #FFFFFF   16.51  4.5   pass     primary text on surface
+ink on surface-2                   #1B201E  #E4E7E1   13.22  4.5   pass     primary text on hover / alt surface
+ink on accent-tint                 #1B201E  #D6E9E6   13.10  4.5   pass     primary text on selected row
+ink-2 on bg                        #566059  #EEF0EC    5.70  4.5   pass     secondary text on canvas
+ink-2 on surface                   #566059  #FFFFFF    6.54  4.5   pass     secondary text on surface
+ink-2 on surface-2                 #566059  #E4E7E1    5.23  4.5   pass     secondary text on hover / alt surface
+ink-2 on accent-tint               #566059  #D6E9E6    5.18  4.5   pass     secondary text on selected row
+accent on bg                       #0F6462  #EEF0EC    6.06  4.5   pass     link / accent text on canvas
+accent on surface                  #0F6462  #FFFFFF    6.95  4.5   pass     link / accent text on surface
+accent on accent-tint              #0F6462  #D6E9E6    5.52  4.5   pass     accent text on selected row
+accent-ink on accent               #FFFFFF  #0F6462    6.95  4.5   pass     button label on accent fill
+ok on surface                      #24704A  #FFFFFF    6.01  4.5   pass     live / success text
+ok on bg                           #24704A  #EEF0EC    5.24  4.5   pass     live / success text on canvas
+warn on surface                    #8A5A00  #FFFFFF    5.93  4.5   pass     expiring / warning text
+warn on bg                         #8A5A00  #EEF0EC    5.17  4.5   pass     expiring / warning text on canvas
+danger on surface                  #A82E1F  #FFFFFF    6.83  4.5   pass     error / revoke text
+danger on bg                       #A82E1F  #EEF0EC    5.95  4.5   pass     error / revoke text on canvas
+danger-ink on danger               #FFFFFF  #A82E1F    6.83  4.5   pass     label on danger fill
+line on surface                    #D3D7D0  #FFFFFF    1.46  1.0   pass     hairline (decorative, no requirement)
+line-strong on surface             #8D948F  #FFFFFF    3.10  3.0   pass     input border / focus-adjacent border
+accent on surface                  #0F6462  #FFFFFF    6.95  3.0   pass     focus ring on surface
+accent on bg                       #0F6462  #EEF0EC    6.06  3.0   pass     focus ring on canvas
+folder-edge on surface             #A5842F  #FFFFFF    3.53  3.0   pass     folder icon outline on surface (fill is decorative)
+folder-edge on bg                  #A5842F  #EEF0EC    3.08  3.0   pass     folder icon outline on canvas
+ink-3 on surface                   #7F8882  #FFFFFF    3.65  3.0   pass     disabled text / icon glyph (non-text floor)
+
+dark
+pair                               fg       bg        ratio  need  result   use
+ink on bg                          #E7EAE6  #141817   14.76  4.5   pass     primary text on canvas
+ink on surface                     #E7EAE6  #1D2221   13.28  4.5   pass     primary text on surface
+ink on surface-2                   #E7EAE6  #272D2B   11.57  4.5   pass     primary text on hover / alt surface
+ink on accent-tint                 #E7EAE6  #1F3B39    9.93  4.5   pass     primary text on selected row
+ink-2 on bg                        #A4ADA7  #141817    7.77  4.5   pass     secondary text on canvas
+ink-2 on surface                   #A4ADA7  #1D2221    6.99  4.5   pass     secondary text on surface
+ink-2 on surface-2                 #A4ADA7  #272D2B    6.09  4.5   pass     secondary text on hover / alt surface
+ink-2 on accent-tint               #A4ADA7  #1F3B39    5.23  4.5   pass     secondary text on selected row
+accent on bg                       #5FCBC2  #141817    9.22  4.5   pass     link / accent text on canvas
+accent on surface                  #5FCBC2  #1D2221    8.29  4.5   pass     link / accent text on surface
+accent on accent-tint              #5FCBC2  #1F3B39    6.20  4.5   pass     accent text on selected row
+accent-ink on accent               #0B1F1E  #5FCBC2    8.79  4.5   pass     button label on accent fill
+ok on surface                      #72CB93  #1D2221    8.20  4.5   pass     live / success text
+ok on bg                           #72CB93  #141817    9.11  4.5   pass     live / success text on canvas
+warn on surface                    #E6B14A  #1D2221    8.25  4.5   pass     expiring / warning text
+warn on bg                         #E6B14A  #141817    9.17  4.5   pass     expiring / warning text on canvas
+danger on surface                  #F2908A  #1D2221    7.01  4.5   pass     error / revoke text
+danger on bg                       #F2908A  #141817    7.79  4.5   pass     error / revoke text on canvas
+danger-ink on danger               #2A0B08  #F2908A    7.94  4.5   pass     label on danger fill
+line on surface                    #333A38  #1D2221    1.38  1.0   pass     hairline (decorative, no requirement)
+line-strong on surface             #6E7873  #1D2221    3.53  3.0   pass     input border / focus-adjacent border
+accent on surface                  #5FCBC2  #1D2221    8.29  3.0   pass     focus ring on surface
+accent on bg                       #5FCBC2  #141817    9.22  3.0   pass     focus ring on canvas
+folder-edge on surface             #8C6F2B  #1D2221    3.40  3.0   pass     folder icon outline on surface (fill is decorative)
+folder-edge on bg                  #8C6F2B  #141817    3.77  3.0   pass     folder icon outline on canvas
+ink-3 on surface                   #78827C  #1D2221    4.05  3.0   pass     disabled text / icon glyph (non-text floor)
+
+0 failing pair(s)

@@ -1,0 +1,6 @@
+/tmp/arena-storage-server/candidate-b/experiments/e7-walk/w pass 1: 501010 entries in 1011 dirs, 145ms, 3466681 entries/s, symlinks=0 nonUTF8=0
+/tmp/arena-storage-server/candidate-b/experiments/e7-walk/w pass 2: 501010 entries in 1011 dirs, 144ms, 3472037 entries/s, symlinks=0 nonUTF8=0
+/tmp/arena-storage-server/candidate-b/experiments/e7-walk/w pass 3: 501010 entries in 1011 dirs, 143ms, 3504061 entries/s, symlinks=0 nonUTF8=0
+/usr pass 1: 681009 entries in 42868 dirs, 3.032s, 224600 entries/s, symlinks=121625 nonUTF8=0
+/usr pass 2: 681009 entries in 42868 dirs, 347ms, 1961235 entries/s, symlinks=121625 nonUTF8=0
+/usr pass 3: 681009 entries in 42868 dirs, 347ms, 1964308 entries/s, symlinks=121625 nonUTF8=0

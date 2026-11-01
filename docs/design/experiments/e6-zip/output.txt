@@ -1,0 +1,18 @@
+wrote 5368709120 bytes in 1.364s, Go Sys=11 MiB
+-rw-r--r-- 1 theadenkingof theadenkingof 5368709538  1 nov.  13:08 w/out.zip
+--- unzip -t
+Archive:  w/out.zip
+    testing: folder/big.bin           OK
+    testing: folder/small.txt         OK
+error: invalid zip file with overlapped components (possible zip bomb)
+ To unzip the file anyway, rerun the command with UNZIP_DISABLE_ZIPBOMB_DETECTION=TRUE environmnent variable
+--- python zipfile
+None [('folder/big.bin', 5368709120), ('folder/small.txt', 18)]
+b'tail-marker'
+--- 7z t
+
+Everything is Ok
+
+Files: 2
+Size:       5368709138
+Compressed: 5368709538

@@ -1,5 +1,8 @@
 node_modules/
 dist/
+!web/dist/
+web/dist/*
+!web/dist/.keep
 coverage/
 playwright-report/
 test-results/

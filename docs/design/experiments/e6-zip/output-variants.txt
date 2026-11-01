@@ -1,0 +1,15 @@
+=== small-only
+2097378 bytes
+unzip extract exit=0
+  1048576 a.bin
+  1048576 b.bin
+=== big-then-small
+5368709800 bytes
+error: invalid zip file with overlapped components (possible zip bomb)
+ To unzip the file anyway, rerun the command with UNZIP_DISABLE_ZIPBOMB_DETECTION=TRUE environmnent variable
+unzip extract exit=12
+  5368709120 big.bin
+  100 small1.txt
+=== many-3GiB-total-9GiB
+9663677052 bytes
+c.bin:  write error (disk full?).  Continue? (y/n/^C) 

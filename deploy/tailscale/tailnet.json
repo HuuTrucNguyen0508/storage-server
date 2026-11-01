@@ -1,0 +1,11 @@
+{
+  "TCP": { "443": { "HTTPS": true } },
+  "Web": {
+    "${TS_CERT_DOMAIN}:443": {
+      "Handlers": {
+        "/": { "Proxy": "http://app:8080" },
+        "/pdf/": { "Proxy": "http://pdf:8080/pdf/" }
+      }
+    }
+  }
+}

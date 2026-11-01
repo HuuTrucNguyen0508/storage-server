@@ -112,6 +112,13 @@ func etag(i disk.Info) string {
 	return `"` + hex.EncodeToString(sum[:12]) + `"`
 }
 
+// ThumbETag hides the same identity fields as etag, so a guest never sees a
+// device or inode number.
+func ThumbETag(i disk.Info, width int) string {
+	sum := sha256.Sum256(fmt.Appendf(nil, "%d/%d/%d/%d/%d", i.Dev, i.Inode, i.Size, i.ModTime.UnixNano(), width))
+	return `"` + hex.EncodeToString(sum[:12]) + `"`
+}
+
 // Serve answers one file through http.ServeContent, which gives Range, If-Range
 // and sendfile. It passes the *os.File itself, because the kernel path only
 // recognises that type, and the caller's writer must keep ReadFrom.

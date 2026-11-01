@@ -19,6 +19,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"storage-server/internal/disk"
 )
@@ -364,5 +365,16 @@ func TestZipStopsOnAnUnreadableFile(t *testing.T) {
 	var b bytes.Buffer
 	if err := WriteZip(context.Background(), &b, d.Files, []disk.Path{parse(t, "a")}); err == nil {
 		t.Fatal("a read error did not stop the zip")
+	}
+}
+
+func TestThumbETagHidesIdentityAndVariesByWidth(t *testing.T) {
+	info := disk.Info{Dev: 2049, Inode: 131085, Size: 7, ModTime: time.Unix(1793550054, 0)}
+	tag := ThumbETag(info, 256)
+	if strings.Contains(tag, "131085") || strings.Contains(tag, "2049") {
+		t.Fatalf("tag exposes file identity: %s", tag)
+	}
+	if tag == ThumbETag(info, 1024) {
+		t.Fatalf("two widths share a tag: %s", tag)
 	}
 }

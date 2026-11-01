@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -226,7 +225,7 @@ func (a *API) thumb(w http.ResponseWriter, r *http.Request, c *call) {
 		return
 	}
 	defer t.Close()
-	w.Header().Set("Etag", fmt.Sprintf(`"%d-%d-%d-%d-%d"`, f.Info.Dev, f.Info.Inode, f.Info.Size, f.Info.ModTime.UnixNano(), width))
+	w.Header().Set("Etag", media.ThumbETag(f.Info, width))
 	media.ServeThumb(a.counted(w, c), r, t, mod)
 }
 

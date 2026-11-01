@@ -1,0 +1,11 @@
+server VmHWM before kill: 13868 kB
+kill -9 mid-PATCH: client err=true, bytes stored by stat=1073774592
+after restart HEAD offset=1073774592 (equals stat: true)
+client dropped connection: offset advanced 1073774592 -> 1912668160
+stalled writer: HEAD took over in 0s, offset=1917911040 (advanced 5242880)
+late bytes from the stalled writer after takeover: offset still 1917911040 (stable: true)
+final offset=3221225472 total=3221225472, wall=5.1s
+server VmHWM after resume incarnation: 16564 kB
+sha256 source=6bad9fd87b86041552aa0ef995f2f9da8fcf6336ca23890d8b22fd77c426283d
+sha256 stored=6bad9fd87b86041552aa0ef995f2f9da8fcf6336ca23890d8b22fd77c426283d
+match=true

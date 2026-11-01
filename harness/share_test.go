@@ -648,8 +648,3 @@ func TestStreamedZip(t *testing.T) {
 	s.owner.expectError("POST", "/api/files/zip", "path=missing", 404, "not_found", "Content-Type", "application/x-www-form-urlencoded")
 	s.owner.expectError("POST", "/api/files/zip", "", 400, "invalid_path", "Content-Type", "application/x-www-form-urlencoded")
 }
-
-// TestCompose belongs to the ops step, which owns compose.yaml.
-func TestCompose(t *testing.T) {
-	t.Skip("the ops owner implements this with compose.yaml, the Dockerfile and deploy/")
-}

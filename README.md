@@ -63,7 +63,7 @@ Enable HTTPS in your tailnet. Put a Tailscale auth key in `TS_AUTHKEY`, choose `
 docker compose --profile tailscale up -d
 ```
 
-The official sidecar uses userspace networking. It needs no host device, Docker socket, or extra capabilities. Its identity persists under `STATE_DIR/tailscale`. `TS_EXTRA_ARGS` accepts options such as `--login-server` for a self-hosted control server.
+The official sidecar uses userspace networking. It needs no host device, Docker socket, or extra capabilities. Its identity persists in the dedicated `TS_STATE_DIR` directory. When upgrading an existing install, stop the sidecar and copy the contents of `STATE_DIR/tailscale` into `TS_STATE_DIR`, preserving ownership and permissions, before restarting it. `TS_EXTRA_ARGS` accepts options such as `--login-server` for a self-hosted control server.
 
 The owner app uses tailnet HTTPS port 443. To send public guest links, enable Funnel in your tailnet, set `TS_EXPOSE=funnel`, and set `SHARE_URL=https://<machine>.<tailnet>.ts.net:8443`. Run the same profile command again. Funnel port 8443 reaches only the guest listener. It cannot reach login, owner operations, PDF tools, or metrics. The owner app stays on private tailnet port 443. PDF uses private port 8444.
 
@@ -81,7 +81,7 @@ docker compose --profile monitoring --profile pdf --profile tailscale stop
 
 Back up `STORAGE_ROOT`, `STATE_DIR`, the dedicated `TS_STATE_DIR` sidecar identity directory if enabled, and `.env`, preserving ownership and hidden files. `STATE_DIR` holds `state.db`, its SQLite journal files, disposable thumbnail cache, and no sidecar state. The database holds the owner, sessions, share links, grants, and pending move recovery records. Treat it as a credential.
 
-`STORAGE_ROOT` holds your files and `.storage-server`. That hidden directory holds trash, resumable upload spools, and lock state. Do not remove it or omit it from a backup. Restore the storage and state directories from the same backup, restore their ownership, and run `docker compose up -d` with the profiles you use. A database backup alone cannot restore files or trash.
+`STORAGE_ROOT` holds your files and `.storage-server`. That hidden directory holds trash, resumable upload spools, and lock state. Do not remove it or omit it from a backup. Restore the storage and state directories, including `TS_STATE_DIR` if enabled, from the same backup, restore their ownership, and run `docker compose up -d` with the profiles you use. A database backup alone cannot restore files or trash.
 
 ## Recover a lost password
 

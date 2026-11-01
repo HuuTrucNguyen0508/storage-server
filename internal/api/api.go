@@ -241,6 +241,7 @@ var errorTable = []struct {
 	{disk.ErrNoSpace, 507, "insufficient_space"},
 	{upload.ErrNoSpace, 507, "insufficient_space"},
 	{disk.ErrNotDurable, 500, "not_durable"},
+	{vault.ErrDegraded, 503, "unhealthy"},
 }
 
 func classify(err error) (int, string) {

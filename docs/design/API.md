@@ -14,7 +14,7 @@ Owner routes are not registered on the guest listener, so they return 404 there 
 
 ## Conventions
 
-- JSON bodies are capped at 1 MiB. Errors are `{"error":{"code":"<code>","message":"<text>"}}`. Any JSON route can return 400 `invalid_json`. Any unexpected failure is 500 `internal`. A 500 `not_durable` means a rename happened and its fsync or commit failed: the change stands, `/healthz` reports unhealthy, and a restart finishes it.
+- JSON bodies are capped at 1 MiB. Errors are `{"error":{"code":"<code>","message":"<text>"}}`. Any JSON route can return 400 `invalid_json`. Any unexpected failure is 500 `internal`. A 500 `not_durable` means a rename happened and its fsync or commit failed: the change stands, `/healthz` reports unhealthy, and a restart finishes it. While degraded, guest resolution and every namespace mutation return 503 `unhealthy`; owner reads may continue. Recovery retries pending move durability before serving, and a retry failure prevents startup.
 - Field names in a JSON request are matched case-insensitively. Times are RFC 3339.
 - A password is at least 8 bytes.
 - A `path` is relative to the storage root for the owner, and relative to the shared folder for a guest. A path is parsed, never cleaned, so `a/../b` is `invalid_path`.

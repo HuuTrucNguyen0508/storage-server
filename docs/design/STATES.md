@@ -129,13 +129,13 @@ Every relocation runs one function, `vault.relocate`, with `v.mu` held. It ignor
 3. `disk.Move` runs `renameat2(RENAME_NOREPLACE)` and fsyncs both parents. It reports whether the rename happened.
 4. `CommitMove` rewrites shares and deletes the row, in one transaction.
 
-If the rename did not happen, `AbortMove` deletes the row and the error returns. If the rename happened and a parent fsync or the commit failed, the row stays, shares are not rewritten, the request gets 500 `not_durable`, and `/healthz` reports unhealthy until a restart. Only a restart clears that state.
+If the rename did not happen, `AbortMove` deletes the row and the error returns. If the rename happened and a parent fsync or the commit failed, the row stays, shares are not rewritten, the request gets 500 `not_durable`, and `/healthz` reports unhealthy until a restart. Guest resolution and every namespace mutation return 503 `unhealthy` while degraded; owner reads may continue. Only restart recovery clears that state, before any requests are served.
 
 On restart, the disk decides each row by inode:
 
 | What the disk holds | Meaning | What restart does |
 |---|---|---|
-| The destination holds the inode | The rename happened | Fsyncs both parents, then runs step 4. If the fsync fails again, the row stays and `/healthz` reports unhealthy. |
+| The destination holds the inode | The rename happened | Fsyncs both parents, then runs step 4. If the fsync fails again, the row stays and startup fails before serving requests. |
 | Otherwise the source holds it | The rename did not happen | Deletes the row |
 | Neither | Something outside the app changed both paths | Deletes the shares at or under the source, logs a warning, and deletes the row |
 

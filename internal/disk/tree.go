@@ -512,6 +512,9 @@ func removeAt(parent int, name string) error {
 
 // Sync fsyncs a directory, so a crash recovery can retry a move's durability.
 func (t *Tree) Sync(dir Path) error {
+	if err := crash.Fail(crash.ParentFsync); err != nil {
+		return err
+	}
 	fd, err := t.openParent(dir)
 	if err != nil {
 		return err

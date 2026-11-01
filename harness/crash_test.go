@@ -403,6 +403,12 @@ func TestFailedFsyncKeepsTheJournal(t *testing.T) {
 		t.Fatalf("share rewritten before the move was durable: %+v", got)
 	}
 
+	s.write("private/secret.txt", "private")
+	s.owner.expectError("POST", "/api/files/move", map[string]any{"paths": []string{"private"}, "to": ""}, 503, "unhealthy")
+	s.owner.expectError("POST", "/api/files/trash", map[string]any{"paths": []string{"private"}}, 503, "unhealthy")
+	s.owner.expectError("POST", "/api/files/rename", map[string]string{"path": "private", "name": "a.txt"}, 503, "unhealthy")
+	s.guest(sh.token()).expectError("GET", "/api/public/"+sh.token(), nil, 503, "unhealthy")
+
 	s.restart()
 	if n := s.journal(); n != 0 {
 		t.Fatalf("journal after restart = %d", n)

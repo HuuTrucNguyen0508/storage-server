@@ -26,6 +26,7 @@ const (
 )
 
 var (
+	ErrDegraded     = errors.New("vault is awaiting recovery")
 	ErrMoveIntoSelf = errors.New("cannot move a folder into itself")
 	// ErrUnavailable covers a share target that is trashed, missing, or was
 	// replaced by something that cannot be served.
@@ -153,6 +154,9 @@ func (v *Vault) Rename(ctx context.Context, e disk.Entry, to disk.Name) (disk.Pa
 	}
 	v.mu.Lock()
 	defer v.mu.Unlock()
+	if !v.Healthy() {
+		return disk.Path{}, ErrDegraded
+	}
 	if err := v.relocate(ctx, disk.Live(e.Path()), disk.Live(target.Path())); err != nil {
 		return disk.Path{}, err
 	}
@@ -179,6 +183,9 @@ func (v *Vault) moveOne(ctx context.Context, e disk.Entry, toDir disk.Path) (dis
 	}
 	v.mu.Lock()
 	defer v.mu.Unlock()
+	if !v.Healthy() {
+		return disk.Path{}, ErrDegraded
+	}
 	switch info, err := v.disk.Files.Stat(toDir); {
 	case err != nil:
 		return disk.Path{}, err
@@ -196,6 +203,9 @@ func (v *Vault) moveOne(ctx context.Context, e disk.Entry, toDir disk.Path) (dis
 func (v *Vault) Mkdir(p disk.Path) error {
 	v.mu.Lock()
 	defer v.mu.Unlock()
+	if !v.Healthy() {
+		return ErrDegraded
+	}
 	return v.disk.Files.Mkdir(p)
 }
 
@@ -212,6 +222,9 @@ func (v *Vault) Trash(ctx context.Context, entries []disk.Entry, now time.Time) 
 func (v *Vault) trashOne(ctx context.Context, e disk.Entry, now time.Time) (disk.TrashID, error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
+	if !v.Healthy() {
+		return "", ErrDegraded
+	}
 	info, err := v.disk.Files.Stat(e.Path())
 	if err != nil {
 		return "", err
@@ -262,6 +275,9 @@ func (v *Vault) readMeta(id disk.TrashID) (meta, disk.Path, error) {
 func (v *Vault) Restore(ctx context.Context, id disk.TrashID) (disk.Path, error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
+	if !v.Healthy() {
+		return disk.Path{}, ErrDegraded
+	}
 	_, original, err := v.readMeta(id)
 	if err != nil {
 		return disk.Path{}, err
@@ -342,6 +358,9 @@ func (v *Vault) Purge(ctx context.Context, id disk.TrashID) error {
 func (v *Vault) commitPurge(ctx context.Context, id disk.TrashID) error {
 	v.mu.Lock()
 	defer v.mu.Unlock()
+	if !v.Healthy() {
+		return ErrDegraded
+	}
 	if err := v.disk.Trash.Remove(trashPath(id, metaFile)); err != nil {
 		return err
 	}
@@ -373,6 +392,9 @@ func (v *Vault) removeTrash(id disk.TrashID) error {
 // PurgeAll empties the trash. It keeps going after a failure, since one stuck
 // item must not hold the rest of the owner's space.
 func (v *Vault) PurgeAll(ctx context.Context) error {
+	if !v.Healthy() {
+		return ErrDegraded
+	}
 	items, err := v.ListTrash(ctx)
 	if err != nil {
 		return err
@@ -385,6 +407,9 @@ func (v *Vault) PurgeAll(ctx context.Context) error {
 }
 
 func (v *Vault) Sweep(ctx context.Context, now time.Time) error {
+	if !v.Healthy() {
+		return ErrDegraded
+	}
 	items, err := v.ListTrash(ctx)
 	if err != nil {
 		return err
@@ -401,6 +426,9 @@ func (v *Vault) Sweep(ctx context.Context, now time.Time) error {
 func (v *Vault) CreateShare(ctx context.Context, sh store.Share, target disk.Path) (store.Share, error) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
+	if !v.Healthy() {
+		return store.Share{}, ErrDegraded
+	}
 	info, err := v.disk.Files.Stat(target)
 	if err != nil {
 		return store.Share{}, err
@@ -435,6 +463,9 @@ func (v *Vault) targetExists(l disk.Location) bool {
 func (v *Vault) ShareByToken(ctx context.Context, t store.Token) (store.Share, bool, error) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
+	if !v.Healthy() {
+		return store.Share{}, false, ErrDegraded
+	}
 	sh, err := v.db.ShareByToken(ctx, t)
 	if err != nil {
 		return store.Share{}, false, err
@@ -485,6 +516,9 @@ func (o Opened) Close() {
 func (v *Vault) OpenShare(ctx context.Context, id store.ShareID) (Opened, error) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
+	if !v.Healthy() {
+		return Opened{}, ErrDegraded
+	}
 	sh, err := v.db.ShareByID(ctx, id)
 	if err != nil {
 		return Opened{}, err
@@ -539,6 +573,9 @@ func (v *Vault) Publish(ctx context.Context, p Publication) (disk.Path, error) {
 	ctx = context.WithoutCancel(ctx)
 	v.mu.Lock()
 	defer v.mu.Unlock()
+	if !v.Healthy() {
+		return disk.Path{}, ErrDegraded
+	}
 	e, ok := p.Path.Entry()
 	if !ok {
 		return disk.Path{}, disk.ErrInvalidPath
@@ -657,7 +694,7 @@ func (v *Vault) recoverMove(ctx context.Context, m store.PendingMove) error {
 	if atDst {
 		if err := v.syncParents(m); err != nil {
 			v.markUnhealthy(m.From, m.To, err)
-			return nil
+			return err
 		}
 		slog.Info("recovery committed a move", "from", m.From.String(), "to", m.To.String())
 		return v.db.CommitMove(ctx, m)

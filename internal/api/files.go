@@ -164,6 +164,10 @@ func resultsOf(out []vault.Outcome) map[string][]resultJSON {
 }
 
 func (a *API) move(w http.ResponseWriter, r *http.Request, c *call) {
+	if !a.vault.Healthy() {
+		a.fail(w, r, vault.ErrDegraded)
+		return
+	}
 	var in struct {
 		Paths []string
 		To    string
@@ -186,6 +190,10 @@ func (a *API) move(w http.ResponseWriter, r *http.Request, c *call) {
 }
 
 func (a *API) trash(w http.ResponseWriter, r *http.Request, c *call) {
+	if !a.vault.Healthy() {
+		a.fail(w, r, vault.ErrDegraded)
+		return
+	}
 	var in struct{ Paths []string }
 	if err := decode(r, &in, false); err != nil {
 		a.fail(w, r, err)

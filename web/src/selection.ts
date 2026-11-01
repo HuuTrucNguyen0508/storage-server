@@ -50,7 +50,7 @@ export function selectionReducer(state: Selection, action: SelectionAction, orde
       return { ...state, ids, anchor: action.id, focus: action.id, touchMode: state.touchMode && ids.size > 0 };
     }
     case "extend": {
-      const anchor = state.anchor ?? action.id;
+      const anchor = state.anchor ?? state.focus ?? action.id;
       return { ...state, ids: new Set(rangeOf(anchor, action.id, order)), anchor, focus: action.id };
     }
     case "longPress": {

@@ -261,7 +261,9 @@ export function setUnauthenticatedHandler(handler: () => void): void {
 }
 
 async function call(url: string, init: RequestInit = {}): Promise<Response> {
-  const res = await fetch(url, { credentials: "same-origin", ...init });
+  // Chrome keeps a 410 fresh forever when it has no Cache-Control, so a link that
+  // came back from the trash would stay broken for anyone who saw it there.
+  const res = await fetch(url, { credentials: "same-origin", cache: "no-store", ...init });
   if (res.ok) return res;
   const err = await failure(res);
   if (err.code === "unauthenticated") onUnauthenticated();

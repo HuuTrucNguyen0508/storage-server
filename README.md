@@ -10,8 +10,10 @@ A self-hosted file server for one owner and the people they send links to. Brows
 Use Linux with Docker Engine, Docker Compose, and OpenSSL installed. Run these commands from this checkout as your normal user. The first image build downloads the Node and Go build tools.
 
 ```sh
-mkdir -p data state
+mkdir -p data
+mkdir -m 700 state tailscale-state
 cp .env.example .env
+chmod 600 .env
 sed -i "s/^PUID=.*/PUID=$(id -u)/; s/^PGID=.*/PGID=$(id -g)/; s/^GRAFANA_PASSWORD=.*/GRAFANA_PASSWORD=$(openssl rand -hex 24)/" .env
 docker compose up -d
 docker compose logs app
@@ -21,7 +23,7 @@ If port 8080 is already occupied, change `PORT`, `PUBLIC_URL`, and `SHARE_URL` i
 
 Open http://localhost:8080, or the port you selected. Use the `setup_code` in the app log to create your owner password. The code is required even on the first visit. Keep `.env` private. Grafana's password is required even when monitoring is disabled because Compose validates all service variables.
 
-`STORAGE_ROOT` and `STATE_DIR` must exist before startup. Both must be writable by the numeric `PUID` and `PGID` in `.env`. Compose refuses a missing directory instead of creating one as root. A permission error at startup means you must fix the directory ownership. The default host binding accepts connections only from this machine. Set `BIND_ADDR=0.0.0.0` deliberately to allow LAN access.
+`STORAGE_ROOT` and `STATE_DIR` must exist before startup. Both must be writable by the numeric `PUID` and `PGID` in `.env`. The Tailscale profile also needs a dedicated `TS_STATE_DIR` directory writable by that user; it never mounts app state. Compose refuses a missing directory instead of creating one as root. A permission error at startup means you must fix the directory ownership. The default host binding accepts connections only from this machine. Set `BIND_ADDR=0.0.0.0` deliberately to allow LAN access. This serves logins over plain HTTP; use HTTPS for untrusted networks. Update `PUBLIC_URL` and `SHARE_URL` to the reachable address.
 
 Check the running app with:
 
@@ -77,7 +79,7 @@ Stop the stack before copying state, so the SQLite database and storage describe
 docker compose --profile monitoring --profile pdf --profile tailscale stop
 ```
 
-Back up both configured directories and `.env`, preserving ownership and hidden files. `STATE_DIR` holds `state.db`, its SQLite journal files, disposable thumbnail cache, and the sidecar identity if enabled. The database holds the owner, sessions, share links, grants, and pending move recovery records. Treat it as a credential.
+Back up `STORAGE_ROOT`, `STATE_DIR`, the dedicated `TS_STATE_DIR` sidecar identity directory if enabled, and `.env`, preserving ownership and hidden files. `STATE_DIR` holds `state.db`, its SQLite journal files, disposable thumbnail cache, and no sidecar state. The database holds the owner, sessions, share links, grants, and pending move recovery records. Treat it as a credential.
 
 `STORAGE_ROOT` holds your files and `.storage-server`. That hidden directory holds trash, resumable upload spools, and lock state. Do not remove it or omit it from a backup. Restore the storage and state directories from the same backup, restore their ownership, and run `docker compose up -d` with the profiles you use. A database backup alone cannot restore files or trash.
 
@@ -114,6 +116,8 @@ HARNESS_COMPOSE=1 go test -tags harness -run '^TestCompose$' -v -timeout 12m ./h
 The harness uses a real disk directory under your home cache. Set `HARNESS_DIR` to select another real disk. `HARNESS_LONG=1` adds multi-gigabyte and soak tests. The Compose test builds a real image, verifies setup, upload, download, restart persistence, and profile configuration, then removes its own containers and volumes. Playwright runs headless. CI installs Chromium's system dependencies on Ubuntu before running it.
 
 ## Limits
+
+If persistent filesystem handles are unavailable, a crash during a move deletes affected links during recovery.
 
 - Linux only. The storage filesystem must support `openat2`, `RENAME_NOREPLACE`, and directory fsync. Startup probes refuse an unsupported filesystem.
 - One storage mount. Moves across nested mounts or btrfs subvolumes fail instead of copying non-atomically.

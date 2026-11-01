@@ -42,7 +42,7 @@ services:
     environment:
       TS_AUTHKEY: ${TS_AUTHKEY:-}
       TS_AUTH_ONCE: "true"
-      TS_STATE_DIR: /state/tailscale
+      TS_STATE_DIR: /state
       TS_SOCKET: /tmp/tailscaled.sock
       TS_USERSPACE: "true"
       TS_ACCEPT_DNS: "false"
@@ -51,7 +51,7 @@ services:
     tmpfs: [/tmp, /var/run]
     volumes:
       - type: bind
-        source: ${STATE_DIR:?create STATE_DIR and chown it to PUID before starting}
+        source: ${TS_STATE_DIR:-./tailscale-state}
         target: /state
         bind: {create_host_path: false}
       - ./deploy/tailscale:/config:ro
@@ -93,6 +93,7 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
     tmpfs: [/tmp]
     volumes:
       - grafana:/var/lib/grafana

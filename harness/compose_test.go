@@ -27,7 +27,7 @@ func TestCompose(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"root", "state"} {
+	for _, name := range []string{"root", "state", "tailscale-state"} {
 		if err := os.Mkdir(filepath.Join(dir, name), 0755); err != nil {
 			t.Fatal(err)
 		}
@@ -35,7 +35,7 @@ func TestCompose(t *testing.T) {
 	project := fmt.Sprintf("ss-harness-%d", time.Now().UnixNano())
 	addr := freeAddr(t)
 	envFile := filepath.Join(dir, ".env")
-	env := fmt.Sprintf("STORAGE_ROOT=%s\nSTATE_DIR=%s\nPUID=%d\nPGID=%d\nBIND_ADDR=127.0.0.1\nPORT=%s\nPUBLIC_URL=http://%s\nSHARE_URL=http://%s\nMIN_FREE_BYTES=0\nGRAFANA_PASSWORD=isolated-compose-proof\n", filepath.Join(dir, "root"), filepath.Join(dir, "state"), os.Getuid(), os.Getgid(), strings.Split(addr, ":")[1], addr, addr)
+	env := "TS_STATE_DIR=" + filepath.Join(dir, "tailscale-state") + "\n" + fmt.Sprintf("STORAGE_ROOT=%s\nSTATE_DIR=%s\nPUID=%d\nPGID=%d\nBIND_ADDR=127.0.0.1\nPORT=%s\nPUBLIC_URL=http://%s\nSHARE_URL=http://%s\nMIN_FREE_BYTES=0\nGRAFANA_PASSWORD=isolated-compose-proof\n", filepath.Join(dir, "root"), filepath.Join(dir, "state"), os.Getuid(), os.Getgid(), strings.Split(addr, ":")[1], addr, addr)
 	if err := os.WriteFile(envFile, []byte(env), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestCompose(t *testing.T) {
 				t.Logf("compose logs:\n%s", out)
 			}
 		}
-		if out, err := compose("--profile", "monitoring", "--profile", "tailscale", "--profile", "pdf", "down", "-v", "--remove-orphans"); err != nil {
+		if out, err := compose("--profile", "monitoring", "--profile", "tailscale", "--profile", "pdf", "down", "-v", "--rmi", "local", "--remove-orphans"); err != nil {
 			t.Errorf("cleanup: %v\n%s", err, out)
 		}
 	})

@@ -71,8 +71,8 @@ stateDiagram-v2
 | Crash | What the disk holds | What restart does | Result |
 |---|---|---|---|
 | `trash.after-meta` | File live, `meta.json` alone | Removes the directory | Delete did not happen. The client retries. |
-| `move.after-intent` during trash | Same, plus a journal row | The source holds the journaled inode, so drops the row, then as above | Delete did not happen. |
-| `move.after-rename` during trash | Trashed, journal row | The destination holds the inode, so commits: shares move into the trash and suspend | Delete happened. |
+| `move.after-intent` during trash | Same, plus a journal row | The source holds the journaled identity, so drops the row, then as above | Delete did not happen. |
+| `move.after-rename` during trash | Trashed, journal row | The destination holds the identity, so commits: shares move into the trash and suspend | Delete happened. |
 | `move.after-commit` during trash | Trashed | Nothing | Delete happened. |
 | `move.after-intent` during restore | Trashed, journal row | Drops the row | Restore did not happen. Item intact. |
 | `move.after-rename` during restore | File live, `meta.json` alone, journal row | Commits, shares resume, directory removed | Restore happened. |
@@ -124,25 +124,25 @@ Trash is a location, so a new file uploaded at a trashed path cannot revive the 
 
 Every relocation runs one function, `vault.relocate`, with `v.mu` held. It ignores the request's cancellation, because a client disconnect must not stop it halfway:
 
-1. Check the destination is absent, and read the source's inode.
-2. `BeginMove` writes a `pending_moves` row with that inode. It holds no `st_dev`, because btrfs assigns that at mount and it changes across a reboot.
+1. Check the destination is absent, and read the source's inode and persistent filesystem handle from one pinned fd.
+2. `BeginMove` writes a `pending_moves` row with that identity as inode plus handle type and opaque bytes. It holds no `st_dev`, because btrfs assigns that at mount and it changes across a reboot.
 3. `disk.Move` runs `renameat2(RENAME_NOREPLACE)` and fsyncs both parents. It reports whether the rename happened.
 4. `CommitMove` rewrites shares and deletes the row, in one transaction.
 
 If the rename did not happen, `AbortMove` deletes the row and the error returns. If the rename happened and a parent fsync or the commit failed, the row stays, shares are not rewritten, the request gets 500 `not_durable`, and `/healthz` reports unhealthy until a restart. Guest resolution and every namespace mutation return 503 `unhealthy` while degraded; owner reads may continue. Only restart recovery clears that state, before any requests are served.
 
-On restart, the disk decides each row by inode:
+On restart, the disk decides each row by inode and persistent filesystem handle, which includes the inode generation. Inode and birth time are insufficient: ext4 can reuse both within one timestamp tick. The handle comes from `name_to_handle_at(AT_EMPTY_PATH)` on the same fd as the metadata. The returned mount ID is not persisted. Missing handles are unknown and never match, even another unknown identity. Filesystems without birth time still work when handles are available. No startup refusal is needed when handles are unavailable: normal operations work, but recovery deletes shares affected by an interrupted relocation.
 
 | What the disk holds | Meaning | What restart does |
 |---|---|---|
-| The destination holds the inode | The rename happened | Fsyncs both parents, then runs step 4. If the fsync fails again, the row stays and startup fails before serving requests. |
-| Otherwise the source holds it | The rename did not happen | Deletes the row |
-| Neither | Something outside the app changed both paths | Deletes the shares at or under the source, logs a warning, and deletes the row |
+| The destination holds the identity | The rename happened | Fsyncs both parents, then runs step 4. If the fsync fails again, the row stays and startup fails before serving requests. |
+| Otherwise the source holds the identity | The rename did not happen | Deletes the row |
+| Neither, or identity is unknown | Both paths are untrusted | Deletes the shares at or under the source, logs a warning, and deletes the row |
 
 | Crash | What exists | What restart does | Result |
 |---|---|---|---|
-| `move.after-intent` | Old path, journal row | The source holds the inode, drops the row | The move did not happen. Link works, even if an unrelated file now sits at the destination. |
-| `move.after-rename` | New path, journal row, shares still on the old path | The destination holds the inode, commits | The move happened. Link works. |
+| `move.after-intent` | Old path, journal row | The source holds the identity, drops the row | The move did not happen. Link works, even if an unrelated file now sits at the destination. |
+| `move.after-rename` | New path, journal row, shares still on the old path | The destination holds the identity, commits | The move happened. Link works. |
 | `move.after-commit` | New path | Nothing | Link works. |
 
 Other share operations are one SQLite transaction each, so a crash leaves them fully done or not done: create, revoke, and taking an item, which inserts the `grant_items` row and increments `uses` together. A purge's share deletion is reached by the trash recovery above.

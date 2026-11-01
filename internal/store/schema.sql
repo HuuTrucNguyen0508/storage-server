@@ -49,6 +49,7 @@ CREATE TABLE pending_moves (
   from_loc   TEXT    NOT NULL,
   to_loc     TEXT    NOT NULL,
   src_inode  INTEGER NOT NULL, -- never st_dev: btrfs assigns it at mount
+  src_handle TEXT NOT NULL DEFAULT '',
   started_at INTEGER NOT NULL
 ) STRICT;
 

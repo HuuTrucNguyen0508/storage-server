@@ -288,17 +288,17 @@ func TestLimiterRoundTrip(t *testing.T) {
 	}
 }
 
-func TestMoveJournalRecordsTheInode(t *testing.T) {
+func TestMoveJournalRecordsTheIdentity(t *testing.T) {
 	st := &Store{db: open(t)}
 	ctx := context.Background()
 	from, _ := disk.ParseLocation("live:a")
 	to, _ := disk.ParseLocation("live:b")
-	id, err := st.BeginMove(ctx, from, to, 1<<40+7)
+	id, err := st.BeginMove(ctx, from, to, disk.Identity{Inode: 1<<40 + 7, Handle: "1:123456"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	rows, err := st.PendingMoves(ctx)
-	if err != nil || len(rows) != 1 || rows[0].ID != id || rows[0].Inode != 1<<40+7 || rows[0].To.String() != "live:b" {
+	if err != nil || len(rows) != 1 || rows[0].ID != id || rows[0].Identity != (disk.Identity{Inode: 1<<40 + 7, Handle: "1:123456"}) || rows[0].To.String() != "live:b" {
 		t.Fatalf("rows = %+v, %v", rows, err)
 	}
 }
@@ -312,7 +312,7 @@ func TestForgetMoveDeletesTheSharesItCannotTrust(t *testing.T) {
 	addShare(t, db, "sibling", "live:ab", nil)
 	from, _ := disk.ParseLocation("live:a")
 	to, _ := disk.ParseLocation("live:b")
-	id, err := st.BeginMove(ctx, from, to, 9)
+	id, err := st.BeginMove(ctx, from, to, disk.Identity{Inode: 9})
 	if err != nil {
 		t.Fatal(err)
 	}

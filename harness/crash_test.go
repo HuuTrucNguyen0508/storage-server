@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/sys/unix"
 	"storage-server/internal/crash"
 )
 
@@ -360,11 +361,31 @@ func TestRecoveryByIdentity(t *testing.T) {
 	t.Run("both paths replaced means the link is deleted", func(t *testing.T) {
 		c := journaledMove(t, crash.MoveAfterIntent)
 		src := filepath.Join(c.s.root, "dir/file.txt")
+		var before unix.Statx_t
+		if err := unix.Statx(unix.AT_FDCWD, src, 0, unix.STATX_INO|unix.STATX_BTIME, &before); err != nil {
+			t.Fatal(err)
+		}
+		handle, _, err := unix.NameToHandleAt(unix.AT_FDCWD, src, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("source ino=%d btime=%d.%09d handle=%d:%x", before.Ino, before.Btime.Sec, before.Btime.Nsec, handle.Type(), handle.Bytes())
 		if err := os.Remove(src); err != nil {
 			t.Fatal(err)
 		}
 		c.s.write("dir/renamed.txt", "stranger one")
 		c.s.write("dir/file.txt", "stranger two")
+		for _, name := range []string{"dir/file.txt", "dir/renamed.txt"} {
+			var st unix.Statx_t
+			if err := unix.Statx(unix.AT_FDCWD, filepath.Join(c.s.root, name), 0, unix.STATX_INO|unix.STATX_BTIME, &st); err != nil {
+				t.Fatal(err)
+			}
+			handle, _, err := unix.NameToHandleAt(unix.AT_FDCWD, filepath.Join(c.s.root, name), 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Logf("replacement %s ino=%d btime=%d.%09d handle=%d:%x", name, st.Ino, st.Btime.Sec, st.Btime.Nsec, handle.Type(), handle.Bytes())
+		}
 		c.s.restart()
 		if n := c.s.journal(); n != 0 {
 			t.Fatalf("journal = %d", n)

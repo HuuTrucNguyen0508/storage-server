@@ -86,7 +86,7 @@ func TestStartupProbes(t *testing.T) {
 			if !strings.Contains(logs, want) || !strings.Contains(logs, "no fallback") {
 				t.Fatalf("log does not name the primitive %q:\n%s", want, logs)
 			}
-			if !strings.Contains(logs, " on btrfs") && !strings.Contains(logs, " on ext4") && !strings.Contains(logs, " on xfs") {
+			if !strings.Contains(logs, " on btrfs") && !strings.Contains(logs, " on ext4") && !strings.Contains(logs, " on xfs") && !strings.Contains(logs, " on tmpfs") {
 				t.Fatalf("log does not name the filesystem:\n%s", logs)
 			}
 		})

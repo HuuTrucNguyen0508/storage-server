@@ -120,7 +120,7 @@ func (v *Vault) relocate(ctx context.Context, from, to disk.Location) error {
 	if err != nil {
 		return err
 	}
-	id, err := v.db.BeginMove(ctx, from, to, info.Inode)
+	id, err := v.db.BeginMove(ctx, from, to, info.Identity)
 	if err != nil {
 		return err
 	}
@@ -674,7 +674,7 @@ func (v *Vault) Recover(ctx context.Context) (int, error) {
 	return actions + n, err
 }
 
-func (v *Vault) inodeAt(l disk.Location, inode uint64) (bool, error) {
+func (v *Vault) identityAt(l disk.Location, identity disk.Identity) (bool, error) {
 	tree, p := v.locate(l)
 	info, err := tree.Stat(p)
 	if errors.Is(err, disk.ErrNotFound) || errors.Is(err, disk.ErrSymlink) {
@@ -683,11 +683,11 @@ func (v *Vault) inodeAt(l disk.Location, inode uint64) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return info.Inode == inode, nil
+	return info.Identity.Matches(identity), nil
 }
 
 func (v *Vault) recoverMove(ctx context.Context, m store.PendingMove) error {
-	atDst, err := v.inodeAt(m.To, m.Inode)
+	atDst, err := v.identityAt(m.To, m.Identity)
 	if err != nil {
 		return err
 	}
@@ -699,7 +699,7 @@ func (v *Vault) recoverMove(ctx context.Context, m store.PendingMove) error {
 		slog.Info("recovery committed a move", "from", m.From.String(), "to", m.To.String())
 		return v.db.CommitMove(ctx, m)
 	}
-	atSrc, err := v.inodeAt(m.From, m.Inode)
+	atSrc, err := v.identityAt(m.From, m.Identity)
 	if err != nil {
 		return err
 	}

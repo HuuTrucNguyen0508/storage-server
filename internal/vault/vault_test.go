@@ -213,7 +213,7 @@ func TestPurgeDeletesItemAndShares(t *testing.T) {
 	}
 }
 
-func (e env) journal(t *testing.T, from, to string, inode uint64) {
+func (e env) journal(t *testing.T, from, to string, identity disk.Identity) {
 	t.Helper()
 	f, err := disk.ParseLocation(from)
 	if err != nil {
@@ -223,18 +223,18 @@ func (e env) journal(t *testing.T, from, to string, inode uint64) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.db.BeginMove(context.Background(), f, g, inode); err != nil {
+	if _, err := e.db.BeginMove(context.Background(), f, g, identity); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func (e env) inode(t *testing.T, raw string) uint64 {
+func (e env) identity(t *testing.T, raw string) disk.Identity {
 	t.Helper()
 	info, err := e.d.Files.Stat(path(t, raw))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return info.Inode
+	return info.Identity
 }
 
 func (e env) recoverTwice(t *testing.T) {
@@ -254,8 +254,8 @@ func TestRecoverCommitsWhenTheDestinationHoldsTheInode(t *testing.T) {
 	e := setup(t)
 	e.write(t, "a.txt", "a")
 	e.share(t, "s", "a.txt")
-	inode := e.inode(t, "a.txt")
-	e.journal(t, "live:a.txt", "live:b.txt", inode)
+	identity := e.identity(t, "a.txt")
+	e.journal(t, "live:a.txt", "live:b.txt", identity)
 	if err := os.Rename(filepath.Join(e.root, "a.txt"), filepath.Join(e.root, "b.txt")); err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +269,7 @@ func TestRecoverDropsWhenAStrangerHoldsTheDestination(t *testing.T) {
 	e := setup(t)
 	e.write(t, "a.txt", "a")
 	e.share(t, "s", "a.txt")
-	e.journal(t, "live:a.txt", "live:b.txt", e.inode(t, "a.txt"))
+	e.journal(t, "live:a.txt", "live:b.txt", e.identity(t, "a.txt"))
 	e.write(t, "b.txt", "an unrelated upload")
 	e.recoverTwice(t)
 	if got := e.target(t, "s"); got != "live:a.txt" {
@@ -281,16 +281,13 @@ func TestRecoverDeletesSharesWhenNeitherPathHoldsTheInode(t *testing.T) {
 	e := setup(t)
 	e.write(t, "a.txt", "a")
 	e.share(t, "s", "a.txt")
-	inode := e.inode(t, "a.txt")
-	e.journal(t, "live:a.txt", "live:b.txt", inode)
+	identity := e.identity(t, "a.txt")
+	e.journal(t, "live:a.txt", "live:b.txt", identity)
 	if err := os.Remove(filepath.Join(e.root, "a.txt")); err != nil {
 		t.Fatal(err)
 	}
 	e.write(t, "b.txt", "stranger")
 	e.write(t, "a.txt", "another stranger")
-	if e.inode(t, "a.txt") == inode || e.inode(t, "b.txt") == inode {
-		t.Skip("this filesystem reused the inode at once")
-	}
 	e.recoverTwice(t)
 	if _, err := e.db.ShareByID(context.Background(), "s"); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("share survived: %v", err)
@@ -460,5 +457,33 @@ func TestPurgeRemovesAChildNoPathCanName(t *testing.T) {
 	left, _ := os.ReadDir(filepath.Join(e.root, disk.ReservedDir, "trash"))
 	if len(left) != 0 {
 		t.Fatalf("trash holds %v", left)
+	}
+}
+
+func TestRecoverForgetsUntrustedIdentity(t *testing.T) {
+	for _, atDestination := range []bool{false, true} {
+		for _, unknown := range []bool{false, true} {
+			t.Run(fmt.Sprintf("destination=%t/unknown=%t", atDestination, unknown), func(t *testing.T) {
+				e := setup(t)
+				e.write(t, "a.txt", "unrelated content")
+				e.share(t, "s", "a.txt")
+				identity := e.identity(t, "a.txt")
+				if unknown {
+					identity.Handle = ""
+				} else {
+					identity.Handle += "different-generation"
+				}
+				e.journal(t, "live:a.txt", "live:b.txt", identity)
+				if atDestination {
+					if err := os.Rename(filepath.Join(e.root, "a.txt"), filepath.Join(e.root, "b.txt")); err != nil {
+						t.Fatal(err)
+					}
+				}
+				e.recoverTwice(t)
+				if _, err := e.db.ShareByID(context.Background(), "s"); !errors.Is(err, store.ErrNotFound) {
+					t.Fatalf("share survived: %v", err)
+				}
+			})
+		}
 	}
 }

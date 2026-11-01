@@ -42,13 +42,24 @@ func (k *Kind) UnmarshalText(b []byte) error {
 	return nil
 }
 
+// Identity uses the filesystem's persistent handle, including its inode generation.
+type Identity struct {
+	Inode  uint64
+	Handle string
+}
+
+// An unavailable handle never proves identity, even against another unknown handle.
+func (i Identity) Matches(other Identity) bool {
+	return i.Inode != 0 && i.Handle != "" && i == other
+}
+
 type Info struct {
 	Name    string
 	Kind    Kind
 	Size    int64
 	ModTime time.Time
-	Inode   uint64
-	Dev     uint64
+	Identity
+	Dev uint64
 	// Denied marks a directory Walk could not enter, so a caller can choose
 	// between skipping it and failing.
 	Denied bool
@@ -135,7 +146,7 @@ func (t *Tree) Sub(p Path) (*Tree, error) {
 func (t *Tree) Close() error { return unix.Close(t.fd) }
 
 func infoOf(name string, st *unix.Stat_t) Info {
-	info := Info{Name: name, ModTime: time.Unix(st.Mtim.Unix()), Inode: st.Ino, Dev: st.Dev}
+	info := Info{Name: name, ModTime: time.Unix(st.Mtim.Unix()), Identity: Identity{Inode: st.Ino}, Dev: st.Dev}
 	switch st.Mode & unix.S_IFMT {
 	case unix.S_IFREG:
 		info.Kind, info.Size = KindFile, st.Size
@@ -156,11 +167,7 @@ func infoOf(name string, st *unix.Stat_t) Info {
 func (t *Tree) Stat(p Path) (Info, error) {
 	e, ok := p.Entry()
 	if !ok {
-		var st unix.Stat_t
-		if err := unix.Fstat(t.fd, &st); err != nil {
-			return Info{}, err
-		}
-		return infoOf("", &st), nil
+		return readInfo(t.fd, "")
 	}
 	dir, err := t.openParent(e.Dir)
 	if err != nil {
@@ -171,11 +178,26 @@ func (t *Tree) Stat(p Path) (Info, error) {
 }
 
 func lstatAt(dir int, name string) (Info, error) {
-	var st unix.Stat_t
-	if err := unix.Fstatat(dir, name, &st, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+	fd, err := unix.Openat(dir, name, unix.O_PATH|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
 		return Info{}, translate(err)
 	}
-	return infoOf(name, &st), nil
+	defer unix.Close(fd)
+	return readInfo(fd, name)
+}
+
+func readInfo(fd int, name string) (Info, error) {
+	var st unix.Stat_t
+	if err := unix.Fstat(fd, &st); err != nil {
+		return Info{}, err
+	}
+	info := infoOf(name, &st)
+	// The fd pins the same object across both calls. Mount IDs are deliberately omitted.
+	handle, _, err := unix.NameToHandleAt(fd, "", unix.AT_EMPTY_PATH)
+	if err == nil {
+		info.Handle = fmt.Sprintf("%d:%x", handle.Type(), handle.Bytes())
+	}
+	return info, nil
 }
 
 func readNames(fd int) ([]string, error) {
@@ -316,12 +338,11 @@ func (t *Tree) Open(p Path) (*File, error) {
 		}
 		return nil, translate(err)
 	}
-	var st unix.Stat_t
-	if err := unix.Fstat(fd, &st); err != nil {
+	info, err := readInfo(fd, e.Name.s)
+	if err != nil {
 		unix.Close(fd)
 		return nil, err
 	}
-	info := infoOf(e.Name.s, &st)
 	if info.Kind != KindFile {
 		unix.Close(fd)
 		return nil, ErrNotRegular

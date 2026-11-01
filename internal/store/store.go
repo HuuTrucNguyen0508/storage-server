@@ -91,12 +91,12 @@ type Grant struct {
 	Consumed  bool
 }
 
-// PendingMove is one journaled rename. Inode is the source's, read before the
+// PendingMove is one journaled rename. Identity is the source's, read before the
 // rename, so recovery can tell the moved file from a stranger at either path.
 type PendingMove struct {
 	ID       MoveID
 	From, To disk.Location
-	Inode    uint64
+	Identity disk.Identity
 }
 
 type LimiterState struct {
@@ -409,10 +409,10 @@ func (s *Store) TakeItem(ctx context.Context, g GrantID, sh ShareID, item string
 	})
 }
 
-func (s *Store) BeginMove(ctx context.Context, from, to disk.Location, inode uint64) (MoveID, error) {
+func (s *Store) BeginMove(ctx context.Context, from, to disk.Location, identity disk.Identity) (MoveID, error) {
 	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO pending_moves (from_loc, to_loc, src_inode, started_at) VALUES (?, ?, ?, ?)`,
-		from.String(), to.String(), int64(inode), time.Now().Unix())
+		`INSERT INTO pending_moves (from_loc, to_loc, src_inode, src_handle, started_at) VALUES (?, ?, ?, ?, ?)`,
+		from.String(), to.String(), int64(identity.Inode), identity.Handle, time.Now().Unix())
 	if err != nil {
 		return 0, err
 	}
@@ -450,7 +450,7 @@ func (s *Store) ForgetMove(ctx context.Context, m PendingMove) error {
 }
 
 func (s *Store) PendingMoves(ctx context.Context) ([]PendingMove, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, from_loc, to_loc, src_inode FROM pending_moves ORDER BY id`)
+	rows, err := s.db.QueryContext(ctx, `SELECT id, from_loc, to_loc, src_inode, src_handle FROM pending_moves ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -460,7 +460,7 @@ func (s *Store) PendingMoves(ctx context.Context) ([]PendingMove, error) {
 		var m PendingMove
 		var from, to string
 		var inode int64
-		if err := rows.Scan(&m.ID, &from, &to, &inode); err != nil {
+		if err := rows.Scan(&m.ID, &from, &to, &inode, &m.Identity.Handle); err != nil {
 			return nil, err
 		}
 		if m.From, err = disk.ParseLocation(from); err != nil {
@@ -469,7 +469,7 @@ func (s *Store) PendingMoves(ctx context.Context) ([]PendingMove, error) {
 		if m.To, err = disk.ParseLocation(to); err != nil {
 			return nil, err
 		}
-		m.Inode = uint64(inode)
+		m.Identity.Inode = uint64(inode)
 		out = append(out, m)
 	}
 	return out, rows.Err()

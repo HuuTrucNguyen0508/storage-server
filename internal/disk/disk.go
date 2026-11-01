@@ -54,15 +54,22 @@ func Open(dir string) (*Disk, error) {
 
 	files := &Tree{fd: fd, root: true}
 	reserved := Path{ReservedDir}
+	if err := unix.Mkdirat(fd, ReservedDir, 0o755); err != nil && !errors.Is(err, unix.EEXIST) {
+		unix.Close(fd)
+		return nil, fmt.Errorf("create %s under %s: %w", ReservedDir, dir, translate(err))
+	}
+	if failure := probePrimitives(files, reserved); failure != nil {
+		unix.Close(fd)
+		if errors.Is(failure.cause, ErrSymlink) {
+			return nil, fmt.Errorf("%s under %s: %w", ReservedDir, dir, ErrSymlink)
+		}
+		return nil, refuse(failure.primitive, failure.cause)
+	}
 	for _, p := range []Path{reserved, {ReservedDir + "/trash"}, {ReservedDir + "/spool"}} {
 		if err := files.Mkdir(p); err != nil {
 			unix.Close(fd)
 			return nil, fmt.Errorf("create %s under %s: %w", p, dir, err)
 		}
-	}
-	if err := probeRename(files, reserved); err != nil {
-		unix.Close(fd)
-		return nil, refuse(err.primitive, err.cause)
 	}
 	trash, err := files.Sub(Path{ReservedDir + "/trash"})
 	if err != nil {
@@ -83,30 +90,39 @@ type probeFailure struct {
 	cause     error
 }
 
-// probeRename runs in a scratch directory on the real filesystem. It checks that
-// a taken name is refused, not replaced, because a driver that ignores the flag
-// would make every publish a silent overwrite.
-func probeRename(files *Tree, reserved Path) *probeFailure {
+// probePrimitives runs in a scratch directory on the real filesystem, before anything
+// relies on these calls. It checks that a taken name is refused, not replaced,
+// because a driver that ignores the flag would make every publish a silent
+// overwrite.
+func probePrimitives(files *Tree, reserved Path) *probeFailure {
+	parent, err := files.openDir(reserved)
+	if err != nil {
+		return &probeFailure{"opening the reserved directory", err}
+	}
+	defer unix.Close(parent)
 	const scratch = ".probe"
-	work := reserved.Join(Name{scratch})
-	if err := files.RemoveAll(work); err != nil {
+	if err := removeAt(parent, scratch); err != nil {
 		return &probeFailure{"cleaning the startup probe", err}
 	}
-	if err := files.Mkdir(work); err != nil {
+	if err := unix.Mkdirat(parent, scratch, 0o755); err != nil {
 		return &probeFailure{"creating the startup probe", err}
 	}
-	defer files.RemoveAll(work)
-	for _, name := range []string{"a", "b"} {
-		if err := files.WriteDurable(work.Join(Name{name}), []byte(name)); err != nil {
-			return &probeFailure{"writing the startup probe", err}
-		}
-	}
-	dir, err := files.openDir(work)
+	defer removeAt(parent, scratch)
+	dir, err := openat2(parent, scratch, unix.O_RDONLY|unix.O_DIRECTORY, 0)
 	if err != nil {
 		return &probeFailure{"opening the startup probe", err}
 	}
 	defer unix.Close(dir)
-
+	if err := unix.Fsync(dir); err != nil {
+		return &probeFailure{"directory fsync", err}
+	}
+	for _, name := range []string{"a", "b"} {
+		fd, err := openat2(dir, name, unix.O_WRONLY|unix.O_CREAT, 0o644)
+		if err != nil {
+			return &probeFailure{"creating the startup probe", err}
+		}
+		unix.Close(fd)
+	}
 	switch err := unix.Renameat2(dir, "a", dir, "b", unix.RENAME_NOREPLACE); {
 	case err == nil:
 		return &probeFailure{"renameat2 RENAME_NOREPLACE", errors.New("it replaced an existing file")}
@@ -115,9 +131,6 @@ func probeRename(files *Tree, reserved Path) *probeFailure {
 	}
 	if err := unix.Renameat2(dir, "a", dir, "c", unix.RENAME_NOREPLACE); err != nil {
 		return &probeFailure{"renameat2 RENAME_NOREPLACE", err}
-	}
-	if err := unix.Fsync(dir); err != nil {
-		return &probeFailure{"directory fsync", err}
 	}
 	return nil
 }

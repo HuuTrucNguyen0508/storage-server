@@ -115,9 +115,6 @@ type Stream interface {
 	Interrupt()
 }
 
-// Counters is what the manager reports to /metrics.
-type Counters struct{ BytesReceived func(int64) }
-
 // Publisher is the vault's side of a finished upload.
 type Publisher interface {
 	Publish(ctx context.Context, p vault.Publication) (disk.Path, error)
@@ -125,10 +122,9 @@ type Publisher interface {
 }
 
 type Manager struct {
-	spool    *disk.Tree
-	vault    Publisher
-	minFree  func(need int64) error
-	received func(int64)
+	spool   *disk.Tree
+	vault   Publisher
+	minFree func(need int64) error
 
 	mu      sync.Mutex
 	writers map[ID]*writer
@@ -139,12 +135,8 @@ type writer struct {
 	done   chan struct{}
 }
 
-func New(spool *disk.Tree, v Publisher, minFree func(int64) error, c *Counters) *Manager {
-	m := &Manager{spool: spool, vault: v, minFree: minFree, writers: map[ID]*writer{}, received: func(int64) {}}
-	if c != nil && c.BytesReceived != nil {
-		m.received = c.BytesReceived
-	}
-	return m
+func New(spool *disk.Tree, v Publisher, minFree func(int64) error) *Manager {
+	return &Manager{spool: spool, vault: v, minFree: minFree, writers: map[ID]*writer{}}
 }
 
 // record is meta.json.
@@ -277,17 +269,25 @@ func (m *Manager) statusOf(id ID, rec record) (Status, error) {
 	return st, nil
 }
 
+// interrupt stops a live writer. It calls Interrupt under the lock, and release
+// deletes the writer under the same lock, so Interrupt can only reach a handler
+// that is still running. A late one would poison a keep-alive connection.
+func (m *Manager) interrupt(w *writer) {
+	w.stream.Interrupt()
+	m.mu.Unlock()
+	<-w.done
+}
+
 // stop interrupts any live writer and waits for it to exit.
 func (m *Manager) stop(id ID) {
 	for {
 		m.mu.Lock()
 		w := m.writers[id]
-		m.mu.Unlock()
 		if w == nil {
+			m.mu.Unlock()
 			return
 		}
-		w.stream.Interrupt()
-		<-w.done
+		m.interrupt(w)
 	}
 }
 
@@ -308,9 +308,7 @@ func (m *Manager) claim(id ID, body Stream) (release func()) {
 				close(mine.done)
 			}
 		}
-		m.mu.Unlock()
-		w.stream.Interrupt()
-		<-w.done
+		m.interrupt(w)
 	}
 }
 
@@ -393,7 +391,6 @@ func (m *Manager) copy(w io.Writer, body io.Reader, room int64) (int64, error) {
 				return written, mapNoSpace(err)
 			}
 			written += int64(n)
-			m.received(int64(n))
 			crash.Hit(crash.UploadMidAppend)
 		}
 		if errors.Is(rerr, io.EOF) {

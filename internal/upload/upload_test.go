@@ -63,7 +63,7 @@ func setup(t *testing.T) env {
 	}
 	t.Cleanup(func() { db.Close() })
 	v := vault.New(d, db)
-	return env{New(d.Spool, v, func(int64) error { return nil }, nil), v, d, db, root}
+	return env{New(d.Spool, v, func(int64) error { return nil }), v, d, db, root}
 }
 
 func path(t *testing.T, raw string) disk.Path {

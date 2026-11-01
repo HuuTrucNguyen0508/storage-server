@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -15,12 +16,71 @@ import (
 
 // The disk package is the security boundary only if nothing goes around it.
 // This fails the build when another package imports a syscall layer or calls a
-// path-taking os function. thumbs and store write to the state directory, which
+// path-taking function. thumbs and store write to the state directory, which
 // holds no user input as a path, and live in files listed here.
 var mayTouchOS = map[string]bool{"internal/disk": true, "internal/store": true}
 var stateDirFile = map[string]bool{"internal/media/thumbs.go": true}
 
-var pathFuncs = regexp.MustCompile(`^(Open|OpenFile|OpenRoot|OpenInRoot|Create|CreateTemp|Rename|Remove|RemoveAll|Mkdir|MkdirAll|MkdirTemp|ReadFile|WriteFile|ReadDir|Stat|Lstat|Symlink|Link|Readlink|Chmod|Chown|Truncate|DirFS)$`)
+// pathFuncs lists, per package, what takes a path string. The key is the import
+// path, so a renamed import cannot hide a call.
+var pathFuncs = map[string]*regexp.Regexp{
+	"os":            regexp.MustCompile(`^(Open|OpenFile|OpenRoot|OpenInRoot|Create|CreateTemp|Rename|Remove|RemoveAll|Mkdir|MkdirAll|MkdirTemp|ReadFile|WriteFile|ReadDir|Stat|Lstat|Symlink|Link|Readlink|Chmod|Chown|Lchown|Chtimes|Truncate|DirFS|CopyFS)$`),
+	"io/ioutil":     regexp.MustCompile(`^(ReadFile|WriteFile|ReadDir|TempFile|TempDir)$`),
+	"path/filepath": regexp.MustCompile(`^(Walk|WalkDir|Glob|EvalSymlinks)$`),
+	"net/http":      regexp.MustCompile(`^(ServeFile|Dir)$`),
+}
+
+// violations scans one file. It resolves each import to its real path before
+// looking at a call, and it treats a dot import of a watched package as a
+// violation, because no selector would be left to inspect.
+func violations(filename string, src any, syscallAllowed bool) ([]string, error) {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, filename, src, 0)
+	if err != nil {
+		return nil, err
+	}
+	var found []string
+	watched := map[string]string{}
+	for _, imp := range f.Imports {
+		path, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			return nil, err
+		}
+		if path == "syscall" || strings.HasPrefix(path, "golang.org/x/sys") {
+			if !(syscallAllowed && path == "syscall") {
+				found = append(found, fmt.Sprintf("%s imports %s", filename, path))
+			}
+			continue
+		}
+		if _, ok := pathFuncs[path]; !ok {
+			continue
+		}
+		local := path[strings.LastIndexByte(path, '/')+1:]
+		if imp.Name != nil {
+			local = imp.Name.Name
+		}
+		if local == "." {
+			found = append(found, fmt.Sprintf("%s dot-imports %s", filename, path))
+			continue
+		}
+		watched[local] = path
+	}
+	ast.Inspect(f, func(n ast.Node) bool {
+		sel, ok := n.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		id, ok := sel.X.(*ast.Ident)
+		if !ok || id.Obj != nil {
+			return true
+		}
+		if path, ok := watched[id.Name]; ok && pathFuncs[path].MatchString(sel.Sel.Name) {
+			found = append(found, fmt.Sprintf("%s: %s.%s bypasses internal/disk", fset.Position(sel.Pos()), path, sel.Sel.Name))
+		}
+		return true
+	})
+	return found, nil
+}
 
 func TestOnlyDiskTouchesStorage(t *testing.T) {
 	root := filepath.Join("..", "..")
@@ -41,44 +101,55 @@ func TestOnlyDiskTouchesStorage(t *testing.T) {
 				continue
 			}
 			checked++
-			fset := token.NewFileSet()
-			f, err := parser.ParseFile(fset, name, nil, 0)
+			found, err := violations(name, nil, strings.HasPrefix(rel, "cmd/"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			osAlias := ""
-			for _, imp := range f.Imports {
-				path, _ := strconv.Unquote(imp.Path.Value)
-				switch {
-				case path == "syscall" && strings.HasPrefix(rel, "cmd/"):
-				case path == "syscall", strings.HasPrefix(path, "golang.org/x/sys"):
-					t.Errorf("%s imports %s", frel, path)
-				case path == "os":
-					osAlias = "os"
-				}
+			for _, v := range found {
+				t.Error(v)
 			}
-			if osAlias == "" {
-				continue
-			}
-			ast.Inspect(f, func(n ast.Node) bool {
-				sel, ok := n.(*ast.SelectorExpr)
-				if !ok {
-					return true
-				}
-				if id, ok := sel.X.(*ast.Ident); ok && id.Name == osAlias && pathFuncs.MatchString(sel.Sel.Name) {
-					t.Errorf("%s: os.%s bypasses internal/disk", fset.Position(sel.Pos()), sel.Sel.Name)
-				}
-				return true
-			})
 		}
 	}
-	if checked < 8 {
+	if checked < 15 {
 		t.Fatalf("checked only %d files, the walk is broken", checked)
 	}
 }
 
+func TestGuardSeesThroughAliases(t *testing.T) {
+	for name, c := range map[string]struct {
+		src  string
+		want string
+	}{
+		"plain":    {"package p; import \"os\"; var _, _ = os.Open(\"x\")", "os.Open bypasses"},
+		"renamed":  {"package p; import o \"os\"; var _, _ = o.Open(\"x\")", "os.Open bypasses"},
+		"value":    {"package p; import o \"os\"; var f = o.ReadFile", "os.ReadFile bypasses"},
+		"dot":      {"package p; import . \"os\"; var _, _ = Open(\"x\")", "dot-imports os"},
+		"ioutil":   {"package p; import q \"io/ioutil\"; var _, _ = q.ReadFile(\"x\")", "io/ioutil.ReadFile bypasses"},
+		"filepath": {"package p; import \"path/filepath\"; var _ = filepath.WalkDir", "path/filepath.WalkDir bypasses"},
+		"http":     {"package p; import h \"net/http\"; var _ = h.ServeFile", "net/http.ServeFile bypasses"},
+		"syscall":  {"package p; import s \"syscall\"; var _ = s.Open", "imports syscall"},
+		"x/sys":    {"package p; import u \"golang.org/x/sys/unix\"; var _ = u.Open", "imports golang.org/x/sys/unix"},
+	} {
+		found, err := violations(name+".go", c.src, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(found) != 1 || !strings.Contains(found[0], c.want) {
+			t.Errorf("%s: got %v, want one finding with %q", name, found, c.want)
+		}
+	}
+	clean := "package p; import \"os\"; var _ = os.Getenv(\"x\")"
+	if found, err := violations("clean.go", clean, false); err != nil || len(found) != 0 {
+		t.Errorf("clean file: %v, %v", found, err)
+	}
+	shadowed := "package p; import \"os\"; type t struct{}; func (t) Open() {}; func f(os t) { os.Open() }; var _ = os.Getenv"
+	if found, err := violations("shadow.go", shadowed, false); err != nil || len(found) != 0 {
+		t.Errorf("shadowed name: %v, %v", found, err)
+	}
+}
+
 func TestDocumentedRoutesMatchTheTable(t *testing.T) {
-	doc, err := os.ReadFile(filepath.Join("..", "..", "API.md"))
+	doc, err := os.ReadFile(filepath.Join("..", "..", "docs", "design", "API.md"))
 	if err != nil {
 		t.Fatal(err)
 	}

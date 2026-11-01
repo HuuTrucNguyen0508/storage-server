@@ -50,6 +50,7 @@ var routes = []route{
 	{method: "POST", path: "/api/setup", gate: Public, serve: (*API).setup, ownerOnlyListener: true},
 	{method: "POST", path: "/api/login", gate: Public, serve: (*API).login, ownerOnlyListener: true},
 	{method: "POST", path: "/api/logout", gate: Owner, serve: (*API).logout},
+	{method: "POST", path: "/api/account/password", gate: Owner, serve: (*API).changePassword},
 	{method: "GET", path: "/api/sessions", gate: Owner, serve: (*API).sessions},
 	{method: "DELETE", path: "/api/sessions/{id}", gate: Owner, serve: (*API).revokeSession},
 
@@ -63,7 +64,9 @@ var routes = []route{
 	{method: "POST", path: "/api/files/zip", gate: Owner, serve: (*API).zip, stream: true},
 	{method: "GET", path: "/api/search", gate: Owner, serve: (*API).search, stream: true},
 	{method: "GET", path: "/api/trash", gate: Owner, serve: (*API).listTrash},
+	{method: "DELETE", path: "/api/trash", gate: Owner, serve: (*API).emptyTrash},
 	{method: "POST", path: "/api/trash/{id}/restore", gate: Owner, serve: (*API).restore},
+	{method: "DELETE", path: "/api/trash/{id}", gate: Owner, serve: (*API).purge},
 
 	{method: "GET", path: "/api/shares", gate: Owner, serve: (*API).listShares},
 	{method: "POST", path: "/api/shares", gate: Owner, serve: (*API).createShare},

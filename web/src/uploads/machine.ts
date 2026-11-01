@@ -73,7 +73,9 @@ function advance(item: UploadItem, event: UploadEvent): UploadItem {
         state: { tag: "queued", stored: 0 },
       };
     case "offsetKnown":
-      return state.tag === "needs-file" ? { ...item, state: { ...state, stored: event.stored } } : item;
+      return state.tag === "needs-file" || state.tag === "failed"
+        ? { ...item, state: { tag: "needs-file", stored: event.stored } }
+        : item;
     case "finished":
       return state.tag === "done" ? item : { ...item, state: { tag: "done", storedPath: event.storedPath } };
     case "failed":

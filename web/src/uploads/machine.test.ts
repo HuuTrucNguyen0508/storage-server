@@ -85,6 +85,12 @@ describe("after a reload", () => {
     expect(items[0]?.state).toEqual({ tag: "needs-file", stored: 800 });
   });
 
+  it("a failed upload with no file asks for its file once the server reports a partial offset", () => {
+    const failed = uploadsReducer(restorable(before), { type: "failed", id, reason: "The server refused this upload. Retry to publish it" });
+    const items = uploadsReducer(failed, { type: "offsetKnown", id, stored: 800 });
+    expect(items[0]?.state).toEqual({ tag: "needs-file", stored: 800 });
+  });
+
   it("the same file continues from the offset", () => {
     const items = uploadsReducer(restorable(before), { type: "filePicked", id, same: true, name: "a.mov", size: 1000, lastModified: 5 });
     expect(items[0]?.state).toEqual({ tag: "queued", stored: 710 });

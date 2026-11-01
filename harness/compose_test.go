@@ -63,6 +63,10 @@ func TestCompose(t *testing.T) {
 		if out, err := compose("--profile", "monitoring", "--profile", "tailscale", "--profile", "pdf", "down", "-v", "--rmi", "local", "--remove-orphans"); err != nil {
 			t.Errorf("cleanup: %v\n%s", err, out)
 		}
+		// Compose leaves a locally built image behind even with --rmi local.
+		if out, err := exec.Command("docker", "image", "rm", project+"-app").CombinedOutput(); err != nil {
+			t.Errorf("image cleanup: %v\n%s", err, out)
+		}
 	})
 	var cfg struct {
 		Services map[string]struct {

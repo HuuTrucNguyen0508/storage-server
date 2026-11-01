@@ -398,7 +398,7 @@ func (t *Tree) Mkdir(p Path) error {
 		}
 		next, err := openat2(fd, seg, unix.O_RDONLY|unix.O_DIRECTORY, 0)
 		if err == nil && created {
-			err = unix.Fchmod(next, 0o755)
+			err = publishMode(next)
 			if err == nil {
 				err = unix.Fsync(fd)
 			}
@@ -615,4 +615,14 @@ func Move(src *Tree, from Entry, dst *Tree, to Entry) (renamed bool, err error) 
 		return true, fmt.Errorf("%w: %w", ErrNotDurable, err)
 	}
 	return true, nil
+}
+
+// publishMode opens a new folder past the process umask and keeps a setgid bit
+// inherited from its parent, which a plain 0755 would clear.
+func publishMode(fd int) error {
+	var st unix.Stat_t
+	if err := unix.Fstat(fd, &st); err != nil {
+		return err
+	}
+	return unix.Fchmod(fd, st.Mode&0o7777|0o755)
 }

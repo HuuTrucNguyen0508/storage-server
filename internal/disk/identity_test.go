@@ -60,3 +60,33 @@ func TestMetadataWithoutPersistentHandle(t *testing.T) {
 		t.Fatalf("unknown identity trusted: %+v", info)
 	}
 }
+
+func TestMkdirKeepsInheritedSetgid(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Chmod(root, 0o775|os.ModeSetgid); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(root)
+	if err != nil || info.Mode()&os.ModeSetgid == 0 {
+		t.Skipf("filesystem does not keep setgid here: %v", err)
+	}
+	d, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	p, err := ParsePath("shared")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Files.Mkdir(p); err != nil {
+		t.Fatal(err)
+	}
+	made, err := os.Stat(filepath.Join(root, "shared"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := made.Mode()&(os.ModeSetgid|os.ModePerm), os.ModeSetgid|0o755; got != want {
+		t.Fatalf("folder mode = %v, want %v", got, want)
+	}
+}

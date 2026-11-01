@@ -116,7 +116,7 @@ func (v *Vault) relocate(ctx context.Context, from, to disk.Location) error {
 	} else if !errors.Is(err, disk.ErrNotFound) {
 		return err
 	}
-	info, err := srcTree.Stat(srcPath)
+	info, err := srcTree.StatIdentity(srcPath)
 	if err != nil {
 		return err
 	}
@@ -676,7 +676,7 @@ func (v *Vault) Recover(ctx context.Context) (int, error) {
 
 func (v *Vault) identityAt(l disk.Location, identity disk.Identity) (bool, error) {
 	tree, p := v.locate(l)
-	info, err := tree.Stat(p)
+	info, err := tree.StatIdentity(p)
 	if errors.Is(err, disk.ErrNotFound) || errors.Is(err, disk.ErrSymlink) {
 		return false, nil
 	}

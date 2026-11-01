@@ -24,10 +24,10 @@ func TestIdentityAcrossRenameAndReplacement(t *testing.T) {
 	p, _ := ParsePath("identity.txt")
 	q, _ := ParsePath("renamed.txt")
 	must(t, os.WriteFile(filepath.Join(root, p.String()), []byte("source"), 0600))
-	original, err := d.Files.Stat(p)
+	original, err := d.Files.StatIdentity(p)
 	must(t, err)
 	must(t, os.Rename(filepath.Join(root, p.String()), filepath.Join(root, q.String())))
-	moved, err := d.Files.Stat(q)
+	moved, err := d.Files.StatIdentity(q)
 	must(t, err)
 	if original.Handle != "" && !original.Identity.Matches(moved.Identity) {
 		t.Fatal("rename changed identity")
@@ -37,7 +37,7 @@ func TestIdentityAcrossRenameAndReplacement(t *testing.T) {
 	for range 256 {
 		must(t, os.Remove(filepath.Join(root, q.String())))
 		must(t, os.WriteFile(filepath.Join(root, q.String()), []byte("replacement"), 0600))
-		next, err := d.Files.Stat(q)
+		next, err := d.Files.StatIdentity(q)
 		must(t, err)
 		if previous.Matches(next.Identity) {
 			t.Fatalf("replacement captured identity: %+v", next.Identity)
@@ -54,7 +54,7 @@ func TestMetadataWithoutPersistentHandle(t *testing.T) {
 	fd, err := unix.Open("/proc/self/stat", unix.O_PATH|unix.O_CLOEXEC, 0)
 	must(t, err)
 	defer unix.Close(fd)
-	info, err := readInfo(fd, "stat")
+	info, err := readIdentityInfo(fd, "stat")
 	must(t, err)
 	if info.Inode == 0 || info.Handle != "" || info.Identity.Matches(info.Identity) {
 		t.Fatalf("unknown identity trusted: %+v", info)

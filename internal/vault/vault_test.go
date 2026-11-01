@@ -230,7 +230,7 @@ func (e env) journal(t *testing.T, from, to string, identity disk.Identity) {
 
 func (e env) identity(t *testing.T, raw string) disk.Identity {
 	t.Helper()
-	info, err := e.d.Files.Stat(path(t, raw))
+	info, err := e.d.Files.StatIdentity(path(t, raw))
 	if err != nil {
 		t.Fatal(err)
 	}

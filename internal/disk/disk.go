@@ -3,6 +3,7 @@ package disk
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 
 	"golang.org/x/sys/unix"
@@ -50,6 +51,9 @@ func Open(dir string) (*Disk, error) {
 		return nil, refuse("openat2", err)
 	}
 	unix.Close(probe)
+	if _, _, err := unix.NameToHandleAt(fd, "", unix.AT_EMPTY_PATH); err != nil {
+		slog.Warn("persistent filesystem handles unavailable; crash recovery during a move deletes affected links", "root", dir, "err", err)
+	}
 
 	files := &Tree{fd: fd, root: true}
 	reserved := Path{ReservedDir}

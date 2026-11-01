@@ -178,12 +178,32 @@ func (t *Tree) Stat(p Path) (Info, error) {
 }
 
 func lstatAt(dir int, name string) (Info, error) {
-	fd, err := unix.Openat(dir, name, unix.O_PATH|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	var st unix.Stat_t
+	if err := unix.Fstatat(dir, name, &st, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+		return Info{}, translate(err)
+	}
+	return infoOf(name, &st), nil
+}
+
+// StatIdentity pins the object while reading its persistent recovery identity.
+func (t *Tree) StatIdentity(p Path) (Info, error) {
+	fd, err := unix.Openat(t.fd, ".", unix.O_PATH|unix.O_CLOEXEC, 0)
+	name := ""
+	if e, ok := p.Entry(); ok {
+		unix.Close(fd)
+		parent, perr := t.openParent(e.Dir)
+		if perr != nil {
+			return Info{}, perr
+		}
+		defer unix.Close(parent)
+		fd, err = unix.Openat(parent, e.Name.s, unix.O_PATH|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+		name = e.Name.s
+	}
 	if err != nil {
 		return Info{}, translate(err)
 	}
 	defer unix.Close(fd)
-	return readInfo(fd, name)
+	return readIdentityInfo(fd, name)
 }
 
 func readInfo(fd int, name string) (Info, error) {
@@ -191,7 +211,14 @@ func readInfo(fd int, name string) (Info, error) {
 	if err := unix.Fstat(fd, &st); err != nil {
 		return Info{}, err
 	}
-	info := infoOf(name, &st)
+	return infoOf(name, &st), nil
+}
+
+func readIdentityInfo(fd int, name string) (Info, error) {
+	info, err := readInfo(fd, name)
+	if err != nil {
+		return Info{}, err
+	}
 	// The fd pins the same object across both calls. Mount IDs are deliberately omitted.
 	handle, _, err := unix.NameToHandleAt(fd, "", unix.AT_EMPTY_PATH)
 	if err == nil {

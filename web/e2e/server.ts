@@ -27,22 +27,22 @@ export interface Server {
   stop: () => Promise<void>;
 }
 
-export async function startServer(): Promise<Server> {
+export async function startServer(host = "127.0.0.1"): Promise<Server> {
   const dir = mkdtempSync(join(cacheDir, "run-"));
   const root = join(dir, "root");
   const state = join(dir, "state");
   mkdirSync(root);
   mkdirSync(state);
   const ports = { owner: await freePort(), guest: await freePort(), ops: await freePort() };
-  const owner = `http://127.0.0.1:${ports.owner}`;
-  const guest = `http://127.0.0.1:${ports.guest}`;
+  const owner = `http://${host}:${ports.owner}`;
+  const guest = `http://${host}:${ports.guest}`;
   const proc: ChildProcess = spawn(binaryPath, [], {
     env: {
       ...process.env,
       ROOT_DIR: root,
       STATE_DIR: state,
-      OWNER_ADDR: `127.0.0.1:${ports.owner}`,
-      GUEST_ADDR: `127.0.0.1:${ports.guest}`,
+      OWNER_ADDR: `${host}:${ports.owner}`,
+      GUEST_ADDR: `${host}:${ports.guest}`,
       OPS_ADDR: `127.0.0.1:${ports.ops}`,
       PUBLIC_URL: owner,
       SHARE_URL: guest,

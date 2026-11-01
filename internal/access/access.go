@@ -265,11 +265,14 @@ func (s *Service) attempt(ctx context.Context, key string, fail error, verify fu
 		return err
 	}
 	if ok {
-		return s.db.ClearLimiter(ctx, key)
+		return s.db.ClearLimiter(context.WithoutCancel(ctx), key)
 	}
 	st.Failures++
 	st.LockedUntil = time.Now().Add(lockFor(st.Failures))
-	return errors.Join(fail, s.db.SetLimiter(ctx, key, st))
+	if err := s.db.SetLimiter(context.WithoutCancel(ctx), key, st); err != nil {
+		return err
+	}
+	return fail
 }
 
 // Setup claims the server. It compares the code in constant time, goes through

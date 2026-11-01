@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -371,5 +372,42 @@ func TestConcurrentAttemptsRespectLockout(t *testing.T) {
 	}
 	if bad != 5 || locked != 7 {
 		t.Fatalf("concurrent attempts: verified=%d rate_limited=%d, want 5 and 7", bad, locked)
+	}
+}
+
+func TestAttemptCancellationDuringVerification(t *testing.T) {
+	for _, correct := range []bool{false, true} {
+		t.Run(fmt.Sprint(correct), func(t *testing.T) {
+			e := setup(t)
+			ctx, cancel := context.WithCancel(context.Background())
+			err := e.s.attempt(ctx, "cancel-test", ErrBadCredentials, func() (bool, error) { cancel(); return correct, nil })
+			if correct && err != nil {
+				t.Fatalf("correct password returned store error: %v", err)
+			}
+			if !correct && !errors.Is(err, ErrBadCredentials) {
+				t.Fatalf("wrong password: %v", err)
+			}
+			st, err := e.db.Limiter(context.Background(), "cancel-test")
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := 1
+			if correct {
+				want = 0
+			}
+			if st.Failures != want {
+				t.Fatalf("recorded failures = %d, want %d", st.Failures, want)
+			}
+		})
+	}
+}
+
+func TestAttemptStoreFailureDoesNotRevealCredentials(t *testing.T) {
+	for _, correct := range []bool{false, true} {
+		e := setup(t)
+		err := e.s.attempt(context.Background(), "closed-store", ErrBadCredentials, func() (bool, error) { e.db.Close(); return correct, nil })
+		if err == nil || errors.Is(err, ErrBadCredentials) {
+			t.Fatalf("credential answer escaped failed persistence: %v", err)
+		}
 	}
 }

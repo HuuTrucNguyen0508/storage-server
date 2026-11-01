@@ -78,8 +78,35 @@ func (a *API) mux(keep func(route) bool, s metrics.Surface) http.Handler {
 	cop.SetDenyHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a.fail(w, r, requestError{http.StatusForbidden, "cross_origin", "cross-origin request refused"})
 	}))
-	return cop.Handler(m)
+	handler := cop.Handler(m)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			w = &apiWriter{ResponseWriter: w}
+			w.Header().Set("Cache-Control", "no-store")
+		}
+		handler.ServeHTTP(w, r)
+	})
 }
+
+// ServeContent removes cache headers on errors, so enforce the policy at commit.
+type apiWriter struct{ http.ResponseWriter }
+
+func (w *apiWriter) WriteHeader(status int) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.ResponseWriter.WriteHeader(status)
+}
+func (w *apiWriter) Write(p []byte) (int, error) {
+	w.Header().Set("Cache-Control", "no-store")
+	return w.ResponseWriter.Write(p)
+}
+func (w *apiWriter) ReadFrom(r io.Reader) (int64, error) {
+	w.Header().Set("Cache-Control", "no-store")
+	if rf, ok := w.ResponseWriter.(io.ReaderFrom); ok {
+		return rf.ReadFrom(r)
+	}
+	return io.Copy(struct{ io.Writer }{w.ResponseWriter}, r)
+}
+func (w *apiWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 // gated is the only way to reach a handler. It builds the call, so a handler has
 // no way to run without the check its route declares.
@@ -260,6 +287,7 @@ func (a *API) fail(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if v != nil {

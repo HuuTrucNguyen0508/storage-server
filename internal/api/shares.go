@@ -11,6 +11,7 @@ import (
 
 	"storage-server/internal/access"
 	"storage-server/internal/disk"
+	"storage-server/internal/media"
 	"storage-server/internal/store"
 )
 
@@ -114,12 +115,13 @@ func (a *API) revokeShare(w http.ResponseWriter, r *http.Request, c *call) {
 }
 
 type factsJSON struct {
-	Kind             string     `json:"kind"`
-	Name             string     `json:"name"`
-	IsFolder         bool       `json:"isFolder"`
-	Size             *int64     `json:"size"`
-	PasswordRequired bool       `json:"passwordRequired"`
-	ExpiresAt        *time.Time `json:"expiresAt"`
+	Preview          media.Class `json:"preview"`
+	Kind             string      `json:"kind"`
+	Name             string      `json:"name"`
+	IsFolder         bool        `json:"isFolder"`
+	Size             *int64      `json:"size"`
+	PasswordRequired bool        `json:"passwordRequired"`
+	ExpiresAt        *time.Time  `json:"expiresAt"`
 }
 
 // folderSize is what a guest's Download all button names. It has a budget, since
@@ -159,6 +161,7 @@ func (a *API) describe(w http.ResponseWriter, r *http.Request, c *call) {
 		defer opened.Close()
 		if opened.File != nil {
 			facts.Size = &opened.File.Info.Size
+			facts.Preview = media.ClassOf(opened.File.Info.Name)
 		} else {
 			facts.IsFolder = true
 			facts.Size = folderSize(r.Context(), opened.Dir)

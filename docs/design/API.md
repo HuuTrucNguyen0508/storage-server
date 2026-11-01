@@ -53,7 +53,7 @@ Every Guest request can also return 404 `not_found` for an unknown or revoked to
 | `GET /api/files/content` | Owner | `?path=&download`, Range, If-Range | 200 or 206 bytes, headers below | 400 `invalid_path`, 404 `not_found`, 416, 422 `symlink_refused`, 422 `not_regular` |
 | `GET /api/files/thumb` | Owner | `?path=&w=` where `w` is 256 or 1024 | 200 `image/jpeg` | 400 `invalid_path`, 400 `invalid_width`, 404 `not_found`, 415 `no_thumbnail`, 422 `symlink_refused`, 422 `not_regular` |
 | `POST /api/files/zip` | Owner | Form, repeated `path=`, so a large selection fits and a browser can post it to a download | 200 `application/zip` streamed, connection aborted on a mid-stream error. Names are unique in the archive, so a selection of `a/x` and `b/x` gives `x` and `x (1)` | 400 `invalid_path` also for no paths, 404 `not_found`, 422 `symlink_refused` for a path through a symlink. A selected symlink is skipped |
-| `GET /api/search` | Owner | `?q=&path=`, name substring, case-insensitive, spaces mean AND | 200 NDJSON, one `{path, name, kind, size, modTime}` per line, last line `{done: true, truncated}`, cap 1000 | 400 `invalid_path`, 400 `query_required`, 404 `not_found`, 422 `not_a_directory`, 422 `symlink_refused` |
+| `GET /api/search` | Owner | `?q=&path=`, name substring, case-insensitive, spaces mean AND | 200 NDJSON, one `{path, name, kind, size, modTime, preview}` per line, last line `{done: true, truncated}`, cap 1000 | 400 `invalid_path`, 400 `query_required`, 404 `not_found`, 422 `not_a_directory`, 422 `symlink_refused` |
 | `GET /api/trash` | Owner | | 200 `[{id, name, originalPath, kind, deletedAt, purgeAt}]` | |
 | `DELETE /api/trash` | Owner | | 204, every item is gone for good and shares into them are deleted | |
 | `POST /api/trash/{id}/restore` | Owner | | 200 `{path}`, a taken path gets a ` (n)` suffix, missing parents are recreated, shares resume and follow | 404 `not_found`, 409 `cross_device`, 409 `exists` when a file holds a parent's name, 422 `symlink_refused` |
@@ -65,7 +65,7 @@ Every Guest request can also return 404 `not_found` for an unknown or revoked to
 | `HEAD /api/uploads/{id}` | Owner | `Tus-Resumable` | 200 `Upload-Offset`, `Upload-Length`, `Cache-Control: no-store`, and `X-Stored-Path` once published. Stops a live writer first, so the offset is exact | 404 `not_found` |
 | `PATCH /api/uploads/{id}` | Owner | `Content-Type: application/offset+octet-stream`, `Upload-Offset`, body | 204 `Upload-Offset`, plus `X-Stored-Path` on the last byte. Bytes stored before a disconnect are kept. Every error also carries `Upload-Offset` when the upload exists | 400 `invalid_offset`, 404 `not_found`, 408 `client_stopped`, 409 `offset_mismatch`, 409 `exists`, 412 `tus_version`, 413 `too_long`, 415 `content_type`, 422 `symlink_refused`, 507 `insufficient_space` |
 | `DELETE /api/uploads/{id}` | Owner | `Tus-Resumable` | 204 | 404 `not_found` |
-| `GET /api/public/{token}` | Link facts | | 200 `{kind, name, isFolder, size, passwordRequired, expiresAt}`. Safe for a link preview bot. `size` is the recursive byte total on a folder link, and null when that took over 2 seconds. On a drop link `size` is null, so it says nothing about the folder. `name` is empty when the storage root itself is shared | 404 `not_found`, 410 |
+| `GET /api/public/{token}` | Link facts | | 200 `{kind, name, isFolder, size, passwordRequired, expiresAt, preview}`. Safe for a link preview bot. `size` is the recursive byte total on a folder link, and null when that took over 2 seconds. On a drop link `size` is null, so it says nothing about the folder. `name` is empty when the storage root itself is shared | 404 `not_found`, 410 |
 | `POST /api/public/{token}/open` | Guest open | `{password?}` | 204, grant cookie scoped to this token's path, 12 hours. The body may be empty on a link with no password. A drop link needs this too | 401 `bad_credentials`, 404 `not_found`, 410, 429 `rate_limited` with Retry-After |
 | `GET /api/public/{token}/files` | Guest browse | `?path=`, folder links only | 200 `{path, entries: [Entry]}` | As `GET /api/files`, 404 `not_found` on a file link |
 | `GET /api/public/{token}/thumb` | Guest browse | `?path=&w=`. A file link ignores `path`. Spends no use | 200 `image/jpeg` | As `GET /api/files/thumb` |
@@ -104,7 +104,7 @@ A zero-length upload publishes during POST. An owner's folder upload is one uplo
 | `X-Content-Type-Options` | `nosniff` |
 | `Cross-Origin-Resource-Policy` | `same-origin` |
 | `Referrer-Policy` | `no-referrer`, also on the `/s/{token}` shell, so a token never leaks through Referer. |
-| `Cache-Control` | `private, no-cache` |
+| `Cache-Control` | `no-store` |
 | `Accept-Ranges`, `ETag`, `Last-Modified` | From `http.ServeContent` and fstat. The ETag is strong, so it works in `If-Range`. |
 
 ## Headers on the app shell
@@ -114,3 +114,9 @@ The frontend at `/` and `/s/{token}` is served with `Referrer-Policy: no-referre
 ```
 default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'
 ```
+
+## API cache and preview metadata
+
+Every JSON response and every error under `/api/` carries `Cache-Control: no-store`, including unavailable links and thumbnail failures. Stored-byte responses also use `no-store`.
+
+Search hits include `preview`, using the same extension policy as directory entries. `GET /api/public/{token}` includes `preview` for file links. Values are `image`, `video`, `audio`, `pdf`, `text`, or the empty string when no preview applies, including folder and drop links. Describing a link spends no download use.

@@ -292,11 +292,12 @@ func (a *API) zip(w http.ResponseWriter, r *http.Request, c *call) {
 }
 
 type hitJSON struct {
-	Path    string    `json:"path"`
-	Name    string    `json:"name"`
-	Kind    disk.Kind `json:"kind"`
-	Size    int64     `json:"size"`
-	ModTime time.Time `json:"modTime"`
+	Preview media.Class `json:"preview"`
+	Path    string      `json:"path"`
+	Name    string      `json:"name"`
+	Kind    disk.Kind   `json:"kind"`
+	Size    int64       `json:"size"`
+	ModTime time.Time   `json:"modTime"`
 }
 
 var errSearchFull = errors.New("search is full")
@@ -330,7 +331,7 @@ func (a *API) search(w http.ResponseWriter, r *http.Request, c *call) {
 			return errSearchFull
 		}
 		hits++
-		if err := enc.Encode(hitJSON{p.String(), i.Name, i.Kind, i.Size, i.ModTime}); err != nil {
+		if err := enc.Encode(hitJSON{entryOf(i).Preview, p.String(), i.Name, i.Kind, i.Size, i.ModTime}); err != nil {
 			return err
 		}
 		return rc.Flush()

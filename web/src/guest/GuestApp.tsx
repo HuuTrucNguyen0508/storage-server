@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent, type FormEvent } from "react";
-import { ApiError, guest, postDownload, previewKindAt, type Entry, type GuestApi, type LinkFacts, type PreviewKind } from "../api";
+import { ApiError, guest, postDownload, previewKindAt, type Entry, type GuestApi, type LinkFacts } from "../api";
 import { formatBytes, plural, untilPhrase } from "../format";
 import { baseName, crumbs, displayOrder, flatName, join, shareHref } from "../paths";
 import { Preview, type PreviewItem } from "../preview/Preview";
@@ -224,19 +224,11 @@ function FolderPage({ facts, token, api }: { facts: LinkFacts; token: string; ap
   );
 }
 
-function FilePage({ facts, api, token }: { facts: LinkFacts; api: GuestApi; token: string }) {
+function FilePage({ facts, api }: { facts: LinkFacts; api: GuestApi }) {
   useTitle(facts.name);
   const now = useNow();
-  const [kind, setKind] = useState<PreviewKind | null | "unknown">("unknown");
-  const [gone, setGone] = useState(false);
+  const kind = facts.preview;
   const [previewing, setPreviewing] = useState(false);
-  useEffect(() => {
-    previewKindAt(api.source.contentUrl("")).then(setKind, (err: unknown) => {
-      if (err instanceof ApiError && err.status === 410) setGone(true);
-      setKind(null);
-    });
-  }, [api]);
-  if (gone) return <Broken token={token} />;
   const size = facts.size ?? 0;
   return (
     <main className="guest">
@@ -250,14 +242,14 @@ function FilePage({ facts, api, token }: { facts: LinkFacts; api: GuestApi; toke
           <Icon name="download" />
           Download, {formatBytes(size)}
         </a>
-        {kind !== null && kind !== "unknown" && (
+        {kind !== null && (
           <button className="btn" type="button" onClick={() => setPreviewing(true)}>
             <Icon name="open" />
             Preview
           </button>
         )}
       </div>
-      {previewing && kind !== null && kind !== "unknown" && (
+      {previewing && kind !== null && (
         <Preview items={[{ path: "", name: facts.name, size, kind }]} index={0} source={api.source} onIndex={() => {}} onClose={() => setPreviewing(false)} />
       )}
     </main>
@@ -468,7 +460,7 @@ export function GuestApp({ token }: { token: string }) {
     case "open":
       if (stage.facts.kind === "drop") return <DropPage facts={stage.facts} token={token} api={api} />;
       if (stage.facts.isFolder) return <FolderPage facts={stage.facts} token={token} api={api} />;
-      return <FilePage facts={stage.facts} token={token} api={api} />;
+      return <FilePage facts={stage.facts} api={api} />;
   }
 }
 

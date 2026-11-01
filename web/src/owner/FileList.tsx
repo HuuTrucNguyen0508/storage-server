@@ -13,7 +13,6 @@ export interface Row {
   kind: EntryKind;
   size: number;
   modTime: Date;
-  /** null is "not previewable" in a listing, and "not known yet" for a search hit. */
   preview: PreviewKind | null;
   where: string | null;
 }

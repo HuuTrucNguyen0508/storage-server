@@ -130,7 +130,7 @@ describe("per-item results", () => {
 
 describe("search", () => {
   it("hands over hits as they stream and reports truncation", async () => {
-    const hit = { path: "a/b", name: "b", kind: "file", size: 1, modTime: "2026-01-01T00:00:00Z" };
+    const hit = { preview: "text", path: "a/b", name: "b", kind: "file", size: 1, modTime: "2026-01-01T00:00:00Z" };
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
@@ -171,9 +171,9 @@ describe("readNdjson", () => {
 
 describe("guest", () => {
   it("speaks only under the public path of its token", async () => {
-    respond(200, { kind: "link", name: "x", isFolder: true, size: null, passwordRequired: false, expiresAt: null });
+    respond(200, { preview: "", kind: "link", name: "x", isFolder: true, size: null, passwordRequired: false, expiresAt: null });
     const api = guest("to/ken");
-    await expect(api.facts()).resolves.toEqual({ kind: "link", name: "x", isFolder: true, size: null, passwordRequired: false, expiresAt: null });
+    await expect(api.facts()).resolves.toEqual({ preview: null, kind: "link", name: "x", isFolder: true, size: null, passwordRequired: false, expiresAt: null });
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe("/api/public/to%2Fken");
     expect(api.source.contentUrl("a b")).toBe("/api/public/to%2Fken/content?path=a+b");
     expect(api.source.downloadUrl("a")).toBe("/api/public/to%2Fken/content?path=a&download");

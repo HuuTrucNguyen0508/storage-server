@@ -20,6 +20,7 @@ export interface Listing {
 }
 
 export interface SearchHit {
+  preview: PreviewKind | null;
   path: string;
   name: string;
   kind: EntryKind;
@@ -75,6 +76,7 @@ export interface ShareRequest {
 }
 
 export interface LinkFacts {
+  preview: PreviewKind | null;
   kind: ShareKind;
   name: string;
   isFolder: boolean;
@@ -214,6 +216,7 @@ function parseLoginSession(v: unknown): LoginSession {
 function parseLinkFacts(v: unknown): LinkFacts {
   const o = asObject(v, "link");
   return {
+    preview: oneOf(o, "preview", PREVIEW_KINDS) || null,
     kind: oneOf(o, "kind", ["link", "drop"]),
     name: str(o, "name"),
     isFolder: bool(o, "isFolder"),
@@ -234,6 +237,7 @@ function parseResults<T>(v: unknown, read: (o: Json) => T): ItemResult<T>[] {
 
 function parseSearchHit(o: Json): SearchHit {
   return {
+    preview: parseEntry(o).preview,
     path: str(o, "path"),
     name: str(o, "name"),
     kind: oneOf(o, "kind", ENTRY_KINDS),
@@ -261,9 +265,7 @@ export function setUnauthenticatedHandler(handler: () => void): void {
 }
 
 async function call(url: string, init: RequestInit = {}): Promise<Response> {
-  // Chrome keeps a 410 fresh forever when it has no Cache-Control, so a link that
-  // came back from the trash would stay broken for anyone who saw it there.
-  const res = await fetch(url, { credentials: "same-origin", cache: "no-store", ...init });
+  const res = await fetch(url, { credentials: "same-origin", ...init });
   if (res.ok) return res;
   const err = await failure(res);
   if (err.code === "unauthenticated") onUnauthenticated();

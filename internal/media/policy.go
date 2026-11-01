@@ -78,7 +78,7 @@ func setCommon(h http.Header) {
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Cross-Origin-Resource-Policy", "same-origin")
 	h.Set("Referrer-Policy", "no-referrer")
-	h.Set("Cache-Control", "private, no-cache")
+	h.Set("Cache-Control", "no-store")
 }
 
 // disposition always uses RFC 8187, so a hostile name cannot end the header value.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
-import { owner, postDownload, previewKindAt, type Listing, type SearchEnd } from "../api";
+import { owner, postDownload, type Listing, type SearchEnd } from "../api";
 import { formatBytes, plural } from "../format";
 import { baseName, crumbs, displayOrder, filesHref, join, parent } from "../paths";
 import { noSelection, selectedInOrder, selectionReducer, type Selection, type SelectionAction } from "../selection";
@@ -45,7 +45,7 @@ function useSearch(q: string, path: string, run: number): SearchState {
         q,
         path,
         (hit) => {
-          const row: Row = { path: hit.path, name: hit.name, kind: hit.kind, size: hit.size, modTime: hit.modTime, preview: null, where: parent(hit.path) };
+          const row: Row = { path: hit.path, name: hit.name, kind: hit.kind, size: hit.size, modTime: hit.modTime, preview: hit.preview, where: parent(hit.path) };
           setState((s) => ({ ...s, hits: [...s.hits, row] }));
         },
         stop.signal,
@@ -247,7 +247,7 @@ export function FilesPage({ path, q }: { path: string; q: string }) {
         return;
       }
       const hit = row.where !== null;
-      const kind = hit ? await previewKindAt(owner.source.contentUrl(row.path)).catch(() => null) : row.preview;
+      const kind = row.preview;
       if (kind === null) {
         download([row.path], rowsNow);
         return;

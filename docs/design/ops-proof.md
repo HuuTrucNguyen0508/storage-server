@@ -17,3 +17,15 @@ Headscale did not offer certificate issuance. Containerboot reported that the no
 The tracked Funnel configuration has exactly one public port, 8443, with only `http://app:8081` as its upstream. Ports 443 and 8444 stay tailnet-only. No ops port is configured. No host Tailscale command or owner auth key was used.
 
 Unproven here: production Tailscale certificate issuance, HTTPS transport, and public Funnel reachability. These need a real tailnet with HTTPS and Funnel enabled. HTTP routing through two Headscale clients proves the proxy paths, not those external services.
+
+## Clean-clone README check
+
+A local clean clone of `rewrite` ran every README shell command with fresh storage and `.env`. Port 8080 was occupied by an unrelated service, so the proof selected free host ports in `.env`, as the README now documents. No unrelated listener was stopped. Headless Chromium completed first-run setup, uploaded a file, and downloaded identical bytes from the real image. The recovery commands reset the owner and produced a new setup code.
+
+The Tailscale startup command used an intentionally unreachable test login-server and no auth key. That command verifies container creation only; the authenticated routing proof is the separate Headscale run above.
+
+The clean-clone run found a folder-drop test race. It waited for one uploaded file, then read a separately uploaded file without waiting. The corrected test waits for both sets of bytes and passed ten repeated headless Chromium runs.
+
+Local CI checks passed Go vet, race tests, the fast harness, typecheck, and all 79 Vitest tests. Actionlint accepted the pinned workflow. `playwright install --with-deps chromium` could not install OS packages on CachyOS because sudo required a terminal. Chromium installation and browser tests ran with the existing system dependencies. The workflow uses Ubuntu for the dependency-install step. GitHub-hosted execution is unproven until the branch is pushed.
+
+Final clean-clone verification passed 96 Playwright tests with 10 existing skips. The env-gated real-image Compose test also passed after the README commands. The ten-repeat folder-drop check passed all ten runs. All test containers, networks, volumes, and the disk-backed clone were removed afterward. Pulled and built images remain cached.

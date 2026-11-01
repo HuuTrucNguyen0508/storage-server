@@ -172,7 +172,7 @@ test("a dropped folder keeps its structure, including an empty folder", async ({
 
   await expect(await row(page, "album")).toBeVisible();
   await expect.poll(() => (existsSync(join(server.root, `${folder}/album/day 1/photo.txt`)) ? diskFile(server, `${folder}/album/day 1/photo.txt`).toString() : ""), { timeout: 10_000 }).toBe("photo");
-  expect(diskFile(server, `${folder}/album/cover.txt`).toString()).toBe("cover");
+  await expect.poll(() => (existsSync(join(server.root, `${folder}/album/cover.txt`)) ? diskFile(server, `${folder}/album/cover.txt`).toString() : ""), { timeout: 10_000 }).toBe("cover");
   await (await row(page, "album")).getByRole("link", { name: "album" }).click();
   await expect(await row(page, "empty")).toBeVisible();
   rmSync(source, { recursive: true, force: true });

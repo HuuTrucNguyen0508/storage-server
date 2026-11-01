@@ -10,3 +10,6 @@ web/playwright-report
 state
 .audit
 HANDOVER*.md
+data
+bin
+*.tar.gz

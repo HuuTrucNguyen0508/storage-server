@@ -472,6 +472,31 @@ func TestGuestOpenRacesARename(t *testing.T) {
 	}
 }
 
+// TestGuestAdmissionRacesARename pauses a guest between loading a share and
+// checking its target. A rename in that gap must not make a working link look
+// missing, so the two steps share the read lock.
+func TestGuestAdmissionRacesARename(t *testing.T) {
+	s := startBin(t, crashBin, "PAUSE_AT="+string(crash.AdmitAfterLoad)+"=500ms")
+	s.claim()
+	s.write("doc.txt", payload)
+	sh := s.share("doc.txt", "link", nil)
+	g := s.openGuest(sh.token())
+
+	got := make(chan reply, 1)
+	go func() {
+		r, err := g.do("GET", g.path("/content"), nil)
+		if err != nil {
+			t.Error(err)
+		}
+		got <- r
+	}()
+	time.Sleep(100 * time.Millisecond)
+	s.owner.expect("POST", "/api/files/rename", map[string]string{"path": "doc.txt", "name": "moved.txt"}, 200)
+	if r := <-got; r.status != 200 || string(r.body) != payload {
+		t.Fatalf("a guest during a rename got %d %s", r.status, r.body)
+	}
+}
+
 // TestDropsFollowAFolderUnderRenames is binding change 2. Publishing and renaming
 // race for real. No request may see the folder as missing mid-rename, every upload
 // must land in the folder as it is at that moment, so none is stranded, and no

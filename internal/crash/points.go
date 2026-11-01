@@ -37,4 +37,7 @@ const ParentFsync Fault = "move.parent-fsync"
 // the same way every time.
 type Gap string
 
-const GuestAfterLoad Gap = "guest.after-load"
+const (
+	GuestAfterLoad Gap = "guest.after-load"
+	AdmitAfterLoad Gap = "admit.after-load"
+)

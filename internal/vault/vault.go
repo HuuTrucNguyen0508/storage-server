@@ -464,6 +464,7 @@ func (v *Vault) ShareByToken(ctx context.Context, t store.Token) (store.Share, b
 	if err != nil {
 		return store.Share{}, false, err
 	}
+	crash.Pause(crash.AdmitAfterLoad)
 	return sh, v.targetExists(sh.Target), nil
 }
 

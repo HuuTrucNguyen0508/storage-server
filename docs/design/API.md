@@ -117,7 +117,7 @@ default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-sr
 
 ## API cache and preview metadata
 
-Every JSON response and every error under `/api/` carries `Cache-Control: no-store`, including unavailable links and thumbnail failures. Stored-byte responses also use `no-store`.
+Every JSON response and every error under `/api/` carries `Cache-Control: no-store`, including unavailable links and thumbnail failures. Stored-byte responses also use `no-store`, except successful thumbnails: these send `private, no-cache` with an ETag, so revisits revalidate. Thumbnail failures retain `no-store`.
 
 Search hits include `preview`, using the same extension policy as directory entries. `GET /api/public/{token}` includes `preview` for file links. Values are `image`, `video`, `audio`, `pdf`, `text`, or the empty string when no preview applies, including folder and drop links. Describing a link spends no download use.
 

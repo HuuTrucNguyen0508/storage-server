@@ -123,6 +123,7 @@ func Serve(w http.ResponseWriter, r *http.Request, f *disk.File, download bool) 
 
 func ServeThumb(w http.ResponseWriter, r *http.Request, c io.ReadSeeker, mod time.Time) {
 	setCommon(w.Header())
+	w.Header().Set("Cache-Control", "private, no-cache")
 	w.Header().Set("Content-Type", "image/jpeg")
 	http.ServeContent(w, r, "", mod, c)
 }

@@ -91,15 +91,15 @@ func (a *API) mux(keep func(route) bool, s metrics.Surface) http.Handler {
 type apiWriter struct{ http.ResponseWriter }
 
 func (w *apiWriter) WriteHeader(status int) {
-	w.Header().Set("Cache-Control", "no-store")
+	if status >= 400 {
+		w.Header().Set("Cache-Control", "no-store")
+	}
 	w.ResponseWriter.WriteHeader(status)
 }
 func (w *apiWriter) Write(p []byte) (int, error) {
-	w.Header().Set("Cache-Control", "no-store")
 	return w.ResponseWriter.Write(p)
 }
 func (w *apiWriter) ReadFrom(r io.Reader) (int64, error) {
-	w.Header().Set("Cache-Control", "no-store")
 	if rf, ok := w.ResponseWriter.(io.ReaderFrom); ok {
 		return rf.ReadFrom(r)
 	}

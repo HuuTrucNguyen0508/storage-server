@@ -371,6 +371,9 @@ func TestSuspendedDropWaitsAndAGoneDropIsRemoved(t *testing.T) {
 	if err != nil || st.Phase != Complete || st.Stored.String() != "" {
 		t.Fatalf("Append into a suspended drop = %+v, %v", st, err)
 	}
+	if st, err := e.m.Status(ctx, guest, id); err != nil || st.Offset != 3 || st.Stored.String() != "" {
+		t.Fatalf("suspended drop HEAD = %+v, %v", st, err)
+	}
 	if _, err := e.v.Restore(ctx, out[0].Trash); err != nil {
 		t.Fatal(err)
 	}
@@ -504,5 +507,32 @@ func TestSweepAndARetriedPatchPublishOnce(t *testing.T) {
 		if got := e.read(t, final.Stored.String()); got != "new" {
 			t.Fatalf("Stored = %q holds %q", final.Stored, got)
 		}
+	}
+}
+
+func TestOwnerStatusRetriesPublication(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _, err := e.m.Create(ctx, Scope{}, path(t, "folder/a.txt"), 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(e.root, "folder"), []byte("blocker"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.m.Append(ctx, Scope{}, id, 0, body("data")); !errors.Is(err, disk.ErrExists) {
+		t.Fatalf("Append = %v", err)
+	}
+	if st, err := e.m.Status(ctx, Scope{}, id); !errors.Is(err, disk.ErrExists) {
+		t.Fatalf("owner HEAD = %+v, %v, want publication failure", st, err)
+	}
+	if err := os.Remove(filepath.Join(e.root, "folder")); err != nil {
+		t.Fatal(err)
+	}
+	if st, err := e.m.Status(ctx, Scope{}, id); err != nil || st.Phase != Published || st.Stored.String() != "folder/a.txt" {
+		t.Fatalf("retry HEAD = %+v, %v", st, err)
+	}
+	if got := e.read(t, "folder/a.txt"); got != "data" {
+		t.Fatal(got)
 	}
 }

@@ -120,3 +120,5 @@ default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-sr
 Every JSON response and every error under `/api/` carries `Cache-Control: no-store`, including unavailable links and thumbnail failures. Stored-byte responses also use `no-store`.
 
 Search hits include `preview`, using the same extension policy as directory entries. `GET /api/public/{token}` includes `preview` for file links. Values are `image`, `video`, `audio`, `pdf`, `text`, or the empty string when no preview applies, including folder and drop links. Describing a link spends no download use.
+
+Owner upload HEAD retries publication when all bytes are stored. Publication failures return their error until publication succeeds, rather than reporting completion. Drop upload HEAD reports bytes received without revealing publication status or destination.

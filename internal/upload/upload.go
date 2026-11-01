@@ -296,16 +296,20 @@ func (m *Manager) claim(id ID, body Stream) (release func()) {
 	}
 }
 
-// Status stops any live writer first, so the offset it returns stays true until
-// the next Append. It stops a writer without registering, because a finished
-// handler's keep-alive connection would otherwise be cut by the next takeover.
+// Status takes over from a live writer and retries owner publication before
+// reporting completion. Drop status reveals only the bytes received.
 func (m *Manager) Status(ctx context.Context, s Scope, id ID) (Status, error) {
-	m.stop(id)
+	release := m.claim(id, sweeping{})
+	defer release()
 	rec, err := m.load(s, id)
 	if err != nil {
 		return Status{}, err
 	}
-	return m.statusOf(id, rec)
+	st, err := m.statusOf(id, rec)
+	if err == nil && s.Drop == "" && (st.Phase == Complete || st.Phase == Publishing) {
+		return m.finish(ctx, id, rec)
+	}
+	return st, err
 }
 
 // Append takes over from any live writer, checks offset against the stat size,

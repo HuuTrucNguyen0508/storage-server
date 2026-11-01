@@ -92,6 +92,7 @@ export class UploadEngine {
     if (res === null) return;
     if (!res.ok) {
       if (res.status === 404) this.dispatch({ type: "offsetKnown", id: item.id, stored: 0 });
+      else this.dispatch({ type: "failed", id: item.id, reason: "The server refused this upload. Retry to publish it" });
       return;
     }
     const offset = Number(res.headers.get("Upload-Offset"));
@@ -143,6 +144,11 @@ export class UploadEngine {
   }
 
   resume(id: string): void {
+    const item = this.items.find((i) => i.id === id);
+    if (item?.state.tag === "failed" && !this.files.has(id)) {
+      void this.reconcile(item);
+      return;
+    }
     this.dispatch({ type: "resumeRequested", id });
   }
 

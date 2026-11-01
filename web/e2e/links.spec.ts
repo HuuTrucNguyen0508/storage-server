@@ -97,6 +97,20 @@ test("a file link previews a PDF and downloads, and the limit ends it", async ({
   expect(ownerRoutes(asked)).toEqual([]);
 });
 
+test("a file link with a password asks first, and a reload does not ask again", async ({ server, folder, request, browser, context }) => {
+  await seed(request, server, `${folder}/private.txt`, "for your eyes");
+  const share = await createShare(request, server, { path: `${folder}/private.txt`, kind: "link", password: "opensesame" });
+  const { page: guest } = await guestPage(browser, context);
+  await guest.goto(share.url);
+  await guest.getByLabel("Password").fill("opensesame");
+  await guest.getByRole("button", { name: "Open" }).click();
+  await guest.getByRole("button", { name: "Preview" }).click();
+  await expect(guest.getByRole("dialog", { name: "Preview of private.txt" }).locator(".doc pre")).toHaveText("for your eyes");
+  await guest.reload();
+  await expect(guest.getByRole("button", { name: "Preview" })).toBeVisible();
+  await expect(guest.getByLabel("Password")).toHaveCount(0);
+});
+
 test("a broken link shows the one page guests need", async ({ server, page }) => {
   await page.goto(`${server.guest}/s/nosuchtoken`);
   await expect(page.getByRole("heading", { name: "This link no longer works" })).toBeVisible();

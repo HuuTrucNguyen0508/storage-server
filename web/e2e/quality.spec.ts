@@ -91,6 +91,10 @@ for (const theme of ["light", "dark"] as const) {
     await (await row(page, "b.txt")).locator(".sel").click();
     await expect(page.getByRole("toolbar", { name: "Selection" })).toBeVisible();
     expect(await contrastFailures(page)).toEqual([]);
+    await page.getByRole("toolbar", { name: "Selection" }).getByRole("button", { name: "Share" }).click();
+    await expect(page.getByRole("dialog", { name: "New link" })).toBeVisible();
+    expect(await contrastFailures(page)).toEqual([]);
+    await page.keyboard.press("Escape");
 
     await page.goto(`${server.owner}/links`);
     await expect(page.locator(".row").first()).toBeVisible();

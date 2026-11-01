@@ -44,6 +44,13 @@ export function flatName(relativePath: string): string {
   return baseName(relativePath);
 }
 
+const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+
+/** The server sorts by bytes, which puts Z before a. People expect folders first, then names. */
+export function displayOrder<T extends { name: string; kind: string }>(entries: readonly T[]): T[] {
+  return [...entries].sort((a, b) => Number(b.kind === "dir") - Number(a.kind === "dir") || collator.compare(a.name, b.name));
+}
+
 export type Route =
   | { name: "home" }
   | { name: "files"; path: string; q: string }

@@ -109,6 +109,40 @@ test("pause and resume keep the stored bytes", async ({ ownerPage: page, server,
   expect(sha256(diskFile(server, `${folder}/${name}`))).toBe(bigHash);
 });
 
+test("a drop link's upload resumes after a reload too", async ({ server, folder, request, browser, page: first }) => {
+  void first;
+  const name = `guest-${folder}.bin`;
+  const path = fixtureFile(name, big);
+  await request.post(`${server.owner}/api/files/folder`, { data: { path: `${folder}/inbox` } });
+  const res = await request.post(`${server.owner}/api/shares`, { data: { path: `${folder}/inbox`, kind: "drop" } });
+  const { url } = (await res.json()) as { url: string };
+
+  const guest = await (await browser.newContext()).newPage();
+  const offsets: string[] = [];
+  await guest.route("**/api/public/*/uploads/*", async (route) => {
+    const req = route.request();
+    if (req.method() === "PATCH" && Number(req.headers()["upload-offset"]) >= CHUNK) return route.abort("connectionreset");
+    return route.continue();
+  });
+  await guest.goto(url);
+  await guest.getByLabel("Files to send").setInputFiles(path);
+  await expect(guest.locator('.row[data-state="reconnecting"]')).toBeVisible({ timeout: 30_000 });
+
+  await guest.unroute("**/api/public/*/uploads/*");
+  await guest.route("**/api/public/*/uploads/*", async (route) => {
+    const req = route.request();
+    if (req.method() === "PATCH") offsets.push(req.headers()["upload-offset"] ?? "");
+    await route.continue();
+  });
+  await guest.reload();
+  await expect(guest.locator('.row[data-state="needs-file"]')).toContainText("Pick again, 64.0 MB kept");
+  await guest.getByLabel(`Pick the file for ${name}`).setInputFiles(path);
+  await expect(guest.locator('.row[data-state="done"]')).toBeVisible({ timeout: 30_000 });
+  expect(offsets[0]).toBe(String(CHUNK));
+  expect(sha256(diskFile(server, `${folder}/inbox/${name}`))).toBe(bigHash);
+  await guest.context().close();
+});
+
 test("a dropped folder keeps its structure, including an empty folder", async ({ ownerPage: page, server, folder }) => {
   test.skip(isPhone(page), "a phone has no drag source");
   const source = join(cacheDir, `drop-${folder}`);
@@ -119,6 +153,7 @@ test("a dropped folder keeps its structure, including an empty folder", async ({
   writeFileSync(join(source, "album", "day 1", "photo.txt"), "photo");
 
   await gotoFolder(page, server, folder);
+  await expect(page.getByRole("heading", { level: 2, name: `Nothing in ${folder} yet` })).toBeVisible();
   const client = await page.context().newCDPSession(page);
   const data = { items: [], files: [join(source, "album")], dragOperationsMask: 1 };
   const at = { x: 700, y: 400 };

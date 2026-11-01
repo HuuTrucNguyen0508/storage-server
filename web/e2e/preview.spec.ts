@@ -119,6 +119,30 @@ test("moving through files, closing returns focus to the row", async ({ ownerPag
   if (!isPhone(page)) await expect(page.locator(".row button.t", { hasText: "a.txt" })).toBeFocused();
 });
 
+test("the system back gesture closes a preview and stays in the folder", async ({ ownerPage: page, server, folder, request }) => {
+  await seed(request, server, `${folder}/a.txt`, "first");
+  await gotoFolder(page, server, folder);
+  const dialog = await open(page, "a.txt");
+  await expect(dialog.locator(".doc pre")).toHaveText("first");
+  await page.goBack();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1, name: folder })).toBeVisible();
+});
+
+test("closing a preview leaves history where it was", async ({ ownerPage: page, server, folder, request }) => {
+  await seed(request, server, `${folder}/a.txt`, "first");
+  await page.goto(`${server.owner}/links`);
+  await gotoFolder(page, server, folder);
+  const dialog = await open(page, "a.txt");
+  await expect(dialog.locator(".doc pre")).toHaveText("first");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.waitForTimeout(100);
+  await expect(page).toHaveURL(new RegExp(`/files/${folder}$`));
+  await page.goBack();
+  await expect(page).toHaveURL(/\/links$/);
+});
+
 test("a file with no preview downloads instead", async ({ ownerPage: page, server, folder, request }) => {
   await seed(request, server, `${folder}/data.bin`, "bytes");
   await gotoFolder(page, server, folder);

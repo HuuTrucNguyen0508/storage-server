@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState, type TouchEve
 import { ApiError, type ContentSource, type PreviewKind } from "../api";
 import { formatBytes, formatDuration, plural } from "../format";
 import { isMarkdown } from "../paths";
+import { useBackDismiss } from "../ui/hooks";
 import { Icon } from "../ui/icons";
 import { Markdown } from "../ui/Markdown";
 import { ZoomImage } from "./ZoomImage";
@@ -76,6 +77,8 @@ export function Preview({
   }, []);
 
   useEffect(() => setFacts(""), [index]);
+
+  useBackDismiss(true, () => ref.current?.close());
 
   const step = useCallback(
     (delta: 1 | -1) => {

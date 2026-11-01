@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { baseName, crumbs, encodePath, filesHref, flatName, isMarkdown, join, parent, parseRoute, shareHref } from "./paths";
+import { baseName, crumbs, displayOrder, encodePath, filesHref, flatName, isMarkdown, join, parent, parseRoute, shareHref } from "./paths";
 
 describe("paths", () => {
   it("joins onto the root without a leading slash", () => {
@@ -50,6 +50,18 @@ describe("paths", () => {
 
   it("flattens a dropped folder's path to its file name", () => {
     expect(flatName("holiday/day 1/a.jpg")).toBe("a.jpg");
+  });
+
+  it("lists folders first, then names as a person reads them", () => {
+    const entries = [
+      { name: "b.txt", kind: "file" },
+      { name: "Zoo", kind: "dir" },
+      { name: "A.txt", kind: "file" },
+      { name: "img10.jpg", kind: "file" },
+      { name: "img9.jpg", kind: "file" },
+      { name: "apple", kind: "dir" },
+    ];
+    expect(displayOrder(entries).map((e) => e.name)).toEqual(["apple", "Zoo", "A.txt", "b.txt", "img9.jpg", "img10.jpg"]);
   });
 
   it("recognises Markdown by extension in any case", () => {

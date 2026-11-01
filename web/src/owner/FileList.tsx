@@ -182,7 +182,7 @@ export const FileRow = memo(function FileRow({
           <span className="sub">{sub}</span>
         </div>
       </div>
-      <div className="cell" role="gridcell">
+      <div className="cell" role="gridcell" {...(row.where === null ? {} : { title: row.where })}>
         {row.where === null ? when : row.where === "" ? "Files" : row.where}
       </div>
       <div className="cell right" role="gridcell">

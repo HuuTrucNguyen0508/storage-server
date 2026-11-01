@@ -119,7 +119,7 @@ export function ShareSheet({ target, onClose, onCreated }: { target: ShareTarget
               <input id="share-password" type="text" autoComplete="off" value={password} placeholder="None" onChange={(e) => setPassword(e.target.value)} />
             </div>
           </div>
-          <div className="opt">
+          <div className="opt stacked">
             <div>
               <p className="what">Expires</p>
               <p className="why">The link stops working after this</p>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import { owner, postDownload, previewKindAt, type Listing, type SearchEnd } from "../api";
 import { formatBytes, plural } from "../format";
-import { baseName, crumbs, filesHref, join, parent } from "../paths";
+import { baseName, crumbs, displayOrder, filesHref, join, parent } from "../paths";
 import { noSelection, selectedInOrder, selectionReducer, type Selection, type SelectionAction } from "../selection";
 import { Preview, type PreviewItem } from "../preview/Preview";
 import { useBackDismiss, useLoad, useNow, usePhone, useTitle } from "../ui/hooks";
@@ -29,7 +29,7 @@ type Modal =
 type DragState = { kind: "files" | "move"; dir: string; dirName: string };
 
 function rowsOf(listing: Listing): Row[] {
-  return listing.entries.map((e) => ({ path: join(listing.path, e.name), name: e.name, kind: e.kind, size: e.size, modTime: e.modTime, preview: e.preview, where: null }));
+  return displayOrder(listing.entries).map((e) => ({ path: join(listing.path, e.name), name: e.name, kind: e.kind, size: e.size, modTime: e.modTime, preview: e.preview, where: null }));
 }
 
 type SearchState = { hits: Row[]; end: SearchEnd | null; failed: string | null };
@@ -264,6 +264,8 @@ export function FilesPage({ path, q }: { path: string; q: string }) {
   rowsRef.current = rows;
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
+  const touchModeRef = useRef(selection.touchMode);
+  touchModeRef.current = selection.touchMode;
 
   const shareRow = useCallback((row: Pick<Row, "path" | "name" | "kind">) => {
     setPreviewing(null);
@@ -320,9 +322,6 @@ export function FilesPage({ path, q }: { path: string; q: string }) {
     }),
     [download, open, refresh, shareRow, toast, trash],
   );
-  const touchModeRef = useRef(selection.touchMode);
-  touchModeRef.current = selection.touchMode;
-
   const registerRow = useCallback((rowPath: string, el: HTMLDivElement | null) => {
     if (el === null) rowEls.current.delete(rowPath);
     else rowEls.current.set(rowPath, el);

@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "e2e",
+  // Regenerates docs/design/ui/production-shots, so it runs only on request.
+  testIgnore: process.env.SHOTS ? [] : ["**/production-shots.spec.ts"],
   globalSetup: "./e2e/global-setup.ts",
   timeout: 60_000,
   expect: { timeout: 10_000 },

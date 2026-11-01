@@ -18,6 +18,27 @@ test("upload a file with the button and browse into a folder", async ({ ownerPag
   await expect(page.getByRole("heading", { level: 1, name: folder })).toBeVisible();
 });
 
+test("a taken name never overwrites, and the tray names what was stored", async ({ ownerPage: page, server, folder, request }) => {
+  await seed(request, server, `${folder}/same.txt`, "first");
+  await gotoFolder(page, server, folder);
+  await page.getByLabel("Files to upload").setInputFiles(fixtureFile("same.txt", "second"));
+  await expect(await row(page, "same (1).txt")).toBeVisible();
+  expect(diskFile(server, `${folder}/same.txt`).toString()).toBe("first");
+  expect(diskFile(server, `${folder}/same (1).txt`).toString()).toBe("second");
+  if (isPhone(page)) await page.locator(".uptray-phone").click();
+  await expect(page.locator(".up .s")).toHaveText("Sent as same (1).txt");
+});
+
+test("folders list first, whatever the bytes say", async ({ ownerPage: page, server, folder, request }) => {
+  await seed(request, server, `${folder}/Zebra.txt`, "z");
+  await seed(request, server, `${folder}/apple.txt`, "a");
+  await seed(request, server, `${folder}/box/x.txt`, "x");
+  await gotoFolder(page, server, folder);
+  await expect(page.locator(".row")).toHaveCount(3);
+  const names = await page.locator(".row").evaluateAll((rows) => rows.map((r) => r.getAttribute("data-path")?.split("/").pop()));
+  expect(names).toEqual(["box", "apple.txt", "Zebra.txt"]);
+});
+
 test("create, rename and move", async ({ ownerPage: page, server, folder, request }) => {
   await seed(request, server, `${folder}/draft.txt`, "words");
   await gotoFolder(page, server, folder);

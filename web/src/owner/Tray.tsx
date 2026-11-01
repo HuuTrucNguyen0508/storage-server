@@ -1,5 +1,6 @@
 import { useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import { formatBytes, plural } from "../format";
+import { baseName } from "../paths";
 import { Icon } from "../ui/icons";
 import { Sheet } from "../ui/Sheet";
 import type { UploadEngine } from "../uploads/engine";
@@ -24,8 +25,10 @@ export function statusText(item: UploadItem): string {
       return `Paused at ${of(state.stored)}, reconnecting`;
     case "needs-file":
       return state.stored > 0 ? `Pick the file again to continue from ${formatBytes(state.stored)}` : "Pick the file again to start";
-    case "done":
-      return "Sent";
+    case "done": {
+      const saved = state.storedPath === null ? item.name : baseName(state.storedPath);
+      return saved === item.name ? "Sent" : `Sent as ${saved}`;
+    }
     case "failed":
       return state.reason;
   }

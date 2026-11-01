@@ -29,8 +29,11 @@ test("/ focuses search, and the arrow keys drive the list", async ({ ownerPage: 
   await expect(page.getByRole("toolbar", { name: "Selection" })).toContainText("4 selected");
   await page.keyboard.press("Escape");
 
-  await page.keyboard.press("End");
+  await page.keyboard.press("Home");
   await expect(await row(page, "sub")).toBeFocused();
+  await page.keyboard.press("End");
+  await expect(await row(page, "c.txt")).toBeFocused();
+  await page.keyboard.press("Home");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { level: 1, name: "sub" })).toBeVisible();
   await (await row(page, "x.txt")).focus();

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent, type FormEvent } from "react";
 import { ApiError, guest, postDownload, previewKindAt, type Entry, type GuestApi, type LinkFacts, type PreviewKind } from "../api";
 import { formatBytes, plural, untilPhrase } from "../format";
-import { baseName, crumbs, flatName, join, shareHref } from "../paths";
+import { baseName, crumbs, displayOrder, flatName, join, shareHref } from "../paths";
 import { Preview, type PreviewItem } from "../preview/Preview";
 import { useNow, useTitle } from "../ui/hooks";
 import { entryIcon, FolderIcon, Icon, Mark } from "../ui/icons";
@@ -136,7 +136,7 @@ function FolderPage({ facts, token, api }: { facts: LinkFacts; token: string; ap
     setFailed(null);
     api.list(path).then(
       (l) => {
-        if (live) setEntries(l.entries);
+        if (live) setEntries(displayOrder(l.entries));
       },
       (err: unknown) => {
         if (live) setFailed(err);
@@ -153,9 +153,10 @@ function FolderPage({ facts, token, api }: { facts: LinkFacts; token: string; ap
   );
   if (failed instanceof ApiError && (failed.status === 410 || failed.code === "not_found") && path === "") return <Broken token={token} />;
 
-  const fileBytes = (entries ?? []).reduce((sum, e) => sum + (e.kind === "file" ? e.size : 0), 0);
-  const size = path === "" && facts.size !== null ? facts.size : fileBytes;
-  const meta = entries === null ? "" : `${plural(entries.length, "item")}, ${formatBytes(size)}. Shared with you.${stopsLine(facts, now)}`;
+  // facts.size is the only recursive total there is, and only for the shared folder itself.
+  const size = path === "" ? facts.size : null;
+  const sizePart = size === null ? "" : `, ${formatBytes(size)}`;
+  const meta = entries === null ? "" : `${plural(entries.length, "item")}${sizePart}. Shared with you.${stopsLine(facts, now)}`;
 
   return (
     <main className="guest">
@@ -183,7 +184,7 @@ function FolderPage({ facts, token, api }: { facts: LinkFacts; token: string; ap
       <div className="cta">
         <button className="btn primary" type="button" disabled={entries === null || entries.length === 0} onClick={() => postDownload(api.zipUrl, path === "" ? [] : [path])}>
           <Icon name="download" />
-          Download all as zip{size > 0 ? `, ${formatBytes(size)}` : ""}
+          Download all as zip{sizePart}
         </button>
       </div>
       {failed !== null ? (
@@ -477,7 +478,8 @@ async function holdsGrant(api: GuestApi, facts: LinkFacts): Promise<boolean> {
     else await previewKindAt(api.source.contentUrl(""));
     return true;
   } catch (err) {
-    if (err instanceof ApiError && err.code === "open_required") return false;
+    // The file link probes with HEAD, which has no body to carry a code.
+    if (err instanceof ApiError && err.status === 401) return false;
     throw err;
   }
 }

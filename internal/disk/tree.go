@@ -297,6 +297,13 @@ type File struct {
 	Info Info
 }
 
+func (f *File) Sync() error {
+	if err := crash.Fail(crash.DataFsync); err != nil {
+		return err
+	}
+	return f.File.Sync()
+}
+
 func (t *Tree) Open(p Path) (*File, error) {
 	e, ok := p.Entry()
 	if !ok {

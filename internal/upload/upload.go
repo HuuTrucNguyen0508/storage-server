@@ -400,6 +400,13 @@ func (m *Manager) finish(ctx context.Context, id ID, rec record) (Status, error)
 
 func (m *Manager) publish(ctx context.Context, id ID, rec record) (Status, error) {
 	st := Status{Phase: Complete, Offset: rec.Length, Length: rec.Length}
+	data, err := m.spool.Open(id.file(dataFile))
+	if err != nil {
+		return st, err
+	}
+	if err := errors.Join(data.Sync(), data.Close()); err != nil {
+		return st, mapNoSpace(err)
+	}
 	path, err := disk.ParsePath(rec.Path)
 	if err != nil {
 		return st, err

@@ -28,6 +28,7 @@ var All = []Point{
 type Fault string
 
 const ParentFsync Fault = "move.parent-fsync"
+const DataFsync Fault = "upload.data-fsync"
 
 type Gap string
 

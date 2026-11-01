@@ -27,6 +27,21 @@ const (
 	KindOther
 )
 
+var kindNames = [...]string{KindFile: "file", KindDir: "dir", KindSymlink: "symlink", KindOther: "other"}
+
+func (k Kind) String() string { return kindNames[k] }
+
+func (k Kind) MarshalText() ([]byte, error) { return []byte(k.String()), nil }
+
+func (k *Kind) UnmarshalText(b []byte) error {
+	i := slices.Index(kindNames[:], string(b))
+	if i < 0 {
+		return fmt.Errorf("unknown kind %q", b)
+	}
+	*k = Kind(i)
+	return nil
+}
+
 type Info struct {
 	Name    string
 	Kind    Kind

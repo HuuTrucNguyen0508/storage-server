@@ -32,19 +32,28 @@ CREATE TABLE shares (
 ) STRICT;
 
 CREATE TABLE grants (
-  id          TEXT    PRIMARY KEY,
-  token_hash  BLOB    NOT NULL UNIQUE,
-  share_id    TEXT    NOT NULL REFERENCES shares (id) ON DELETE CASCADE,
-  expires_at  INTEGER NOT NULL,
-  consumed_at INTEGER
+  id         TEXT    PRIMARY KEY,
+  token_hash BLOB    NOT NULL UNIQUE,
+  share_id   TEXT    NOT NULL REFERENCES shares (id) ON DELETE CASCADE,
+  expires_at INTEGER NOT NULL
 ) STRICT;
 
 CREATE INDEX grants_by_share ON grants (share_id);
+
+-- What a grant has fetched. The first row for an item is what takes one use. An
+-- item is "file" on a file link, a path on a folder link, "zip:<hash>" for a zip
+-- and "drop" for a drop link's first upload.
+CREATE TABLE grant_items (
+  grant_id TEXT NOT NULL REFERENCES grants (id) ON DELETE CASCADE,
+  item     TEXT NOT NULL,
+  PRIMARY KEY (grant_id, item)
+) STRICT, WITHOUT ROWID;
 
 CREATE TABLE pending_moves (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   from_loc   TEXT    NOT NULL,
   to_loc     TEXT    NOT NULL,
+  src_inode  INTEGER NOT NULL, -- never st_dev: btrfs assigns it at mount
   started_at INTEGER NOT NULL
 ) STRICT;
 

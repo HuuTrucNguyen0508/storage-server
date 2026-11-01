@@ -398,7 +398,10 @@ func (t *Tree) Mkdir(p Path) error {
 		}
 		next, err := openat2(fd, seg, unix.O_RDONLY|unix.O_DIRECTORY, 0)
 		if err == nil && created {
-			err = unix.Fsync(fd)
+			err = unix.Fchmod(next, 0o755)
+			if err == nil {
+				err = unix.Fsync(fd)
+			}
 		}
 		unix.Close(fd)
 		if err != nil {
@@ -433,6 +436,10 @@ func (t *Tree) OpenAppend(p Path) (Appender, error) {
 	fd, err := openat2(dir, e.Name.s, unix.O_WRONLY|unix.O_CREAT|unix.O_APPEND, 0o644)
 	if err != nil {
 		return nil, translate(err)
+	}
+	if err := unix.Fchmod(fd, 0o644); err != nil {
+		unix.Close(fd)
+		return nil, err
 	}
 	if err := unix.Fsync(dir); err != nil {
 		unix.Close(fd)

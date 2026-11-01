@@ -338,3 +338,27 @@ func TestSwapRaceCannotEscape(t *testing.T) {
 	}
 	t.Logf("ok=%d escaped=0", ok.Load())
 }
+
+func TestUploadModesWithPrivateUmask(t *testing.T) {
+	d, root := plant(t)
+	old := syscall.Umask(0o077)
+	defer syscall.Umask(old)
+	dir, _ := ParsePath("host-readable")
+	must(t, d.Files.Mkdir(dir))
+	p, _ := ParsePath("upload")
+	f, err := d.Spool.OpenAppend(p)
+	must(t, err)
+	_, err = f.Write([]byte("host bytes"))
+	must(t, err)
+	must(t, f.Close())
+	st, err := os.Stat(filepath.Join(root, ReservedDir, "spool", "upload"))
+	must(t, err)
+	if st.Mode().Perm() != 0o644 {
+		t.Fatalf("upload mode = %o, want 644", st.Mode().Perm())
+	}
+	st, err = os.Stat(filepath.Join(root, "host-readable"))
+	must(t, err)
+	if st.Mode().Perm() != 0o755 {
+		t.Fatalf("folder mode = %o, want 755", st.Mode().Perm())
+	}
+}

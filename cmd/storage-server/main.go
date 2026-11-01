@@ -74,6 +74,7 @@ func loadConfig() (config, error) {
 }
 
 func main() {
+	syscall.Umask(0o077)
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	if err := run(); err != nil {
 		slog.Error("fatal", "err", err)

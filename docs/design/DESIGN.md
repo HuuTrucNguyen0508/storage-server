@@ -189,25 +189,30 @@ Why B stayed the base after a lower score: its defects are three local fixes, an
 
 ### Binding changes to the sketch
 
-1. **Identity-checked journal (from A, judge's blocking finding).** `pending_moves` records the source's `(dev, ino)` taken after the source is opened and before the rename. Recovery commits only when the destination exists and its identity matches. If the destination has a different identity, the move did not happen, so drop the row. "The destination exists" alone is not proof. Failure scenario this closes: a move journals a to b, an upload creates b, the process dies, and restart would point a guest link at an unrelated file.
+1. **Identity-checked journal (from A, judge's blocking finding, revised by plan review).** `pending_moves` records the source's inode number, taken after the source is opened and before the rename. A rename never crosses a filesystem or a btrfs subvolume, so the inode alone identifies the file there. Do not store `st_dev`, because btrfs assigns it at mount and it changes across a reboot. Recovery has three outcomes. Destination inode matches: commit. Otherwise source inode matches: the move did not happen, so drop the row. Neither matches: something outside the app changed both paths, so delete the affected shares, log it, and drop the row. Failure scenarios this closes: a move journals a to b, an upload creates b, the process dies, and restart would point a guest link at an unrelated file; or both paths are replaced and the link stays on unrelated content.
 2. **Vault owns every namespace change, including publish.** Upload no longer renames into the live tree itself. `upload.Manager` calls one `vault.Publish` under the same lock as `relocate`, so the namespace has one writer. The lock is never held across a request body or a download stream.
-3. **A failed fsync is not a failed rename.** `disk.Move` must report whether the rename happened. If the rename happened and the fsync failed, keep the journal row and let the commit or recovery proceed. `AbortMove` runs only when the rename did not happen.
+3. **A failed fsync is not a failed rename, and it is not a commit either.** `disk.Move` reports whether the rename happened. `AbortMove` runs only when it did not. If the rename happened and a parent fsync failed, keep the journal row, do not rewrite shares, return an error, and report unhealthy on `/healthz`. Restart retries durability and recovers from the row. A row is deleted only after both parent fsyncs succeeded.
 4. **Startup probes (from A).** `disk.Open` proves `openat2`, `RENAME_NOREPLACE` and directory fsync on the real storage root, and refuses to start with a plain error that names the failed primitive and the filesystem. There is no weaker fallback.
 5. **One rule for stored bytes (from A).** PDF gets no CSP exception. Every stored byte is served with the same sandbox policy. The frontend renders PDF through `pdfjs-dist` on a canvas, lazy-loaded. This is also what makes PDF preview work at all on the owner's Android phone, because Android Chrome has no inline PDF viewer.
 6. **Guard tests that cannot be fooled by an alias (judge's finding).** `TestOnlyDiskTouchesStorage` resolves imports with `go/ast` and handles renamed imports, so `import o "os"` fails it too.
-7. **Drop links stay blind (from B, checked by the judge).** A name collision on a drop link is resolved privately. Admission and every response are the same whether or not the name exists.
-
+7. **Drop links stay blind (from B, tightened by plan review).** A drop upload's path is a single file name. A name with a separator is refused before the folder is touched, so no response depends on what the folder holds. The frontend flattens a dropped folder to its files. A name collision is resolved privately, and admission and every response are the same whether or not the name exists.
+8. **A guest's target is resolved and opened under the lock (plan review blocker).** `vault` gives guests one read-locked operation that loads the share's current target and opens the file or directory descriptor, then releases the lock before streaming. Content, thumbnails and zip all use it. `v.mu` becomes a `sync.RWMutex`. Failure scenario this closes: a guest loads target a, the owner renames a to b, an upload publishes private content at a, and the guest opens the private file by the stale path. An open descriptor keeps following the file it opened, which is the wanted behaviour.
+9. **Maximum downloads means downloads (plan review).** `grant_items(grant_id, item, PRIMARY KEY(grant_id, item))` holds what a grant has fetched. The first fetch of a distinct item on a grant takes one use, in one transaction with the row insert. An item is a file path, or the literal `zip` plus a hash of the request for a zip. Seeks, resumes and repeat fetches of the same item on the same grant take none. Thumbnails take none. A guest holding an item can finish it after the limit is reached. A limit of 1 on a folder link allows one file or one zip.
 ### Owner-level product decisions
 
 The lead made these for the owner. Each one is reported at hand-back.
 
-- A "use" is one guest session, as in B. The share UI says "Limit to N people", so the label matches what it counts.
+- The share UI says "Limit to N downloads", and the count follows binding change 9. The lead first chose B's one-session rule, and plan review showed that changed the brief.
 - Grafana stays in the monitoring profile with one provisioned dashboard, because the owner built that observability on purpose. `GRAFANA_PASSWORD` is required in `.env` with no default, so the brief's no-default-passwords rule holds. Loki, Promtail, Jaeger and cAdvisor stay out.
 - Password change ships: `POST /api/account/password`, which needs the current password and revokes every other session. Recovery ships as `storage-server reset-owner`, which removes the owner so the setup-code flow runs again. Editing `state.db` by hand is not a recovery plan.
 - Delete forever ships: `DELETE /api/trash/{id}` and `DELETE /api/trash`. An owner with a full disk needs space now, not in 30 days.
 - A drop link has no byte quota. `MIN_FREE_BYTES` protects the disk.
 - Symlinks stay visible leaves that nothing opens.
 - The `pdf` profile must publish a usable endpoint, with a tailnet port in the Tailscale profile and a loopback host port without it.
+
+### Plan review
+
+GPT-6.1 Sol reviewed this synthesis before implementation and returned seven findings. S1 to S6 are folded in above. S7 asked to defer password change, recovery, delete forever and Grafana. Declined, because a lost password or a full disk would otherwise have no answer, and each costs under 50 lines.
 
 ### Rejected from A
 

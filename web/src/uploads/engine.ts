@@ -1,6 +1,8 @@
 import { defaultOptions, Upload, type HttpResponse, type PreviousUpload } from "tus-js-client";
 import { nextToStart, restorable, uploadsReducer, type NewUpload, type UploadEvent, type UploadItem } from "./machine";
 
+let nextQueueId = 0;
+
 const CHUNK_SIZE = 64 * 1024 * 1024;
 const CONCURRENT = 3;
 const RETRY_DELAYS = [0, 1000, 3000, 5000, 10_000, 20_000, ...Array<number>(40).fill(30_000)];
@@ -115,7 +117,7 @@ export class UploadEngine {
 
   add(picks: readonly PickedFile[]): void {
     const uploads = picks.map(({ relativePath, file }): NewUpload => {
-      const id = crypto.randomUUID();
+      const id = `queue-${Date.now()}-${nextQueueId++}`;
       this.files.set(id, file);
       return {
         id,

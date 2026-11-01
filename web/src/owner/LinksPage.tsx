@@ -26,7 +26,6 @@ function shareName(share: Share): string {
 
 const SOON_MS = 2 * 86_400_000;
 
-/** The state as a sentence: the first clause carries the colour, the rest are facts. */
 export function describeShare(share: Share, now: Date): { lead: string; tone: "ok" | "warn" | "muted"; rest: string } {
   const uses = share.kind === "drop" ? `used ${plural(share.uses, "time")}` : plural(share.uses, "download");
   switch (share.state) {

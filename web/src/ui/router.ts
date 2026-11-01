@@ -24,7 +24,6 @@ export function navigate(to: string, options: { replace?: boolean } = {}): void 
   window.scrollTo(0, 0);
 }
 
-/** For an anchor: a plain click stays in the app, a modified click keeps the browser's meaning. */
 export function followLink(event: MouseEvent<HTMLAnchorElement>, to: string): void {
   if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   event.preventDefault();

@@ -39,7 +39,6 @@ export function shareHref(token: string, path: string): string {
   return path === "" ? `/s/${token}` : `/s/${token}?path=${encodeURIComponent(path)}`;
 }
 
-/** A browser picks up a dropped folder as a relative path; a drop link takes one flat name. */
 export function flatName(relativePath: string): string {
   return baseName(relativePath);
 }

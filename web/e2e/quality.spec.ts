@@ -12,7 +12,6 @@ interface Failure {
   ratio: number;
 }
 
-/** Walks every visible text node and measures it against the opaque background behind it. */
 async function contrastFailures(page: Page): Promise<Failure[]> {
   await page.waitForTimeout(250); // buttons fade between states, and a mid-fade colour is not a real pair
   return page.evaluate(() => {

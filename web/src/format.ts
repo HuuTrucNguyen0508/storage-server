@@ -37,7 +37,6 @@ export function formatWhen(when: Date, now: Date): string {
   return formatDay(when, now);
 }
 
-/** "in 6 days", "tomorrow", "today"; a date in the past reads "today" only on that day. */
 export function untilPhrase(when: Date, now: Date): string {
   const days = daysBetween(now, when);
   if (days <= 0) return "today";

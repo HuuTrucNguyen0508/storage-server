@@ -34,7 +34,7 @@ function rowsOf(listing: Listing): Row[] {
 
 type SearchState = { hits: Row[]; end: SearchEnd | null; failed: string | null };
 
-function useSearch(q: string, path: string): SearchState {
+function useSearch(q: string, path: string, run: number): SearchState {
   const [state, setState] = useState<SearchState>({ hits: [], end: null, failed: null });
   useEffect(() => {
     setState({ hits: [], end: null, failed: null });
@@ -57,7 +57,7 @@ function useSearch(q: string, path: string): SearchState {
         },
       );
     return () => stop.abort();
-  }, [q, path]);
+  }, [q, path, run]);
   return state;
 }
 
@@ -121,7 +121,8 @@ export function FilesPage({ path, q }: { path: string; q: string }) {
   const now = useNow();
   const phone = usePhone();
   const listing = useLoad(`list:${path}`, () => owner.list(path));
-  const search = useSearch(q, path);
+  const [searchRun, setSearchRun] = useState(0);
+  const search = useSearch(q, path, searchRun);
   const searching = q !== "";
   const folderName = path === "" ? "Files" : baseName(path);
   useTitle(searching ? `Search: ${q}` : folderName);
@@ -169,6 +170,7 @@ export function FilesPage({ path, q }: { path: string; q: string }) {
 
   const refresh = useCallback(() => {
     void listing.reload();
+    setSearchRun((n) => n + 1);
     refreshCounts();
   }, [listing.reload, refreshCounts]);
 
@@ -602,7 +604,14 @@ export function FilesPage({ path, q }: { path: string; q: string }) {
       )}
 
       {selected.length > 0 && (
-        <div className="selbar" role="toolbar" aria-label="Selection">
+        <div
+          className="selbar"
+          role="toolbar"
+          aria-label="Selection"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") dispatch({ type: "clear" });
+          }}
+        >
           <span className="count">{selected.length} selected</span>
           <button className="btn" type="button" aria-label="Download zip" onClick={() => download(selected, rows)}>
             <Icon name="download" />

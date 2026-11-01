@@ -44,7 +44,6 @@ export function fixtureFile(name: string, data: Buffer | string): string {
   return path;
 }
 
-/** Puts a file on the server through the real tus API, for a test about something else. */
 export async function seed(request: APIRequestContext, server: Server, path: string, data: Buffer | string): Promise<void> {
   const body = Buffer.from(data);
   const created = await request.post(`${server.owner}/api/uploads`, {
@@ -73,7 +72,6 @@ export async function row(page: Page, name: string) {
   return page.locator(`.row[data-path$="${name}"]`);
 }
 
-/** Taps or clicks a row's menu and picks an item, the way each device would. */
 export async function rowMenu(page: Page, name: string, item: string): Promise<void> {
   const r = await row(page, name);
   await r.hover().catch(() => {});

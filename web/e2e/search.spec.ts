@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import { gotoFolder, isPhone, row, seed } from "./helpers";
+import { gotoFolder, isPhone, row, rowMenu, seed } from "./helpers";
 
 test("search streams results and opens one", async ({ ownerPage: page, server, folder, request }) => {
   await seed(request, server, `${folder}/deep/down/red fox.txt`, "the fox");
@@ -21,6 +21,16 @@ test("search streams results and opens one", async ({ ownerPage: page, server, f
 
   await (await row(page, "red fox.txt")).getByRole("button", { name: "red fox.txt", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Preview of red fox.txt" }).locator(".doc pre")).toHaveText("the fox");
+});
+
+test("acting on a result updates the results", async ({ ownerPage: page, server, folder, request }) => {
+  await seed(request, server, `${folder}/gone-soon.txt`, "x");
+  await seed(request, server, `${folder}/gone-later.txt`, "y");
+  await page.goto(`${server.owner}/files/${folder}?q=gone`);
+  await expect(await row(page, "gone-soon.txt")).toBeVisible();
+  await rowMenu(page, "gone-soon.txt", "Trash");
+  await expect(await row(page, "gone-soon.txt")).toHaveCount(0);
+  await expect(await row(page, "gone-later.txt")).toBeVisible();
 });
 
 test("a search with no match says what search looks at", async ({ ownerPage: page, server, folder }) => {

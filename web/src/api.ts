@@ -278,7 +278,6 @@ function query(params: Record<string, string>): string {
   return new URLSearchParams(params).toString();
 }
 
-/** Splits a byte stream into NDJSON values as they arrive, across chunk boundaries. */
 export async function readNdjson(body: ReadableStream<Uint8Array>, onValue: (value: unknown) => void): Promise<void> {
   const decoder = new TextDecoder();
   const reader = body.getReader();
@@ -295,7 +294,6 @@ export async function readNdjson(body: ReadableStream<Uint8Array>, onValue: (val
   }
 }
 
-/** The stored-byte endpoints a preview or a download reads, for either audience. */
 export interface ContentSource {
   contentUrl(path: string): string;
   downloadUrl(path: string): string;

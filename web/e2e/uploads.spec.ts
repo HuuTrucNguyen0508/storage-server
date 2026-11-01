@@ -32,8 +32,9 @@ test("an upload resumes from the server's offset after a page reload", async ({ 
   await gotoFolder(page, server, folder);
   await page.getByLabel("Files to upload").setInputFiles(path);
   await showTray(page);
-  await expect(page.locator(`.up[data-state="reconnecting"]`).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(`.up[data-state="reconnecting"]`)).toBeVisible({ timeout: 30_000 });
   await expect(tray(page).locator(".s")).toHaveText("Paused at 64.0 MB of 70.0 MB, reconnecting");
+  await expect(page.getByRole("progressbar", { name: `${name} stored` }).first()).toHaveAttribute("aria-valuenow", String(CHUNK));
 
   stall = false;
   await page.unroute("**/api/uploads/*");
@@ -42,7 +43,6 @@ test("an upload resumes from the server's offset after a page reload", async ({ 
     if (req.method() === "PATCH") offsets.push(req.headers()["upload-offset"] ?? "");
     await route.continue();
   });
-  await page.evaluate(() => window.stop());
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: folder })).toBeVisible();
 
@@ -50,6 +50,13 @@ test("an upload resumes from the server's offset after a page reload", async ({ 
   await expect(page.locator(`.up[data-state="needs-file"]`)).toBeVisible();
   await expect(tray(page).locator(".s")).toHaveText("Pick the file again to continue from 64.0 MB");
   await expect(page.locator(`.row.ghost[data-ghost$="${name}"]`)).toHaveCount(1);
+
+  if (!isPhone(page)) {
+    const pick = await page.locator(".btn.pick").boundingBox();
+    const rail = await page.locator(".rail").boundingBox();
+    if (pick === null || rail === null) throw new Error("no tray");
+    expect(pick.x + pick.width).toBeLessThanOrEqual(rail.x + rail.width);
+  }
 
   offsets.length = 0;
   await page.getByLabel(`Pick the file for ${name}`).setInputFiles(path);

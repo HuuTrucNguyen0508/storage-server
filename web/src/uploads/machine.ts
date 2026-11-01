@@ -20,7 +20,6 @@ export interface UploadItem {
   size: number;
   lastModified: number;
   state: UploadState;
-  /** The owner picked a different file for a resume, so this is a new upload. */
   replaced: boolean;
 }
 

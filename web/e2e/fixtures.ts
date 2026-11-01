@@ -6,9 +6,7 @@ interface WorkerFixtures {
 }
 
 interface TestFixtures {
-  /** Fails any test whose page tripped the app's CSP or loaded something off the machine. */
   pageRules: void;
-  /** A folder of this test's own, so tests share one server without seeing each other. */
   folder: string;
   ownerPage: Page;
 }

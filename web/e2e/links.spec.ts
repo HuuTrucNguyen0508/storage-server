@@ -2,7 +2,6 @@ import { expect, test } from "./fixtures";
 import { createShare, diskFile, fixtureFile, gotoFolder, minimalPdf, row, rowMenu, seed } from "./helpers";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
-/** A stranger's browser: no owner cookie, and a record of everything it asked for. */
 async function guestPage(browser: Browser, like: BrowserContext): Promise<{ page: Page; asked: string[] }> {
   const viewport = like.pages()[0]?.viewportSize() ?? null;
   const context = await browser.newContext({ viewport, hasTouch: (viewport?.width ?? 1280) <= 720 });

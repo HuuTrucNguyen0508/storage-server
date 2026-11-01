@@ -149,6 +149,8 @@ for (const theme of ["light", "dark"] as const) {
     await expect(guest.getByText(/\d+ by \d+/)).toBeVisible();
     await shot(guest, "guest-preview");
     await guest.keyboard.press("Escape");
+    await expect(guest.getByRole("dialog")).toHaveCount(0);
+    await guest.waitForTimeout(100); // closing pops a history entry, which a navigation must not race
     await guest.goto(secret.url);
     await guest.getByLabel("Password").fill("wrong");
     await guest.getByRole("button", { name: "Open" }).click();

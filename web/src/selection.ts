@@ -4,11 +4,8 @@
  */
 export interface Selection {
   ids: ReadonlySet<string>;
-  /** The fixed end of a Shift range. */
   anchor: string | null;
-  /** The row that holds the keyboard focus. */
   focus: string | null;
-  /** Entered by a long press: a tap toggles and checkboxes stay visible. */
   touchMode: boolean;
 }
 

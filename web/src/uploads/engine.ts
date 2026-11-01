@@ -20,15 +20,21 @@ const FAILURE_WORDS: Record<string, string> = {
   symlink_refused: "A folder on this path is a symlink",
   reserved_name: "That name is reserved by the server",
   invalid_path: "This name cannot be stored here",
+  unauthenticated: "Sign in again, then retry",
+  open_required: "Reload this page, then retry",
+  expired: "This link no longer takes files",
+  exhausted: "This link no longer takes files",
+  unavailable: "This link no longer takes files",
 };
 
 function reasonOf(error: Error): string {
-  const body = "originalResponse" in error ? (error.originalResponse as HttpResponse | null)?.getBody() : undefined;
+  const response = "originalResponse" in error ? (error.originalResponse as HttpResponse | null) : null;
+  if (response === null) return "The connection was lost. Retry to continue";
   try {
-    const code = (JSON.parse(body ?? "") as { error?: { code?: string } }).error?.code;
+    const code = (JSON.parse(response.getBody()) as { error?: { code?: string } }).error?.code;
     if (code !== undefined && code in FAILURE_WORDS) return FAILURE_WORDS[code] as string;
   } catch {
-    /* no JSON body means the failure is the connection */
+    /* a body that is not JSON came from a proxy, which says nothing useful */
   }
   return "The server refused this upload";
 }
@@ -82,17 +88,21 @@ export class UploadEngine {
 
   /** The stored offset lags a chunk behind, and the last answer may have been lost. */
   private async reconcile(item: UploadItem): Promise<void> {
-    const url = (await this.previous(item))[0]?.uploadUrl;
-    if (typeof url !== "string") return;
-    const res = await fetch(url, { method: "HEAD", headers: { "Tus-Resumable": "1.0.0" } }).catch(() => null);
+    const latest = (await this.previous(item))[0];
+    if (typeof latest?.uploadUrl !== "string") return;
+    const res = await fetch(latest.uploadUrl, { method: "HEAD", headers: { "Tus-Resumable": "1.0.0" } }).catch(() => null);
     if (res === null) return;
     if (!res.ok) {
       if (res.status === 404) this.dispatch({ type: "offsetKnown", id: item.id, stored: 0 });
       return;
     }
     const offset = Number(res.headers.get("Upload-Offset"));
-    if (offset >= item.size) this.dispatch({ type: "finished", id: item.id, storedPath: res.headers.get("X-Stored-Path") });
-    else this.dispatch({ type: "offsetKnown", id: item.id, stored: offset });
+    if (offset < item.size) {
+      this.dispatch({ type: "offsetKnown", id: item.id, stored: offset });
+      return;
+    }
+    await defaultOptions.urlStorage.removeUpload(latest.urlStorageKey);
+    this.dispatch({ type: "finished", id: item.id, storedPath: res.headers.get("X-Stored-Path") });
   }
 
   private fingerprint(item: Fingerprinted): string {
@@ -119,7 +129,6 @@ export class UploadEngine {
     this.dispatch({ type: "added", uploads });
   }
 
-  /** The file for an item that lost its handle in a reload. */
   async pick(id: string, file: File): Promise<void> {
     const item = this.items.find((i) => i.id === id);
     if (item === undefined) return;

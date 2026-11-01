@@ -15,7 +15,6 @@ export interface Row {
   modTime: Date;
   /** null is "not previewable" in a listing, and "not known yet" for a search hit. */
   preview: PreviewKind | null;
-  /** The folder a search hit lives in. */
   where: string | null;
 }
 

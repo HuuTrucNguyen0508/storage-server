@@ -1,15 +1,39 @@
 {
-  "TCP": { "443": { "HTTPS": true }, "8443": { "HTTPS": true } },
+  "TCP": {
+    "443": {
+      "HTTPS": true
+    },
+    "8443": {
+      "HTTPS": true
+    },
+    "8444": {
+      "HTTPS": true
+    }
+  },
   "Web": {
     "${TS_CERT_DOMAIN}:443": {
       "Handlers": {
-        "/": { "Proxy": "http://app:8080" },
-        "/pdf/": { "Proxy": "http://pdf:8080/pdf/" }
+        "/": {
+          "Proxy": "http://app:8080"
+        }
       }
     },
     "${TS_CERT_DOMAIN}:8443": {
-      "Handlers": { "/": { "Proxy": "http://app:8081" } }
+      "Handlers": {
+        "/": {
+          "Proxy": "http://app:8081"
+        }
+      }
+    },
+    "${TS_CERT_DOMAIN}:8444": {
+      "Handlers": {
+        "/": {
+          "Proxy": "http://pdf:8080"
+        }
+      }
     }
   },
-  "AllowFunnel": { "${TS_CERT_DOMAIN}:8443": true }
+  "AllowFunnel": {
+    "${TS_CERT_DOMAIN}:8443": true
+  }
 }

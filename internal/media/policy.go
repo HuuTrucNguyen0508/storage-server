@@ -3,9 +3,13 @@
 package media
 
 import (
-	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"io"
 	"net/http"
+	"path"
+	"strings"
 	"time"
 
 	"storage-server/internal/disk"
@@ -24,18 +28,14 @@ const (
 	ClassText  Class = "text"
 )
 
-// sandbox makes a navigated document a script-free opaque origin. Nothing the
-// server sends for stored bytes omits it except PDF, whose browser viewer the
-// harness must prove cannot run script either.
-const (
-	sandboxCSP = "sandbox; default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'"
-	pdfCSP     = "default-src 'none'; object-src 'self'; script-src 'none'"
-)
+// sandboxCSP makes a navigated document a script-free opaque origin. Every stored
+// byte gets it. PDF is no exception: the frontend renders it with pdfjs-dist on a
+// canvas, so no browser viewer needs a looser policy.
+const sandboxCSP = "sandbox; default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'"
 
 type rule struct {
 	contentType string
 	class       Class
-	csp         string
 }
 
 // rules is keyed by lowercase extension and is the whole policy. The uploader's
@@ -43,63 +43,104 @@ type rule struct {
 // to text/plain, so a hostile page previews as its source. An unlisted extension
 // is application/octet-stream with attachment.
 var rules = map[string]rule{
-	".jpg": {"image/jpeg", ClassImage, sandboxCSP}, ".jpeg": {"image/jpeg", ClassImage, sandboxCSP},
-	".png": {"image/png", ClassImage, sandboxCSP}, ".gif": {"image/gif", ClassImage, sandboxCSP},
-	".webp": {"image/webp", ClassImage, sandboxCSP}, ".avif": {"image/avif", ClassImage, sandboxCSP},
-	".svg": {"image/svg+xml", ClassImage, sandboxCSP},
-	".mp4": {"video/mp4", ClassVideo, sandboxCSP}, ".m4v": {"video/mp4", ClassVideo, sandboxCSP},
-	".webm": {"video/webm", ClassVideo, sandboxCSP}, ".mov": {"video/quicktime", ClassVideo, sandboxCSP},
-	".mkv": {"video/x-matroska", ClassVideo, sandboxCSP},
-	".mp3": {"audio/mpeg", ClassAudio, sandboxCSP}, ".m4a": {"audio/mp4", ClassAudio, sandboxCSP},
-	".flac": {"audio/flac", ClassAudio, sandboxCSP}, ".ogg": {"audio/ogg", ClassAudio, sandboxCSP},
-	".opus": {"audio/ogg", ClassAudio, sandboxCSP}, ".wav": {"audio/wav", ClassAudio, sandboxCSP},
-	".pdf": {"application/pdf", ClassPDF, pdfCSP},
-	".txt": {"text/plain; charset=utf-8", ClassText, sandboxCSP}, ".md": {"text/plain; charset=utf-8", ClassText, sandboxCSP},
-	".log": {"text/plain; charset=utf-8", ClassText, sandboxCSP}, ".csv": {"text/plain; charset=utf-8", ClassText, sandboxCSP},
-	".json": {"text/plain; charset=utf-8", ClassText, sandboxCSP}, ".yaml": {"text/plain; charset=utf-8", ClassText, sandboxCSP},
-	".yml": {"text/plain; charset=utf-8", ClassText, sandboxCSP}, ".xml": {"text/plain; charset=utf-8", ClassText, sandboxCSP},
-	".html": {"text/plain; charset=utf-8", ClassText, sandboxCSP}, ".htm": {"text/plain; charset=utf-8", ClassText, sandboxCSP},
-	".js": {"text/plain; charset=utf-8", ClassText, sandboxCSP}, ".css": {"text/plain; charset=utf-8", ClassText, sandboxCSP},
+	".jpg": {"image/jpeg", ClassImage}, ".jpeg": {"image/jpeg", ClassImage},
+	".png": {"image/png", ClassImage}, ".gif": {"image/gif", ClassImage},
+	".webp": {"image/webp", ClassImage}, ".avif": {"image/avif", ClassImage},
+	".svg": {"image/svg+xml", ClassImage},
+	".mp4": {"video/mp4", ClassVideo}, ".m4v": {"video/mp4", ClassVideo},
+	".webm": {"video/webm", ClassVideo}, ".mov": {"video/quicktime", ClassVideo},
+	".mkv": {"video/x-matroska", ClassVideo},
+	".mp3": {"audio/mpeg", ClassAudio}, ".m4a": {"audio/mp4", ClassAudio},
+	".flac": {"audio/flac", ClassAudio}, ".ogg": {"audio/ogg", ClassAudio},
+	".opus": {"audio/ogg", ClassAudio}, ".wav": {"audio/wav", ClassAudio},
+	".pdf": {"application/pdf", ClassPDF},
+	".txt": {"text/plain; charset=utf-8", ClassText}, ".md": {"text/plain; charset=utf-8", ClassText},
+	".log": {"text/plain; charset=utf-8", ClassText}, ".csv": {"text/plain; charset=utf-8", ClassText},
+	".json": {"text/plain; charset=utf-8", ClassText}, ".yaml": {"text/plain; charset=utf-8", ClassText},
+	".yml": {"text/plain; charset=utf-8", ClassText}, ".xml": {"text/plain; charset=utf-8", ClassText},
+	".html": {"text/plain; charset=utf-8", ClassText}, ".htm": {"text/plain; charset=utf-8", ClassText},
+	".js": {"text/plain; charset=utf-8", ClassText}, ".css": {"text/plain; charset=utf-8", ClassText},
+}
+
+func ruleOf(name string) (rule, bool) {
+	r, ok := rules[strings.ToLower(path.Ext(name))]
+	return r, ok
 }
 
 // ClassOf is what a listing reports for a name.
-func ClassOf(name string) Class { panic("not implemented") }
+func ClassOf(name string) Class {
+	r, _ := ruleOf(name)
+	return r.class
+}
+
+func setCommon(h http.Header) {
+	h.Set("Content-Security-Policy", sandboxCSP)
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Cross-Origin-Resource-Policy", "same-origin")
+	h.Set("Referrer-Policy", "no-referrer")
+	h.Set("Cache-Control", "private, no-cache")
+}
+
+// disposition always uses RFC 8187, so a hostile name cannot end the header value.
+func disposition(kind, name string) string {
+	var b strings.Builder
+	b.WriteString(kind)
+	b.WriteString("; filename*=UTF-8''")
+	for _, c := range []byte(name) {
+		switch {
+		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9', strings.IndexByte("!#$&+-.^_`|~", c) >= 0:
+			b.WriteByte(c)
+		default:
+			fmt.Fprintf(&b, "%%%02X", c)
+		}
+	}
+	return b.String()
+}
 
 // SetHeaders writes every header for stored bytes: type, CSP, nosniff,
 // disposition, CORP, no-referrer. It is the only code that sets them, and
 // serving a file without calling it is impossible because Serve calls it.
-func SetHeaders(h http.Header, name string, download bool) { panic("not implemented") }
+func SetHeaders(h http.Header, name string, download bool) {
+	r, listed := ruleOf(name)
+	setCommon(h)
+	if !listed {
+		h.Set("Content-Type", "application/octet-stream")
+		h.Set("Content-Disposition", disposition("attachment", name))
+		return
+	}
+	h.Set("Content-Type", r.contentType)
+	if download {
+		h.Set("Content-Disposition", disposition("attachment", name))
+	} else {
+		h.Set("Content-Disposition", disposition("inline", name))
+	}
+}
+
+// SetArchiveHeaders is SetHeaders for a generated zip.
+func SetArchiveHeaders(h http.Header, name string) {
+	setCommon(h)
+	h.Set("Content-Type", "application/zip")
+	h.Set("Content-Disposition", disposition("attachment", name))
+}
+
+// etag is strong, so If-Range works, and hashed, so it does not publish an inode.
+func etag(i disk.Info) string {
+	sum := sha256.Sum256(fmt.Appendf(nil, "%d/%d/%d/%d", i.Dev, i.Inode, i.Size, i.ModTime.UnixNano()))
+	return `"` + hex.EncodeToString(sum[:12]) + `"`
+}
 
 // Serve answers one file through http.ServeContent, which gives Range, If-Range
-// and sendfile. The caller's writer must keep ReadFrom for sendfile to apply.
+// and sendfile. It passes the *os.File itself, because the kernel path only
+// recognises that type, and the caller's writer must keep ReadFrom.
 func Serve(w http.ResponseWriter, r *http.Request, f *disk.File, download bool) {
 	SetHeaders(w.Header(), f.Info.Name, download)
-	http.ServeContent(w, r, "", f.Info.ModTime, f)
+	w.Header().Set("Etag", etag(f.Info))
+	http.ServeContent(w, r, "", f.Info.ModTime, f.File)
 }
 
-// Thumbnails renders and caches JPEG previews under the state directory.
-type Thumbnails struct {
-	dir   string
-	limit chan struct{}
-}
-
-func NewThumbnails(dir string) *Thumbnails { panic("not implemented") }
-
-// Get returns a cached or fresh JPEG. The key is device, inode, size, mtime and
-// width, so a replaced file misses. It checks dimensions with DecodeConfig
-// before decoding, so a decompression bomb is refused. SVG is never rasterised.
-func (t *Thumbnails) Get(ctx context.Context, tree *disk.Tree, p disk.Path, width int) (io.ReadSeekCloser, time.Time, error) {
-	panic("not implemented")
-}
-
-// Prune deletes the oldest cache files past the size bound.
-func (t *Thumbnails) Prune(ctx context.Context) error { panic("not implemented") }
-
-// WriteZip streams the selection with archive/zip, method Store, through the
-// tree's Walk, so symlinks and other kinds are skipped by construction. A
-// backslash in an entry name becomes "_" so a Windows extractor cannot read it
-// as a separator. An error after the first byte aborts the connection, so a
-// truncated body cannot look like a complete archive.
-func WriteZip(ctx context.Context, w io.Writer, tree *disk.Tree, paths []disk.Path) error {
-	panic("not implemented")
+// ServeThumb answers a generated JPEG with the same protective headers.
+func ServeThumb(w http.ResponseWriter, r *http.Request, c io.ReadSeeker, mod time.Time) {
+	setCommon(w.Header())
+	w.Header().Set("Content-Type", "image/jpeg")
+	http.ServeContent(w, r, "", mod, c)
 }

@@ -342,3 +342,34 @@ func TestPasswordHashRoundTrip(t *testing.T) {
 		t.Fatal("accepted a malformed hash")
 	}
 }
+
+func TestConcurrentAttemptsRespectLockout(t *testing.T) {
+	e := setup(t)
+	start := make(chan struct{})
+	results := make(chan error, 12)
+	for range 12 {
+		go func() {
+			<-start
+			results <- e.s.attempt(context.Background(), "concurrent", ErrBadCredentials, func() (bool, error) {
+				time.Sleep(50 * time.Millisecond)
+				return false, nil
+			})
+		}()
+	}
+	close(start)
+	bad, locked := 0, 0
+	for range 12 {
+		err := <-results
+		switch {
+		case errors.Is(err, ErrRateLimited):
+			locked++
+		case errors.Is(err, ErrBadCredentials):
+			bad++
+		default:
+			t.Fatal(err)
+		}
+	}
+	if bad != 5 || locked != 7 {
+		t.Fatalf("concurrent attempts: verified=%d rate_limited=%d, want 5 and 7", bad, locked)
+	}
+}

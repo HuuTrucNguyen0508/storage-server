@@ -166,8 +166,9 @@ type Service struct {
 	db     *store.Store
 	shares Shares
 
-	mu    sync.Mutex
-	setup string
+	mu       sync.Mutex
+	setup    string
+	attempts map[string]*attemptLock
 }
 
 // New logs a fresh setup code when no owner exists.
@@ -219,7 +220,38 @@ func (s *Service) SetupRequired(ctx context.Context) (bool, error) {
 	return !ok, err
 }
 
+type attemptLock struct {
+	mu    sync.Mutex
+	users int
+}
+
+func (s *Service) lockAttempt(key string) func() {
+	s.mu.Lock()
+	if s.attempts == nil {
+		s.attempts = make(map[string]*attemptLock)
+	}
+	lock := s.attempts[key]
+	if lock == nil {
+		lock = &attemptLock{}
+		s.attempts[key] = lock
+	}
+	lock.users++
+	s.mu.Unlock()
+	lock.mu.Lock()
+	return func() {
+		lock.mu.Unlock()
+		s.mu.Lock()
+		lock.users--
+		if lock.users == 0 {
+			delete(s.attempts, key)
+		}
+		s.mu.Unlock()
+	}
+}
+
 func (s *Service) attempt(ctx context.Context, key string, fail error, verify func() (bool, error)) error {
+	unlock := s.lockAttempt(key)
+	defer unlock()
 	st, err := s.db.Limiter(ctx, key)
 	if err != nil {
 		return err
@@ -235,14 +267,8 @@ func (s *Service) attempt(ctx context.Context, key string, fail error, verify fu
 	if ok {
 		return s.db.ClearLimiter(ctx, key)
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	st, err = s.db.Limiter(ctx, key)
-	if err != nil {
-		return err
-	}
 	st.Failures++
-	st.LockedUntil = now.Add(lockFor(st.Failures))
+	st.LockedUntil = time.Now().Add(lockFor(st.Failures))
 	return errors.Join(fail, s.db.SetLimiter(ctx, key, st))
 }
 

@@ -71,6 +71,7 @@ var routes = []route{
 	{method: "DELETE", path: "/api/uploads/{id}", gate: Owner, serve: (*API).uploadDelete},
 
 	{method: "GET", path: "/api/public/{token}", gate: Public, serve: (*API).describe},
+	{method: "GET", path: "/api/public/{token}/grant", gate: Public, serve: (*API).checkGrant},
 	{method: "POST", path: "/api/public/{token}/open", gate: GuestOpen, serve: (*API).open},
 	{method: "GET", path: "/api/public/{token}/files", gate: GuestBrowse, serve: (*API).list},
 	{method: "GET", path: "/api/public/{token}/thumb", gate: GuestBrowse, serve: (*API).thumb},

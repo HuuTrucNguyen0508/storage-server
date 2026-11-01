@@ -183,3 +183,23 @@ func (a *API) open(w http.ResponseWriter, r *http.Request, c *call) {
 	a.setCookie(w, grantCookie, "/api/public/"+string(token), cookie, a.secure(a.cfg.ShareURL))
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// checkGrant validates access without listing a drop folder or consuming a use.
+func (a *API) checkGrant(w http.ResponseWriter, r *http.Request, c *call) {
+	token := store.Token(r.PathValue("token"))
+	cookie := cookieValue(r, grantCookie)
+	sh, _, err := a.access.Describe(r.Context(), token, cookie)
+	if err != nil {
+		a.fail(w, r, err)
+		return
+	}
+	act := access.Browse
+	if sh.Kind == store.ShareDrop {
+		act = access.Upload
+	}
+	if _, err := a.access.Admit(r.Context(), token, cookie, act); err != nil {
+		a.fail(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

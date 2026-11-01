@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "./fixtures";
 import { createShare, diskFile, fixtureFile, gotoFolder, minimalPdf, row, rowMenu, seed } from "./helpers";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
@@ -88,6 +89,16 @@ test("a file link previews a PDF and downloads, and the limit ends it", async ({
   await expect(dialog.locator("canvas")).toHaveCount(1);
   await expect(dialog.getByText("1 page")).toBeVisible();
   await guest.keyboard.press("Escape");
+
+  for (let i = 0; i < 2; i++) {
+    const pending = guest.waitForEvent("download");
+    await guest.getByRole("link", { name: /^Download,/ }).click();
+    const downloaded = await pending;
+    expect(await downloaded.failure()).toBe(null);
+    expect(readFileSync((await downloaded.path()) ?? "")).toEqual(minimalPdf("Guest PDF"));
+    await guest.reload();
+    await expect(guest.getByRole("button", { name: "Preview", exact: true })).toBeVisible();
+  }
 
   const second = await guestPage(browser, context);
   await second.page.goto(share.url);
@@ -181,3 +192,31 @@ test("a link follows a rename, stops in the trash and returns on restore", async
   await expect(guest.getByRole("heading", { level: 1, name: "renamed.txt" })).toBeVisible();
 });
 
+
+test("passwordless file reload retains its grant without spending another use", async ({ server, folder, request, browser, context }) => {
+  await seed(request, server, `${folder}/once.txt`, "one grant");
+  const share = await createShare(request, server, { path: `${folder}/once.txt`, kind: "link", maxUses: 3 });
+  const { page: guest } = await guestPage(browser, context);
+  await guest.goto(share.url);
+  for (let i = 0; i < 2; i++) {
+    await guest.getByRole("button", { name: "Preview", exact: true }).click();
+    await expect(guest.getByRole("dialog").locator(".doc pre")).toHaveText("one grant");
+    await guest.reload();
+  }
+  const links = await request.get(`${server.owner}/api/shares`);
+  const body: { id: string; uses: number }[] = await links.json();
+  expect(body.find((s) => s.id === share.id)?.uses).toBe(1);
+});
+
+test("a password drop link retains its grant on reload", async ({ server, folder, request, browser, context }) => {
+  await seed(request, server, `${folder}/drop/private.txt`, "hidden");
+  const share = await createShare(request, server, { path: `${folder}/drop`, kind: "drop", password: "opensesame" });
+  const { page: guest } = await guestPage(browser, context);
+  await guest.goto(share.url);
+  await guest.getByLabel("Password").fill("opensesame");
+  await guest.getByRole("button", { name: "Open" }).click();
+  await expect(guest.getByLabel("Files to send")).toBeAttached();
+  await guest.reload();
+  await expect(guest.getByLabel("Files to send")).toBeAttached();
+  await expect(guest.getByLabel("Password")).toHaveCount(0);
+});

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent, type FormEvent } from "react";
-import { ApiError, guest, postDownload, previewKindAt, type Entry, type GuestApi, type LinkFacts } from "../api";
+import { ApiError, guest, postDownload, type Entry, type GuestApi, type LinkFacts } from "../api";
 import { formatBytes, plural, untilPhrase } from "../format";
 import { baseName, crumbs, displayOrder, join, shareHref } from "../paths";
 import { Preview, type PreviewItem } from "../preview/Preview";
@@ -432,12 +432,12 @@ export function GuestApp({ token }: { token: string }) {
     void (async () => {
       try {
         const facts = await api.facts();
-        if (facts.passwordRequired) {
-          const held = facts.kind === "link" && (await holdsGrant(api, facts));
-          settle(held ? { tag: "open", facts } : { tag: "password", facts });
+        const held = await api.hasGrant();
+        if (!held && facts.passwordRequired) {
+          settle({ tag: "password", facts });
           return;
         }
-        await api.open();
+        if (!held) await api.open();
         settle({ tag: "open", facts });
       } catch {
         settle({ tag: "broken" });
@@ -461,16 +461,3 @@ export function GuestApp({ token }: { token: string }) {
       return <FilePage facts={stage.facts} api={api} />;
   }
 }
-
-async function holdsGrant(api: GuestApi, facts: LinkFacts): Promise<boolean> {
-  try {
-    if (facts.isFolder) await api.list("");
-    else await previewKindAt(api.source.contentUrl(""));
-    return true;
-  } catch (err) {
-    // The file link probes with HEAD, which has no body to carry a code.
-    if (err instanceof ApiError && err.status === 401) return false;
-    throw err;
-  }
-}
-

@@ -400,6 +400,15 @@ export function guest(token: string) {
     async facts(): Promise<LinkFacts> {
       return parseLinkFacts(await (await call(base)).json());
     },
+    async hasGrant(): Promise<boolean> {
+      try {
+        await call(`${base}/grant`);
+        return true;
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) return false;
+        throw err;
+      }
+    },
     async open(password?: string): Promise<void> {
       await call(`${base}/open`, jsonInit("POST", password === undefined ? {} : { password }));
     },

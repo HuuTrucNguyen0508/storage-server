@@ -14,7 +14,7 @@ while read -r ns app; do
   if wait_job "$ns" "$job" "${BACKUP_TIMEOUT:-1800}"; then
     k -n "$ns" logs "job/$job" --all-containers --tail=5 2>/dev/null | sed 's/^/    /' || true
     if [ -d "$DATA_DIR/backups/$app" ]; then
-      newest=$(ls -1 "$DATA_DIR/backups/$app" 2>/dev/null | grep -E "^${app}-[0-9]{8}T[0-9]{6}Z\.dump$" | sort | tail -n 1 || true)
+      newest=$(find "$DATA_DIR/backups/$app" -maxdepth 1 -type f -name "${app}-*T*Z.dump" -printf '%f\n' 2>/dev/null | sort | tail -n 1 || true)
       [ -n "$newest" ] && log "newest dump: $DATA_DIR/backups/$app/$newest"
     fi
     log "$app backup OK"

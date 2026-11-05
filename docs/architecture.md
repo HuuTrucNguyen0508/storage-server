@@ -91,6 +91,7 @@ Make targets: `up`, `down` (deletes the cluster only; `${DATA_DIR}` and `.local/
 - Logging in without a browser (k6, tests): `POST https://auth.${DOMAIN}/api/firstfactor` with JSON `{"username":"...","password":"...","keepMeLoggedIn":false}` returns `{"status":"OK"}` and cookie `authelia_session` (Domain `${DOMAIN}`), valid on every app host.
 - Home serves `GET https://home.${DOMAIN}/api/me` with `{"user","name","email","groups"}` from the identity headers (`401` when absent).
 - Authelia also allows `whoami.${DOMAIN}`, used only by `make smoke`.
+- Each password check costs 64 MiB (argon2id). Traefik's `auth/login-limit` middleware caps concurrent `POST /api/firstfactor` requests at 6 across all clients and answers `429` beyond that, so a login burst can't OOM-kill Authelia and sign everyone out. Clients retry on `429` with jittered backoff. `make smoke` proves the cap.
 
 ### What an app does with identity
 

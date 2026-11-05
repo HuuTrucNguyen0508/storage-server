@@ -96,8 +96,9 @@ spec:
             periodSeconds: 20
             failureThreshold: 3
           resources:
-            requests: {cpu: 20m, memory: 64Mi}
-            limits: {cpu: "1", memory: 512Mi}
+            requests: {cpu: 20m, memory: 128Mi}
+            # argon2id needs 64 MiB per password check; login-limit caps concurrent checks at 6.
+            limits: {cpu: "1", memory: 1Gi}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -149,6 +150,17 @@ metadata:
 spec:
   entryPoints: [websecure]
   routes:
+    # Password checks cost 64 MiB each (argon2id). Capping concurrent ones keeps
+    # a burst of logins, hostile or not, from OOM-killing Authelia and signing
+    # everyone out. Extra requests get 429 and can retry.
+    - match: Host(`auth.${DOMAIN}`) && (Path(`/api/firstfactor`) || Path(`/api/reset-password/identity/start`))
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: strip-identity
+        - name: login-limit
+      services:
+        - {name: authelia, port: 9091}
     - match: Host(`auth.${DOMAIN}`)
       kind: Rule
       middlewares:
@@ -156,6 +168,18 @@ spec:
       services:
         - {name: authelia, port: 9091}
   tls: {}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: login-limit
+  namespace: auth
+  labels: {app.kubernetes.io/name: login-limit, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: auth}
+spec:
+  inFlightReq:
+    amount: 6
+    sourceCriterion:
+      requestHost: true
 ---
 # Deletes client-sent identity headers. Every route uses it (directly or via sso-chain).
 apiVersion: traefik.io/v1alpha1

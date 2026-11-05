@@ -282,6 +282,20 @@ if want logout; then
 fi
 
 # ---------------------------------------------------------------------------
+if want loginlimit; then
+  step "login burst (argon2id needs 64 MiB per password check)"
+  authelia_restarts() { k -n auth get pod -l app.kubernetes.io/name=authelia -o jsonpath='{.items[0].status.containerStatuses[?(@.name=="authelia")].restartCount}'; }
+  before=$(authelia_restarts)
+  burst_body=$(jq -nc --arg u loadgen --arg p "$LOADGEN_PASSWORD" '{username: $u, password: $p, keepMeLoggedIn: false}')
+  codes=$(seq 30 | xargs -P 30 -I{} curl -s -o /dev/null -w '%{http_code}\n' --cacert "$CA" \
+    --connect-to "::${LISTEN_ADDRESS}:${HTTPS_PORT}" -H 'Content-Type: application/json' \
+    --data "$burst_body" "https://auth.${DOMAIN}/api/firstfactor" | sort | uniq -c | awk '{printf "%s x%s ", $2, $1}')
+  sleep 3
+  after=$(authelia_restarts)
+  check "30 concurrent logins are capped by Traefik (${codes% })" [ "$(grep -c 429 <<<"$codes")" -eq 1 ]
+  check "the burst didn't restart Authelia (restarts ${before} -> ${after})" [ "$before" = "$after" ]
+fi
+
 if want persistence; then
   step "host-backed volume persistence"
   mkdir -p "$DATA_DIR/smoke"; chmod 0777 "$DATA_DIR/smoke"

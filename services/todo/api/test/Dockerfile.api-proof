@@ -1,0 +1,17 @@
+# API-only verification while another task owns and replaces the web sources.
+# Reuses the last successfully built immutable web artifact, never live web files.
+FROM node:26.13.0-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072 AS api
+COPY tools/install-corepack.mjs /tmp/install-corepack.mjs
+RUN node /tmp/install-corepack.mjs && corepack enable
+WORKDIR /app/api
+COPY services/todo/api/package.json services/todo/api/pnpm-lock.yaml services/todo/api/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY services/todo/api/ ./
+RUN pnpm build && pnpm prune --prod
+FROM lab/todo:28000ff53a0db595
+WORKDIR /app/api
+COPY --from=api /app/api/dist ./dist
+COPY --from=api /app/api/migrations ./migrations
+COPY --from=api /app/api/package.json ./package.json
+COPY --from=api /app/api/node_modules ./node_modules
+USER 1000:1000

@@ -1,0 +1,103 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: todo-db
+  namespace: todo
+  labels: {app.kubernetes.io/name: todo, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: database}
+spec:
+  inheritedMetadata:
+    labels: {app.kubernetes.io/name: todo, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: database}
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.6-system-trixie
+  instances: 1
+  bootstrap:
+    initdb: {database: todo, owner: todo}
+  storage: {size: 1Gi}
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 512Mi}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: todo-backups
+  namespace: todo
+  labels: {app.kubernetes.io/name: todo, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: backup}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: lab-host
+  volumeName: todo-backups
+  resources: {requests: {storage: 50Gi}}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: todo-db-backup
+  namespace: todo
+  labels: {app.kubernetes.io/name: todo, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: db-backup}
+spec:
+  schedule: "0 3 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels: {app.kubernetes.io/name: todo, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: db-backup}
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext: {runAsNonRoot: true, runAsUser: 70, runAsGroup: 70, seccompProfile: {type: RuntimeDefault}}
+          containers:
+            - name: backup
+              image: ${POSTGRES_CLIENT_IMAGE}
+              env:
+                - name: DATABASE_URL
+                  valueFrom: {secretKeyRef: {name: todo-db-app, key: uri}}
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  f="/backups/todo-$(date -u +%Y%m%dT%H%M%SZ).dump"
+                  pg_dump --format=custom --file="$f.partial" "$DATABASE_URL"
+                  mv "$f.partial" "$f"
+                  ls -1 /backups | grep -E '^todo-[0-9]{8}T[0-9]{6}Z\.dump$' | sort -r | tail -n +8 | sed 's|^|/backups/|' | xargs -r rm -f
+                  echo "wrote $f ($(wc -c < "$f") bytes)"
+              resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 256Mi}}
+              securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+              volumeMounts:
+                - {name: backups, mountPath: /backups}
+                - {name: tmp, mountPath: /tmp}
+          volumes:
+            - {name: backups, persistentVolumeClaim: {claimName: todo-backups}}
+            - {name: tmp, emptyDir: {}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-ingress, namespace: todo, labels: {app.kubernetes.io/component: network}}
+spec: {podSelector: {}, policyTypes: [Ingress]}
+---
+# Database: 5432 from the app's own pods (app, backup and restore Jobs share
+# app.kubernetes.io/name), instance ports from the CloudNativePG operator.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: todo-db, namespace: todo, labels: {app.kubernetes.io/component: network}}
+spec:
+  podSelector: {matchLabels: {cnpg.io/cluster: todo-db}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {app.kubernetes.io/name: todo}}
+      ports: [{port: 5432, protocol: TCP}]
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cnpg-system}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: cloudnative-pg}}
+      ports: [{port: 8000, protocol: TCP}, {port: 5432, protocol: TCP}]
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: prometheus}}
+      ports: [{port: 9187, protocol: TCP}]

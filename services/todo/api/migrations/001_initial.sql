@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS users(username text PRIMARY KEY, name text NOT NULL DEFAULT '', email text NOT NULL DEFAULT '', timezone text NOT NULL DEFAULT 'UTC');
+CREATE TABLE projects(id uuid PRIMARY KEY, owner text NOT NULL REFERENCES users, data jsonb NOT NULL, inbox boolean NOT NULL DEFAULT false);
+CREATE UNIQUE INDEX one_inbox ON projects(owner) WHERE inbox;
+CREATE TABLE members(project_id uuid REFERENCES projects ON DELETE CASCADE, username text REFERENCES users, role text CHECK(role IN ('editor','viewer')) NOT NULL, PRIMARY KEY(project_id,username));
+CREATE TABLE sections(id uuid PRIMARY KEY, project_id uuid NOT NULL REFERENCES projects ON DELETE CASCADE, data jsonb NOT NULL);
+CREATE TABLE labels(id uuid PRIMARY KEY, owner text NOT NULL REFERENCES users, data jsonb NOT NULL);
+CREATE TABLE tasks(id uuid PRIMARY KEY, project_id uuid NOT NULL REFERENCES projects ON DELETE CASCADE, data jsonb NOT NULL, version integer NOT NULL DEFAULT 1, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), search tsvector GENERATED ALWAYS AS (to_tsvector('simple',coalesce(data->>'title','') || ' ' || coalesce(data->>'description',''))) STORED);
+CREATE INDEX tasks_search ON tasks USING gin(search);
+CREATE INDEX tasks_project ON tasks(project_id);
+CREATE TABLE comments(id uuid PRIMARY KEY, task_id uuid NOT NULL REFERENCES tasks ON DELETE CASCADE, author text NOT NULL REFERENCES users, body text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE events(id bigserial PRIMARY KEY, project_id uuid REFERENCES projects ON DELETE CASCADE, recipient text REFERENCES users, kind text NOT NULL, actor text NOT NULL, data jsonb NOT NULL DEFAULT '{}', created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE reminder_claims(task_id uuid NOT NULL REFERENCES tasks ON DELETE CASCADE, reminder_at timestamptz NOT NULL, PRIMARY KEY(task_id,reminder_at));

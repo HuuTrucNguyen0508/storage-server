@@ -30,7 +30,10 @@ if [ -n "${DUMP:-}" ]; then f="/backups/$DUMP"; else
   f=$(ls -1 /backups/ | grep -E "^${APP}-[0-9]{8}T[0-9]{6}Z\.dump$" | sort | tail -n 1); f="/backups/$f"; fi
 [ -f "$f" ] || { echo "no dump found for ${APP} in /backups" >&2; exit 1; }
 echo "restoring $f"
-pg_restore --clean --if-exists --no-owner --exit-on-error --single-transaction --dbname "$RESTORE_URI" "$f"
+# Extensions are created by the database bootstrap as the superuser, which the app user
+# cannot drop, so the restore leaves them out of its table of contents.
+pg_restore -l "$f" | grep -vE " (EXTENSION -|COMMENT - EXTENSION) " \
+  | pg_restore -L /dev/stdin --clean --if-exists --no-owner --exit-on-error --single-transaction --dbname "$RESTORE_URI" "$f"
 echo "restore complete: $f"'
   job="${app}-db-restore-$(date -u +%Y%m%d%H%M%S)"
   printf '%s' "$cj" | jq --arg job "$job" --arg app "$app" --arg script "$script" --arg dump "${DUMP:-}" '

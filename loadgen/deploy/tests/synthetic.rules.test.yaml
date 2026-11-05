@@ -1,0 +1,43 @@
+# promtool unit tests for deploy/prometheusrule.yaml (run: loadgen/test-rules.sh).
+rule_files:
+  - synthetic.rules.yaml
+evaluation_interval: 1m
+tests:
+  - name: a failed synthetic run alerts, then stops alerting 10 minutes after it started
+    interval: 1m
+    input_series:
+      - series: 'kube_job_status_failed{namespace="loadgen", job_name="synthetic-checks-100"}'
+        values: '1x30'
+      - series: 'kube_job_status_start_time{namespace="loadgen", job_name="synthetic-checks-100"}'
+        values: '120x30'
+      - series: 'kube_job_status_failed{namespace="loadgen", job_name="synthetic-checks-200"}'
+        values: '0x30'
+      - series: 'kube_job_status_start_time{namespace="loadgen", job_name="synthetic-checks-200"}'
+        values: '120x30'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: LabSyntheticJourneyFailed
+        exp_alerts:
+          - exp_labels: {severity: warning, namespace: loadgen, job_name: synthetic-checks-100}
+            exp_annotations:
+              summary: "A synthetic user journey failed (synthetic-checks-100)"
+              description: 'The 5-minute synthetic check run failed. Read which journey in the Job''s log: kubectl -n loadgen logs job/synthetic-checks-100, or in Loki {namespace="loadgen"} |= "k6 summary".'
+      - eval_time: 20m
+        alertname: LabSyntheticJourneyFailed
+        exp_alerts: []
+  - name: no successful run for 20 minutes alerts after 5 more
+    interval: 1m
+    input_series:
+      - series: 'kube_cronjob_status_last_successful_time{namespace="loadgen", cronjob="synthetic-checks"}'
+        values: '0x60'
+    alert_rule_test:
+      - eval_time: 24m
+        alertname: LabSyntheticChecksNotSucceeding
+        exp_alerts: []
+      - eval_time: 27m
+        alertname: LabSyntheticChecksNotSucceeding
+        exp_alerts:
+          - exp_labels: {severity: warning, namespace: loadgen, cronjob: synthetic-checks}
+            exp_annotations:
+              summary: "No synthetic check run has succeeded for 20 minutes"
+              description: "CronJob synthetic-checks in namespace loadgen last succeeded 27m 0s ago. It may be suspended, unschedulable or failing."

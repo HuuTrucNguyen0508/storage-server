@@ -1,0 +1,48 @@
+# Everything `loadgen/install.sh` applies to namespace loadgen (the Namespace itself is
+# the platform's). Build with:
+#   kubectl kustomize --load-restrictor LoadRestrictionsNone loadgen/deploy
+# The script ConfigMaps read ../src and ../fixtures, which sit outside this folder.
+# Names are fixed (no hash suffix) so run.sh can mount them and the CronJob picks up edits
+# on its next run.
+namespace: loadgen
+labels:
+  - pairs:
+      app.kubernetes.io/name: loadgen
+      app.kubernetes.io/part-of: lab
+    includeSelectors: false
+resources:
+  - serviceaccount.yaml
+  - networkpolicy.yaml
+  - cronjob.yaml
+  - prometheusrule.yaml
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    app.kubernetes.io/component: scripts
+configMapGenerator:
+  - name: loadgen-entry
+    files:
+      - main.js=../src/entry/main.js
+  - name: loadgen-lib
+    files:
+      - config.js=../src/lib/config.js
+      - data.js=../src/lib/data.js
+      - http.js=../src/lib/http.js
+      - names.js=../src/lib/names.js
+      - profiles.js=../src/lib/profiles.js
+      - summary.js=../src/lib/summary.js
+      - util.js=../src/lib/util.js
+  - name: loadgen-apps
+    files:
+      - auth.js=../src/apps/auth.js
+      - home.js=../src/apps/home.js
+      - pdf.js=../src/apps/pdf.js
+      - storage.js=../src/apps/storage.js
+      - todo.js=../src/apps/todo.js
+  - name: loadgen-fixtures
+    files:
+      - notes.md=../fixtures/notes.md
+      - photo.png=../fixtures/photo.png
+      - sample.docx=../fixtures/sample.docx
+      - sample.pdf=../fixtures/sample.pdf
+      - sample2.pdf=../fixtures/sample2.pdf

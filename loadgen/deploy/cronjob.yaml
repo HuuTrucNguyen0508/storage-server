@@ -1,0 +1,87 @@
+# Synthetic checks: one smoke iteration of every app's journey, every 5 minutes, signed in
+# as the loadgen user. The traffic keeps the dashboards alive between load tests and a
+# broken journey fails the Job (k6 exits non-zero), which the rules in prometheusrule.yaml
+# turn into an alert. `loadgen/run.sh` clones this CronJob's pod template for ad-hoc runs,
+# so the security context, mounts and environment below are the one definition.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: synthetic-checks
+  labels:
+    app.kubernetes.io/component: synthetic
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: loadgen
+        app.kubernetes.io/part-of: lab
+        app.kubernetes.io/component: synthetic
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 240
+      ttlSecondsAfterFinished: 3600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: loadgen
+            app.kubernetes.io/part-of: lab
+            app.kubernetes.io/component: synthetic
+        spec:
+          restartPolicy: Never
+          serviceAccountName: loadgen
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 12345
+            runAsGroup: 12345
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: k6
+              # grafana/k6 2.3.0 (index digest).
+              image: grafana/k6:2.3.0@sha256:2dd4756ec6e14e62778916e1eb850108e4b499304c02df56760fa0bdb0fba0b8
+              imagePullPolicy: IfNotPresent
+              args: ["run", "--quiet", "--no-color", "--out", "experimental-prometheus-rw", "/loadgen/src/entry/main.js"]
+              env:
+                - {name: PROFILE, value: smoke}
+                - {name: APP, value: all}
+                - {name: TESTID, value: synthetic}
+                - {name: DOMAIN, value: "${DOMAIN}"}
+                - name: LOADGEN_USER
+                  valueFrom: {secretKeyRef: {name: loadgen-credentials, key: LOADGEN_USER}}
+                - name: LOADGEN_PASSWORD
+                  valueFrom: {secretKeyRef: {name: loadgen-credentials, key: LOADGEN_PASSWORD}}
+                # Verify TLS against the lab CA only (ConfigMap lab-ca, mounted below).
+                - {name: SSL_CERT_FILE, value: /etc/lab-ca/ca.crt}
+                - {name: K6_PROMETHEUS_RW_SERVER_URL, value: "http://prometheus.monitoring.svc.cluster.local:9090/api/v1/write"}
+                # k6 v2.3 sends only p99 unless told; the k6 dashboard needs all of these.
+                - {name: K6_PROMETHEUS_RW_TREND_STATS, value: "p(50),p(90),p(95),p(99),avg,max"}
+                - {name: K6_PROMETHEUS_RW_STALE_MARKERS, value: "true"}
+                - {name: K6_NO_USAGE_REPORT, value: "true"}
+                - {name: HOME, value: /tmp}
+              resources:
+                requests: {cpu: 250m, memory: 256Mi}
+                limits: {cpu: "2", memory: 1Gi}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: [ALL]}
+              volumeMounts:
+                - {name: entry, mountPath: /loadgen/src/entry, readOnly: true}
+                - {name: lib, mountPath: /loadgen/src/lib, readOnly: true}
+                - {name: apps, mountPath: /loadgen/src/apps, readOnly: true}
+                - {name: fixtures, mountPath: /loadgen/fixtures, readOnly: true}
+                - {name: lab-ca, mountPath: /etc/lab-ca, readOnly: true}
+                - {name: tmp, mountPath: /tmp}
+          volumes:
+            - {name: entry, configMap: {name: loadgen-entry}}
+            - {name: lib, configMap: {name: loadgen-lib}}
+            - {name: apps, configMap: {name: loadgen-apps}}
+            - {name: fixtures, configMap: {name: loadgen-fixtures}}
+            - {name: lab-ca, configMap: {name: lab-ca}}
+            - {name: tmp, emptyDir: {sizeLimit: 256Mi}}

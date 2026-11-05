@@ -1,0 +1,11 @@
+# Nothing connects to k6 pods; they only call out (Traefik, Authelia through the ingress,
+# Prometheus remote write, DNS). Egress stays open, as everywhere in the lab.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  labels:
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]

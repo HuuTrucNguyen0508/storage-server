@@ -1,0 +1,134 @@
+<!-- title: Storage, file browser (list) -->
+<!-- app: storage -->
+<!-- shell: storage -->
+<!-- nav: files -->
+    <main class="main main--flush" style="position:relative">
+      <div style="padding: var(--sp-4) var(--sp-4) 0">
+        <nav class="crumbs" aria-label="Folder path">
+          <a href="#">Files</a>
+          <span class="crumbs__sep"><svg class="icon"><use href="#i-chev-r"/></svg></span>
+          <a href="#">Projects</a>
+          <span class="crumbs__sep"><svg class="icon"><use href="#i-chev-r"/></svg></span>
+          <h1 class="crumbs__here">Lease renewal</h1>
+        </nav>
+
+        <div class="toolbar" style="margin-top: var(--sp-3); margin-bottom: var(--sp-3)">
+          <label class="input-wrap grow hide-sm" style="max-width: 20rem">
+            <svg class="icon"><use href="#i-search"/></svg>
+            <input class="input" type="search" placeholder="Search files">
+            <span class="kbd">/</span>
+          </label>
+          <span class="toolbar__spacer"></span>
+          <button class="btn hide-sm"><svg class="icon"><use href="#i-plus"/></svg>New folder</button>
+          <div class="btn-group" role="group" aria-label="View">
+            <button class="btn btn--icon" aria-pressed="true" aria-label="List"><svg class="icon"><use href="#i-list"/></svg></button>
+            <button class="btn btn--icon" aria-pressed="false" aria-label="Grid"><svg class="icon"><use href="#i-grid"/></svg></button>
+          </div>
+        </div>
+
+        <div class="selbar" role="status">
+          <span class="selbar__count">2 selected</span>
+          <button class="btn btn--sm"><svg class="icon"><use href="#i-download"/></svg>Download</button>
+          <button class="btn btn--sm"><svg class="icon"><use href="#i-share"/></svg>Share</button>
+          <button class="btn btn--sm hide-sm"><svg class="icon"><use href="#i-folder"/></svg>Move</button>
+          <button class="btn btn--sm btn--danger"><svg class="icon"><use href="#i-trash"/></svg>Trash</button>
+          <span class="toolbar__spacer"></span>
+          <button class="btn btn--sm btn--quiet btn--icon" aria-label="Clear selection"><svg class="icon"><use href="#i-x"/></svg></button>
+        </div>
+      </div>
+
+      <table class="table" aria-label="Files in Lease renewal">
+        <thead>
+          <tr>
+            <th class="col-check"><input class="check" type="checkbox" aria-label="Select all"></th>
+            <th aria-sort="ascending">Name <svg class="icon"><use href="#i-sort"/></svg></th>
+            <th class="hide-sm">Shared</th>
+            <th class="hide-sm">Modified</th>
+            <th class="col-num">Size</th>
+            <th class="col-actions hide-sm"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="col-check"><input class="check" type="checkbox" aria-label="Select Signed copies"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--folder"><use href="#f-folder"/></svg><a href="#">Signed copies</a></div></td>
+            <td class="hide-sm"><span class="faint">Only you</span></td>
+            <td class="hide-sm num">Yesterday</td>
+            <td class="col-num muted">4 items</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet btn--icon" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button></span></td>
+          </tr>
+          <tr class="is-selected">
+            <td class="col-check"><input class="check" type="checkbox" checked aria-label="Select lease-2027-draft.pdf"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--pdf"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">PDF</text></svg><a href="#">lease-2027-draft.pdf</a></div></td>
+            <td class="hide-sm"><span class="row"><span class="avatar avatar--sm">B</span><span class="text-2 muted">Bob can edit</span></span></td>
+            <td class="hide-sm num">Today, 09:14</td>
+            <td class="col-num">1.8 MB</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet btn--icon" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button></span></td>
+          </tr>
+          <tr class="is-selected">
+            <td class="col-check"><input class="check" type="checkbox" checked aria-label="Select landlord-letter.docx"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--doc"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">DOC</text></svg><a href="#">landlord-letter.docx</a></div></td>
+            <td class="hide-sm"><span class="faint">Only you</span></td>
+            <td class="hide-sm num">Today, 08:52</td>
+            <td class="col-num">212 KB</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet btn--icon" aria-label="More" aria-expanded="true"><svg class="icon"><use href="#i-more"/></svg></button></span></td>
+          </tr>
+          <tr>
+            <td class="col-check"><input class="check" type="checkbox" aria-label="Select rent-history.xlsx"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--sheet"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">XLS</text></svg><a href="#">rent-history.xlsx</a></div></td>
+            <td class="hide-sm"><span class="row"><svg class="icon icon--sm faint"><use href="#i-link"/></svg><span class="text-2 muted">Link, 12 days left</span></span></td>
+            <td class="hide-sm num">3 Nov</td>
+            <td class="col-num">48 KB</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet btn--icon" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button></span></td>
+          </tr>
+          <tr>
+            <td class="col-check"><input class="check" type="checkbox" aria-label="Select Flat photos"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--folder"><use href="#f-folder"/></svg><a href="#">Flat photos</a></div></td>
+            <td class="hide-sm"><span class="row"><span class="avatar avatar--sm">B</span><span class="text-2 muted">Bob can view</span></span></td>
+            <td class="hide-sm num">28 Oct</td>
+            <td class="col-num muted">31 items</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet btn--icon" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button></span></td>
+          </tr>
+          <tr>
+            <td class="col-check"><input class="check" type="checkbox" aria-label="Select walkthrough.mp4"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--video"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">MP4</text></svg><a href="#">walkthrough.mp4</a></div></td>
+            <td class="hide-sm"><span class="faint">Only you</span></td>
+            <td class="hide-sm num">28 Oct</td>
+            <td class="col-num">612 MB</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet btn--icon" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button></span></td>
+          </tr>
+          <tr>
+            <td class="col-check"><input class="check" type="checkbox" aria-label="Select notes.md"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--code"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">MD</text></svg><a href="#">notes.md</a></div></td>
+            <td class="hide-sm"><span class="faint">Only you</span></td>
+            <td class="hide-sm num">21 Oct</td>
+            <td class="col-num">6 KB</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet btn--icon" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button></span></td>
+          </tr>
+          <tr>
+            <td class="col-check"><input class="check" type="checkbox" aria-label="Select floorplan.png"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--image"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">PNG</text></svg><a href="#">floorplan.png</a></div></td>
+            <td class="hide-sm"><span class="faint">Only you</span></td>
+            <td class="hide-sm num">21 Oct</td>
+            <td class="col-num">2.4 MB</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet btn--icon" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button></span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Row menu, shown open for the mockup. In the app it anchors to the row's button. -->
+      <ul class="menu popover hide-sm" role="menu" style="right: 3rem; top: 15.5rem" aria-label="landlord-letter.docx">
+        <li><button class="menu__item" role="menuitem"><svg class="icon"><use href="#i-download"/></svg>Download</button></li>
+        <li><button class="menu__item" role="menuitem"><svg class="icon"><use href="#i-share"/></svg>Share<span class="menu__kbd">S</span></button></li>
+        <li><button class="menu__item" role="menuitem"><svg class="icon"><use href="#i-pencil"/></svg>Rename<span class="menu__kbd">F2</span></button></li>
+        <li><button class="menu__item" role="menuitem"><svg class="icon"><use href="#i-folder"/></svg>Move to</button></li>
+        <li class="menu__sep" role="separator"></li>
+        <li><button class="menu__item menu__item--danger" role="menuitem"><svg class="icon"><use href="#i-trash"/></svg>Move to trash<span class="menu__kbd">Del</span></button></li>
+      </ul>
+    </main>
+
+    <div class="actionbar">
+      <button class="btn btn--primary"><svg class="icon"><use href="#i-upload"/></svg>Upload</button>
+      <button class="btn btn--icon" aria-label="New folder"><svg class="icon"><use href="#i-plus"/></svg></button>
+      <button class="btn btn--icon" aria-label="Search"><svg class="icon"><use href="#i-search"/></svg></button>
+    </div>

@@ -1,0 +1,19 @@
+<!-- title: Storage, viewer (video) -->
+<!-- app: storage -->
+<!-- shell: viewer -->
+<div class="viewer" role="dialog" aria-label="walkthrough.mp4">
+  <div class="viewer__bar">
+    <button class="btn btn--quiet btn--icon" aria-label="Back to Flat photos"><svg class="icon"><use href="#i-arrow-l"/></svg></button>
+    <div class="viewer__title"><svg class="ficon ficon--video hide-sm"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">MP4</text></svg><span class="truncate">walkthrough.mp4</span><span class="faint text-2 hide-sm">612 MB, 1080p, 4:12</span></div>
+    <button class="btn hide-sm"><svg class="icon"><use href="#i-share"/></svg>Share</button>
+    <button class="btn"><svg class="icon"><use href="#i-download"/></svg><span class="hide-sm">Download</span></button>
+    <button class="btn btn--quiet btn--icon" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button>
+  </div>
+  <div class="viewer__stage viewer__stage--media">
+    <!-- In the app this is a native <video controls> streamed with range requests; the chrome below stands in for the browser's own. -->
+    <div class="vid" role="img" aria-label="Video paused at 1:27">
+      <div class="vid__play"><svg class="icon icon--lg icon--fill"><use href="#i-play"/></svg></div>
+      <div class="vid__bar"><span>1:27</span><div class="progress progress--thin"><div class="progress__bar" style="--value:34%"></div></div><span>4:12</span></div>
+    </div>
+  </div>
+</div>

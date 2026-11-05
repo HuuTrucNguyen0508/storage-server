@@ -1,0 +1,72 @@
+<!-- title: Todo, shared project members -->
+<!-- app: todo -->
+<!-- shell: todo -->
+<!-- nav: flat -->
+    <main class="main" aria-hidden="true">
+      <div class="page-head" style="margin-bottom: var(--sp-2)">
+        <span class="nav__dot" style="background:var(--accent-todo); width: 0.75rem; height: 0.75rem"></span>
+        <h1>Flat move</h1>
+        <button class="btn btn--sm" aria-expanded="true"><svg class="icon"><use href="#i-users"/></svg>2 members</button>
+        <label class="select select--quiet select--sm hide-sm"><select aria-label="Group"><option>Grouped by section</option><option>By due date</option><option>By assignee</option></select></label>
+      </div>
+      <div class="quickadd">
+        <svg class="icon"><use href="#i-plus"/></svg>
+        <input class="input" placeholder="Add a task to Flat move" aria-label="Add a task">
+      </div>
+      <div class="section-head">Before the move <span class="nav__count">4</span></div>
+      <ul class="tasks">
+        <li class="task"><input class="check check--round p1" type="checkbox"><div><div class="task__title">Send lease comments to agent</div><div class="task__meta"><span class="task__due--overdue">Yesterday</span><span class="label" style="--dot:var(--danger)">urgent</span></div></div><div class="task__end"><span class="avatar">B</span></div></li>
+        <li class="task"><input class="check check--round p1" type="checkbox"><div><div class="task__title">Pay rent</div><div class="task__meta"><span class="task__due--today">Today, 09:00</span><span><svg class="icon"><use href="#i-repeat"/></svg>Monthly</span></div></div><div class="task__end"></div></li>
+        <li class="task"><input class="check check--round p2" type="checkbox"><div><div class="task__title">Book van for the 14th</div><div class="task__meta"><span class="label" style="--dot:var(--ok)">errand</span></div></div><div class="task__end"><span class="avatar">B</span></div></li>
+        <li class="task"><input class="check check--round p3" type="checkbox"><div><div class="task__title">Measure the new kitchen</div><div class="task__meta"><span>Sat 8 Nov</span></div></div><div class="task__end"></div></li>
+      </ul>
+      <div class="section-head">Moving day <span class="nav__count">3</span></div>
+      <ul class="tasks">
+        <li class="task"><input class="check check--round p2" type="checkbox"><div><div class="task__title">Pick up keys</div><div class="task__meta"><span>14 Nov, 10:00</span></div></div><div class="task__end"></div></li>
+        <li class="task"><input class="check check--round p4" type="checkbox"><div><div class="task__title">Meter readings, old and new</div><div class="task__meta"><span>14 Nov</span><span><svg class="icon"><use href="#i-subtask"/></svg>0 of 2</span></div></div><div class="task__end"></div></li>
+        <li class="task"><input class="check check--round p4" type="checkbox"><div><div class="task__title">Return old keys</div><div class="task__meta"><span>15 Nov</span></div></div><div class="task__end"><span class="avatar">B</span></div></li>
+      </ul>
+    </main>
+    <aside class="panel" aria-hidden="true">
+      <div class="empty" style="padding-top: var(--sp-8)">
+        <div class="empty__icon"><svg class="icon"><use href="#i-check-circle"/></svg></div>
+        <div class="empty__title">Nothing selected</div>
+        <div class="empty__text">Pick a task to see its details, subtasks and comments.</div>
+      </div>
+    </aside>
+
+    <div class="overlay">
+      <div class="dialog dialog--sm" role="dialog" aria-modal="true" aria-labelledby="mem-t">
+        <div class="dialog__head">
+          <span class="nav__dot" style="background:var(--accent-todo); width: 0.75rem; height: 0.75rem"></span>
+          <h2 class="dialog__title" id="mem-t">Flat move members</h2>
+          <button class="btn btn--quiet btn--icon" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button>
+        </div>
+        <div class="dialog__body">
+          <div class="form-row">
+            <label class="field grow"><span class="field__label">Add a person</span><input class="input" placeholder="Username" value="admin"></label>
+            <label class="field" style="flex: none"><span class="field__label">Role</span><span class="select"><select><option selected>Can edit</option><option>Can view</option></select></span></label>
+            <button class="btn btn--primary" style="flex:none">Add</button>
+          </div>
+          <ul class="list" aria-label="Members">
+            <li class="list__item">
+              <span class="avatar">A</span>
+              <div class="list__body"><div class="list__title">Alice (you)</div><div class="list__meta">Owner. Created this project in June.</div></div>
+            </li>
+            <li class="list__item">
+              <span class="avatar">B</span>
+              <div class="list__body"><div class="list__title">Bob</div><div class="list__meta">Joined 12 Sep. 5 tasks assigned.</div></div>
+              <div class="list__end">
+                <label class="select select--quiet select--sm"><select aria-label="Bob's role"><option selected>Can edit</option><option>Can view</option><option>Make owner</option></select></label>
+                <button class="btn btn--sm btn--quiet btn--icon" aria-label="Remove Bob"><svg class="icon"><use href="#i-x"/></svg></button>
+              </div>
+            </li>
+          </ul>
+          <p class="text-2 muted">Members see every task in this project, including ones assigned to others. Removing someone keeps the tasks they created.</p>
+        </div>
+        <div class="dialog__foot">
+          <button class="btn btn--quiet btn--danger">Leave project</button>
+          <button class="btn btn--primary">Done</button>
+        </div>
+      </div>
+    </div>

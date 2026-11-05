@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en" data-app="home">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lab</title>
+  <meta name="description" content="Home for the apps on this server.">
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./ui/tokens.css">
+  <link rel="stylesheet" href="./ui/base.css">
+  <link rel="stylesheet" href="./home.css">
+  <script>
+    // Theme pin for screenshots and testing: ?theme=dark|light. Otherwise the OS decides.
+    (function () {
+      var t = new URLSearchParams(location.search).get("theme");
+      if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
+    })();
+  </script>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <a class="topbar__app" href="./" aria-current="page">Lab</a>
+    <nav class="topbar__nav" aria-label="Apps">
+      <a class="topbar__link" data-host="storage" href="#">Storage</a>
+      <a class="topbar__link" data-host="todo" href="#">Todo</a>
+      <a class="topbar__link" data-host="pdf" href="#">PDF</a>
+      <a class="topbar__link" data-host="grafana" href="#">Grafana</a>
+    </nav>
+    <span class="topbar__spacer"></span>
+    <a class="topbar__link" id="signout" data-signout href="#">Sign out</a>
+  </header>
+
+  <main class="home">
+    <section class="home__intro">
+      <h1 class="home__wordmark">Lab</h1>
+      <p class="home__domain"><span id="domain">this server</span></p>
+      <p class="home__lede measure">Files, tasks and PDF tools for the people who have a login here. One sign-in covers all of it, and nothing leaves this server unless you share it.</p>
+    </section>
+
+    <section class="doors" aria-label="Apps">
+      <a class="door door--storage" data-host="storage" href="#" data-key="1">
+        <span class="door__key kbd" aria-hidden="true">1</span>
+        <svg class="door__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h5l2 2h8A1.5 1.5 0 0 1 21 9.5v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M3 11h18"/></svg>
+        <span class="door__name">Storage</span>
+        <span class="door__what">Your files and folders. Upload, preview, share with a friend or by link.</span>
+        <span class="door__host" data-host-label="storage"></span>
+      </a>
+      <a class="door door--todo" data-host="todo" href="#" data-key="2">
+        <span class="door__key kbd" aria-hidden="true">2</span>
+        <svg class="door__icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.2 2.4 2.4 4.8-5.2"/></svg>
+        <span class="door__name">Todo</span>
+        <span class="door__what">Projects and tasks, yours and shared. Today, upcoming, overdue.</span>
+        <span class="door__host" data-host-label="todo"></span>
+      </a>
+      <a class="door door--pdf" data-host="pdf" href="#" data-key="3">
+        <span class="door__key kbd" aria-hidden="true">3</span>
+        <svg class="door__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l5 5v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-16a1 1 0 0 1 1-1z"/><path d="M14 3.5v5h5"/><path d="M8.5 16.5h7M8.5 13h7"/></svg>
+        <span class="door__name">PDF tools</span>
+        <span class="door__what">Merge, split, compress, sign and convert. Stirling PDF, running here.</span>
+        <span class="door__host" data-host-label="pdf"></span>
+      </a>
+      <a class="door door--grafana" data-host="grafana" href="#" data-key="4">
+        <span class="door__key kbd" aria-hidden="true">4</span>
+        <svg class="door__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5h16"/><path d="M5.5 15.5 9 11l3.5 3 3-5 3 3.5"/></svg>
+        <span class="door__name">Grafana</span>
+        <span class="door__what">How the server is doing: metrics, logs and traces for every app.</span>
+        <span class="door__host" data-host-label="grafana"></span>
+      </a>
+    </section>
+
+    <section class="admin" aria-labelledby="admin-h">
+      <h2 id="admin-h" class="admin__title">For admins</h2>
+      <p class="admin__note muted">These need the admins group. Anyone else gets turned away at sign-in.</p>
+      <ul class="admin__list" role="list">
+        <li><a class="admin__link" data-host="prometheus" href="#"><span class="admin__name">Prometheus</span><span class="admin__host" data-host-label="prometheus"></span></a></li>
+        <li><a class="admin__link" data-host="alertmanager" href="#"><span class="admin__name">Alertmanager</span><span class="admin__host" data-host-label="alertmanager"></span></a></li>
+        <li><a class="admin__link" data-host="traefik" href="#"><span class="admin__name">Traefik</span><span class="admin__host" data-host-label="traefik"></span></a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="home__foot muted">
+    <p>Signing out here signs you out of every app. Press a number key to open an app.</p>
+  </footer>
+</div>
+<script src="./home.js"></script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!-- title: Storage, share dialog -->
+<!-- app: storage -->
+<!-- shell: storage -->
+<!-- nav: files -->
+    <main class="main main--flush" style="position:relative" aria-hidden="true">
+      <div style="padding: var(--sp-4) var(--sp-4) 0">
+        <nav class="crumbs" aria-label="Folder path">
+          <a href="#">Files</a>
+          <span class="crumbs__sep"><svg class="icon"><use href="#i-chev-r"/></svg></span>
+          <a href="#">Projects</a>
+          <span class="crumbs__sep"><svg class="icon"><use href="#i-chev-r"/></svg></span>
+          <h1 class="crumbs__here">Lease renewal</h1>
+        </nav>
+        <div class="toolbar" style="margin-top: var(--sp-3); margin-bottom: var(--sp-3)">
+          <label class="input-wrap grow hide-sm" style="max-width: 20rem"><svg class="icon"><use href="#i-search"/></svg><input class="input" type="search" placeholder="Search files"><span class="kbd">/</span></label>
+          <span class="toolbar__spacer"></span>
+          <button class="btn hide-sm"><svg class="icon"><use href="#i-plus"/></svg>New folder</button>
+          <div class="btn-group" role="group" aria-label="View">
+            <button class="btn btn--icon" aria-pressed="true" aria-label="List"><svg class="icon"><use href="#i-list"/></svg></button>
+            <button class="btn btn--icon" aria-pressed="false" aria-label="Grid"><svg class="icon"><use href="#i-grid"/></svg></button>
+          </div>
+        </div>
+      </div>
+      <table class="table">
+        <thead><tr><th class="col-check"><input class="check" type="checkbox" aria-label="Select all"></th><th>Name</th><th class="hide-sm">Shared</th><th class="hide-sm">Modified</th><th class="col-num">Size</th><th class="col-actions hide-sm"></th></tr></thead>
+        <tbody>
+          <tr><td class="col-check"><input class="check" type="checkbox"></td><td><div class="name-cell"><svg class="ficon ficon--folder"><use href="#f-folder"/></svg><a href="#">Signed copies</a></div></td><td class="hide-sm faint">Only you</td><td class="hide-sm">Yesterday</td><td class="col-num muted">4 items</td><td class="hide-sm"></td></tr>
+          <tr class="is-selected"><td class="col-check"><input class="check" type="checkbox" checked></td><td><div class="name-cell"><svg class="ficon ficon--pdf"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">PDF</text></svg><a href="#">lease-2027-draft.pdf</a></div></td><td class="hide-sm"><span class="row"><span class="avatar avatar--sm">B</span><span class="text-2 muted">Bob can edit</span></span></td><td class="hide-sm">Today, 09:14</td><td class="col-num">1.8 MB</td><td class="hide-sm"></td></tr>
+          <tr><td class="col-check"><input class="check" type="checkbox"></td><td><div class="name-cell"><svg class="ficon ficon--doc"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">DOC</text></svg><a href="#">landlord-letter.docx</a></div></td><td class="hide-sm faint">Only you</td><td class="hide-sm">Today, 08:52</td><td class="col-num">212 KB</td><td class="hide-sm"></td></tr>
+          <tr><td class="col-check"><input class="check" type="checkbox"></td><td><div class="name-cell"><svg class="ficon ficon--sheet"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">XLS</text></svg><a href="#">rent-history.xlsx</a></div></td><td class="hide-sm"><span class="row"><svg class="icon icon--sm faint"><use href="#i-link"/></svg><span class="text-2 muted">Link, 12 days left</span></span></td><td class="hide-sm">3 Nov</td><td class="col-num">48 KB</td><td class="hide-sm"></td></tr>
+          <tr><td class="col-check"><input class="check" type="checkbox"></td><td><div class="name-cell"><svg class="ficon ficon--folder"><use href="#f-folder"/></svg><a href="#">Flat photos</a></div></td><td class="hide-sm"><span class="row"><span class="avatar avatar--sm">B</span><span class="text-2 muted">Bob can view</span></span></td><td class="hide-sm">28 Oct</td><td class="col-num muted">31 items</td><td class="hide-sm"></td></tr>
+        </tbody>
+      </table>
+    </main>
+
+    <div class="overlay">
+      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="share-t">
+        <div class="dialog__head">
+          <svg class="ficon ficon--pdf"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">PDF</text></svg>
+          <h2 class="dialog__title" id="share-t">Share lease-2027-draft.pdf</h2>
+          <button class="btn btn--quiet btn--icon" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button>
+        </div>
+        <div class="dialog__body">
+          <div class="stack stack--sm">
+            <div class="form-row">
+              <label class="field grow"><span class="field__label">Share with a person</span><input class="input" placeholder="Username, for example bob"></label>
+              <div class="seg" role="radiogroup" aria-label="Access">
+                <label class="seg__opt"><input class="sr-only" type="radio" name="acc" checked><span>Can view</span></label>
+                <label class="seg__opt"><input class="sr-only" type="radio" name="acc"><span>Can edit</span></label>
+              </div>
+              <button class="btn" style="flex:none">Add</button>
+            </div>
+            <ul class="list" aria-label="People with access">
+              <li class="list__item">
+                <span class="avatar">A</span>
+                <div class="list__body"><div class="list__title">Alice (you)</div><div class="list__meta">Owner</div></div>
+              </li>
+              <li class="list__item">
+                <span class="avatar">B</span>
+                <div class="list__body"><div class="list__title">Bob</div><div class="list__meta">Added 2 Nov</div></div>
+                <div class="list__end">
+                  <label class="select select--quiet select--sm"><select aria-label="Bob's access"><option>Can view</option><option selected>Can edit</option></select></label>
+                  <button class="btn btn--sm btn--quiet btn--icon" aria-label="Remove Bob"><svg class="icon"><use href="#i-x"/></svg></button>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="dialog__section">
+            <label class="row row--between">
+              <span class="dialog__section-title">Public link</span>
+              <input class="switch" type="checkbox" checked aria-label="Anyone with the link can download">
+            </label>
+            <p class="muted text-2" style="margin-top: calc(-1 * var(--sp-2))">Anyone with the link can view and download. No sign-in needed.</p>
+            <div class="form-row">
+              <input class="input mono text-2" readonly value="https://storage.lab.localhost/s/k7Qm2xV9pL" aria-label="Link">
+              <button class="btn" style="flex:none"><svg class="icon"><use href="#i-copy"/></svg>Copy link</button>
+            </div>
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: var(--sp-3)">
+              <label class="field"><span class="field__label">Password</span><input class="input" type="password" value="hunter2-but-better" aria-describedby="pw-h"><span class="field__help" id="pw-h">Asked before the file shows.</span></label>
+              <label class="field"><span class="field__label">Expires</span><span class="select" style="display:block"><select><option>Never</option><option>In 7 days</option><option selected>In 30 days (5 Dec)</option><option>On a date</option></select></span><span class="field__help">After that the link stops working.</span></label>
+              <label class="field"><span class="field__label">Download limit</span><input class="input" type="number" value="10" min="1"><span class="field__help">8 downloads left.</span></label>
+              <div class="field"><span class="field__label">So far</span><span class="num" style="height: var(--control-h); display:flex; align-items:center">Opened 14 times, downloaded 2</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="dialog__foot">
+          <button class="btn btn--quiet btn--danger">Stop sharing</button>
+          <button class="btn btn--primary">Done</button>
+        </div>
+      </div>
+    </div>

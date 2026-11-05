@@ -1,0 +1,37 @@
+/* Mockup-only helpers. Nothing here is part of the design system; apps must
+   not import it. Real tokens and components come from packages/ui. */
+
+/* Fake image thumbnails: gradients instead of photos so mockups stay offline. */
+.ph { width: 100%; height: 100%; background: linear-gradient(135deg, #7fa6b8 0%, #c8d9c2 55%, #e9d7a8 100%); }
+.ph--2 { background: linear-gradient(160deg, #3b4a5a 0%, #8a6b4f 60%, #e2b07a 100%); }
+.ph--3 { background: linear-gradient(200deg, #2a3c33 0%, #5f8b73 50%, #cfe3c9 100%); }
+.ph--4 { background: linear-gradient(120deg, #7a5c8a 0%, #c27d97 50%, #f0c7a4 100%); }
+.ph--5 { background: linear-gradient(135deg, #a0b4c4 0%, #e6edf2 100%); }
+
+/* A stage photo for the image viewer. */
+.ph-big { width: min(72vw, 1100px); aspect-ratio: 3 / 2; border-radius: 2px; background:
+  radial-gradient(60% 80% at 70% 20%, #f4d9a6 0%, transparent 60%),
+  linear-gradient(180deg, #2f4a5c 0%, #6f8d9c 45%, #d6c2a4 46%, #b89a73 100%); }
+
+/* Fake PDF page content. */
+.pdf-page { padding: 56px 64px; font-family: Georgia, "Times New Roman", serif; color: #222; line-height: 1.5; min-height: 68rem; }
+.pdf-page h1 { font-family: inherit; font-size: 26px; margin-bottom: 18px; color: #222; }
+.pdf-page p { margin: 0 0 12px; font-size: 14px; max-width: 60ch; }
+.pdf-page .sig { margin-top: 40px; display: flex; gap: 40px; }
+.pdf-page .sig div { border-top: 1px solid #555; padding-top: 6px; width: 180px; font-size: 12px; }
+:root[data-theme="dark"] .pdf-page, :root:not([data-theme="light"]) .pdf-page { color: var(--ink); }
+:root[data-theme="dark"] .pdf-page h1 { color: var(--ink); }
+
+/* Video stage: a dark frame with a fake scrub bar. */
+.vid { width: min(72vw, 1100px); aspect-ratio: 16 / 9; background: linear-gradient(180deg, #1b2a33, #3c5a66 60%, #c9b58e 61%, #8c7a5a); position: relative; }
+.vid__play { position: absolute; inset: 0; margin: auto; width: 4rem; height: 4rem; border-radius: 999px; background: rgb(255 255 255 / 0.9); display: grid; place-items: center; color: #0f1412; }
+.vid__bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px; display: flex; align-items: center; gap: 12px; color: #fff; font-size: 13px; font-variant-numeric: tabular-nums; background: linear-gradient(transparent, rgb(0 0 0 / 0.6)); }
+.vid__bar .progress { flex: 1; background: rgb(255 255 255 / 0.3); }
+.vid__bar .progress__bar { background: #fff; }
+
+/* Two-up frames for showing a phone and a desktop in one shot are not used;
+   each mockup is one real page so the responsive CSS is what gets tested. */
+
+/* Screenshots are taken right after load; finish entrance animations at once
+   so menus, dialogs and toasts are captured in their resting state. */
+.menu, .dialog, .toast, dialog.dialog[open] { animation-duration: 0s !important; }

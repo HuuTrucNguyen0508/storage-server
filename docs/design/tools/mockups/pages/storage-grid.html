@@ -1,0 +1,109 @@
+<!-- title: Storage, file browser (grid) -->
+<!-- app: storage -->
+<!-- shell: storage -->
+<!-- nav: files -->
+    <main class="main" style="position:relative">
+      <nav class="crumbs" aria-label="Folder path">
+        <a href="#">Files</a>
+        <span class="crumbs__sep"><svg class="icon"><use href="#i-chev-r"/></svg></span>
+        <h1 class="crumbs__here">Flat photos</h1>
+      </nav>
+
+      <div class="toolbar" style="margin-top: var(--sp-3); margin-bottom: var(--sp-4)">
+        <label class="input-wrap grow hide-sm" style="max-width: 20rem">
+          <svg class="icon"><use href="#i-search"/></svg>
+          <input class="input" type="search" placeholder="Search files">
+          <span class="kbd">/</span>
+        </label>
+        <span class="toolbar__spacer"></span>
+        <span class="text-2 muted hide-sm">31 items, 412 MB</span>
+        <label class="select select--quiet select--sm hide-sm"><select aria-label="Sort"><option>Newest first</option><option>Name</option><option>Size</option></select></label>
+        <div class="btn-group" role="group" aria-label="View">
+          <button class="btn btn--icon" aria-pressed="false" aria-label="List"><svg class="icon"><use href="#i-list"/></svg></button>
+          <button class="btn btn--icon" aria-pressed="true" aria-label="Grid"><svg class="icon"><use href="#i-grid"/></svg></button>
+        </div>
+      </div>
+
+      <div class="grid" role="list" aria-label="Files in Flat photos">
+        <div class="tile" role="listitem">
+          <input class="check tile__check" type="checkbox" aria-label="Select Kitchen">
+          <div class="tile__thumb"><svg class="ficon ficon--folder ficon--lg"><use href="#f-folder"/></svg></div>
+          <div class="tile__name">Kitchen</div>
+          <div class="tile__meta">8 items</div>
+        </div>
+        <div class="tile is-selected" role="listitem">
+          <input class="check tile__check" type="checkbox" checked aria-label="Select living-room-01.jpg">
+          <div class="tile__thumb"><div class="ph"></div></div>
+          <div class="tile__name">living-room-01.jpg</div>
+          <div class="tile__meta">3.1 MB</div>
+        </div>
+        <div class="tile" role="listitem">
+          <input class="check tile__check" type="checkbox" aria-label="Select living-room-02.jpg">
+          <div class="tile__thumb"><div class="ph ph--2"></div></div>
+          <div class="tile__name">living-room-02.jpg</div>
+          <div class="tile__meta">2.8 MB</div>
+        </div>
+        <div class="tile" role="listitem">
+          <input class="check tile__check" type="checkbox" aria-label="Select balcony.jpg">
+          <div class="tile__thumb"><div class="ph ph--3"></div></div>
+          <div class="tile__name">balcony.jpg</div>
+          <div class="tile__meta">4.4 MB</div>
+        </div>
+        <div class="tile" role="listitem">
+          <input class="check tile__check" type="checkbox" aria-label="Select hallway.heic">
+          <div class="tile__thumb"><div class="ph ph--4"></div></div>
+          <div class="tile__name">hallway.heic</div>
+          <div class="tile__meta">1.9 MB</div>
+        </div>
+        <div class="tile" role="listitem">
+          <input class="check tile__check" type="checkbox" aria-label="Select walkthrough.mp4">
+          <div class="tile__thumb" style="position:relative"><div class="ph ph--5"></div><span class="badge" style="position:absolute;right:6px;bottom:6px">4:12</span></div>
+          <div class="tile__name">walkthrough.mp4</div>
+          <div class="tile__meta">612 MB</div>
+        </div>
+        <div class="tile" role="listitem">
+          <input class="check tile__check" type="checkbox" aria-label="Select floorplan.pdf">
+          <div class="tile__thumb"><svg class="ficon ficon--pdf ficon--lg"><use href="#f-page"/><text class="ficon__ext" x="10" y="19" style="font-size:5.5px">PDF</text></svg></div>
+          <div class="tile__name">floorplan.pdf</div>
+          <div class="tile__meta">840 KB</div>
+        </div>
+        <div class="tile" role="listitem">
+          <input class="check tile__check" type="checkbox" aria-label="Select inventory.xlsx">
+          <div class="tile__thumb"><svg class="ficon ficon--sheet ficon--lg"><use href="#f-page"/><text class="ficon__ext" x="10" y="19" style="font-size:5.5px">XLS</text></svg></div>
+          <div class="tile__name">inventory.xlsx</div>
+          <div class="tile__meta">52 KB</div>
+        </div>
+        <div class="tile" role="listitem">
+          <input class="check tile__check" type="checkbox" aria-label="Select bedroom.jpg">
+          <div class="tile__thumb"><div class="ph ph--2" style="filter:hue-rotate(40deg)"></div></div>
+          <div class="tile__name">bedroom.jpg</div>
+          <div class="tile__meta">3.6 MB</div>
+        </div>
+        <div class="tile" role="listitem">
+          <input class="check tile__check" type="checkbox" aria-label="Select bathroom.jpg">
+          <div class="tile__thumb"><div class="ph ph--3" style="filter:hue-rotate(-30deg)"></div></div>
+          <div class="tile__name">bathroom.jpg</div>
+          <div class="tile__meta">2.2 MB</div>
+        </div>
+        <div class="tile" role="listitem">
+          <input class="check tile__check" type="checkbox" aria-label="Select street-view.jpg">
+          <div class="tile__thumb"><div class="ph ph--4" style="filter:hue-rotate(120deg)"></div></div>
+          <div class="tile__name">street-view.jpg</div>
+          <div class="tile__meta">5.0 MB</div>
+        </div>
+        <div class="tile" role="listitem">
+          <input class="check tile__check" type="checkbox" aria-label="Select notes.md">
+          <div class="tile__thumb"><svg class="ficon ficon--code ficon--lg"><use href="#f-page"/><text class="ficon__ext" x="10" y="19" style="font-size:5.5px">MD</text></svg></div>
+          <div class="tile__name">notes.md</div>
+          <div class="tile__meta">6 KB</div>
+        </div>
+      </div>
+
+      <div class="toasts"><div class="toast toast--ok" role="status"><span class="toast__text"><strong>Shared with Bob.</strong> He can view Flat photos.</span><button class="toast__action">Undo</button></div></div>
+    </main>
+
+    <div class="actionbar">
+      <button class="btn btn--primary"><svg class="icon"><use href="#i-upload"/></svg>Upload</button>
+      <button class="btn btn--icon" aria-label="New folder"><svg class="icon"><use href="#i-plus"/></svg></button>
+      <button class="btn btn--icon" aria-label="Search"><svg class="icon"><use href="#i-search"/></svg></button>
+    </div>

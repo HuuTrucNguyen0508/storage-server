@@ -18,19 +18,29 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+// openStore gives the test database its own startup budget: on a busy CI runner
+// PostgreSQL can take longer to start than the lock checks' 10-second deadline.
+func openStore(t *testing.T) *Store {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	s, err := Open(ctx, testdb.New(t), 1<<20, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(s.Close)
+	return s
+}
+
 // A folder/upload INSERT holds a user FK lock until its transaction ends.
 // Owner serialization must remain compatible with that lock: otherwise a
 // waiting owner lock can obstruct later FK checks while following row versions.
 func TestOwnerLockDoesNotBlockForeignKeys(t *testing.T) {
 	for _, operation := range []string{"quota", "move"} {
 		t.Run(operation, func(t *testing.T) {
+			s := openStore(t)
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			s, err := Open(ctx, testdb.New(t), 1<<20, slog.New(slog.NewTextHandler(io.Discard, nil)))
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer s.Close()
 			u, err := s.UpsertUser(ctx, Identity{Username: "alice"})
 			if err != nil {
 				t.Fatal(err)
@@ -114,13 +124,9 @@ func TestOwnerLockDoesNotBlockForeignKeys(t *testing.T) {
 // Step through ShareWith up to its INSERT on two connections so reciprocal
 // shares both finish EnsurePlaceholder before either checks the creator FK.
 func TestReciprocalSharesDoNotDeadlock(t *testing.T) {
+	s := openStore(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	s, err := Open(ctx, testdb.New(t), 1<<20, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer s.Close()
 	alice, err := s.UpsertUser(ctx, Identity{Username: "alice"})
 	if err != nil {
 		t.Fatal(err)

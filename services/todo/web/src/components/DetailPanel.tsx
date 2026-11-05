@@ -6,7 +6,7 @@ import { errorText, get, post } from "../api/client";
 import type { ActivityRow, Comment, Priority, Task } from "../api/types";
 import { useApp } from "../app/context";
 import { isTemp } from "../data/model";
-import { keys, useActivity, useComments, useCompletedTasks, useOpenTasks } from "../data/queries";
+import { keys, useActivity, useMembers, useComments, useCompletedTasks, useOpenTasks } from "../data/queries";
 import { cssColor } from "../lib/colors";
 import { addDays, ago, dueInfo, fromLocalInputs, shortDate, toLocalInputs } from "../lib/dates";
 import { sanitizedHtml } from "../lib/markdown";
@@ -99,7 +99,8 @@ function Detail({ task, focus, onClose }: { task: Task; focus: "title" | undefin
     if (v !== d.title) void app.writer.update(task.id, { title: v });
   };
 
-  const people = app.access.get(task.project_id)?.people ?? [];
+  const membership = useMembers(task.project_id);
+  const people = membership.data ? [membership.data.owner, ...membership.data.members.map((m) => m.username)] : [project?.owner ?? app.me.username];
   const parent = d.parentId ? app.writer.task(d.parentId) : undefined;
   const depth = parent ? (parent.data.parentId ? 2 : 1) : 0;
 

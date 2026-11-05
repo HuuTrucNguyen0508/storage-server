@@ -16,14 +16,13 @@ export function ProjectHead({ project, sortControl }: { project: Project; sortCo
   const [menu, setMenu] = useState<MenuAnchor | null>(null);
   const [confirm, setConfirm] = useState<"delete" | "leave" | null>(null);
   const role = app.roleOf(project.id);
-  const access = app.access.get(project.id);
-  const count = access?.members ? access.members.members.length + 1 : 1;
+  const count = project.memberCount;
   const owner = role === "owner";
 
   const setArchived = async (archived: boolean) => {
     try {
       const p = await patch<Project>(`/api/projects/${project.id}`, { archived });
-      qc.setQueryData<Project[]>(keys.projects, (l) => l?.map((x) => (x.id === p.id ? p : x)));
+      qc.setQueryData<Project[]>(keys.projects, (l) => l?.map((x) => (x.id === p.id ? { ...x, ...p } : x)));
       toast({
         text: archived ? `Archived ${project.data.name}. Find it under Archived in the sidebar.` : `Restored ${project.data.name}.`,
         tone: "ok",

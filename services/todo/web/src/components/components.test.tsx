@@ -9,6 +9,8 @@ import { RecurrenceEditor } from "./RecurrenceEditor";
 const project = (id: string, name: string, extra: Partial<Project> = {}): Project => ({
   id,
   owner: "alice",
+  role: "owner",
+  memberCount: 1,
   inbox: false,
   data: { name, color: "ochre", emoji: "", archived: false, order: 0 },
   ...extra,

@@ -27,7 +27,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-[[ -d "$api/dist" ]] || (cd "$api" && pnpm install --frozen-lockfile && pnpm build)
+(cd "$api" && pnpm build)
 (cd "$web" && pnpm build >/dev/null)
 
 docker run -d --rm --name "$name" -p 127.0.0.1::5432 -e POSTGRES_PASSWORD=pw -e POSTGRES_DB=todo postgres:18.6-alpine3.24 >/dev/null

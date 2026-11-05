@@ -612,11 +612,14 @@ function AddSection({ projectId, sections }: { projectId: string; sections: Sect
 export function SortFilter({ sort, defaultSort, filters, projectFixed, hideSort }: { sort: Sort; defaultSort: Sort; filters: Filters; projectFixed?: boolean; hideSort?: boolean }) {
   const app = useApp();
   const [menu, setMenu] = useState<{ at: MenuAnchor; kind: "filter" | "label" | "priority" | "assignee" | "project" | "sort" } | null>(null);
+  const openTasks = useOpenTasks();
+  const completedTasks = useCompletedTasks();
   const people = useMemo(() => {
     const s = new Set<string>([app.me.username]);
+    for (const t of [...(openTasks.data ?? []), ...(completedTasks.data ?? [])]) if (t.data.assignee) s.add(t.data.assignee);
     for (const a of app.access.values()) a.people.forEach((p) => s.add(p));
     return [...s].sort();
-  }, [app.access, app.me.username]);
+  }, [app.access, app.me.username, openTasks.data, completedTasks.data]);
   const set = (k: string, v: string | null) => navigate(withQuery({ [k]: v }), { replace: true });
   const items = () => {
     if (!menu) return [];

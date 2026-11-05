@@ -510,3 +510,92 @@ it("editors can preserve another users labels on shared tasks", async () => {
   expect(changed.status).toBe(200);
   expect(changed.body.task.data.labels).toEqual([l]);
 });
+it("lists caller roles and member counts without separate membership requests", async () => {
+  const p = (await call("POST", "/api/projects", { name: "metadata" })).body.id;
+  await call("POST", `/api/projects/${p}/members`, {
+    username: "bob",
+    role: "editor",
+  });
+  for (const [user, role] of [
+    ["alice", "owner"],
+    ["bob", "editor"],
+  ]) {
+    const projects = (await call("GET", "/api/projects", undefined, user)).body;
+    expect(projects.find((x: { id: string }) => x.id === p)).toMatchObject({
+      role,
+      memberCount: 2,
+    });
+  }
+});
+it("rejects imported cross-project sections and cyclic parents transactionally", async () => {
+  const data = (await call("GET", "/api/export")).body;
+  const p = (await call("POST", "/api/projects", { name: "import refs" })).body;
+  const s = (
+    await call("POST", `/api/projects/${p.id}/sections`, { name: "section" })
+  ).body;
+  const t = (
+    await call("POST", `/api/projects/${p.id}/tasks`, { title: "reference" })
+  ).body;
+  const input = {
+    ...data,
+    projects: [...data.projects, p],
+    sections: [...data.sections, s],
+    tasks: [
+      ...data.tasks,
+      {
+        ...t,
+        project_id: data.projects[0].id,
+        data: { ...t.data, sectionId: s.id },
+      },
+    ],
+  };
+  const before = (await call("GET", "/api/projects")).body.length;
+  expect((await call("POST", "/api/import", input)).status).toBe(400);
+  expect((await call("GET", "/api/projects")).body).toHaveLength(before);
+  input.tasks[input.tasks.length - 1].data.sectionId = null;
+  input.tasks[input.tasks.length - 1].data.parentId = t.id;
+  expect((await call("POST", "/api/import", input)).status).toBe(400);
+});
+it("new streams checkpoint current history while reconnects replay from the supplied cursor", async () => {
+  const address = a.app.server.listening
+    ? `http://127.0.0.1:${(a.app.server.address() as { port: number }).port}`
+    : await a.app.listen({ host: "127.0.0.1", port: 0 });
+  const p = (await call("POST", "/api/projects", { name: "checkpoint" })).body
+    .id;
+  const t = (
+    await call("POST", `/api/projects/${p}/tasks`, { title: "historical" })
+  ).body;
+  const max = String(
+    (await a.pool.query("SELECT max(id) id FROM events")).rows[0].id,
+  );
+  const ctrl = new AbortController();
+  const r = await fetch(address + "/api/events", {
+    headers: headers(),
+    signal: ctrl.signal,
+  });
+  const reader = r.body!.getReader();
+  const first = new TextDecoder().decode((await reader.read()).value);
+  ctrl.abort();
+  expect(first).toContain(`id: ${max}\nevent: resync`);
+  expect(first).not.toContain("historical");
+  await call("PATCH", `/api/tasks/${t.id}`, { version: 1, title: "replayed" });
+  const reconnect = new AbortController();
+  const res = await fetch(address + "/api/events", {
+    headers: { ...headers(), "Last-Event-ID": max },
+    signal: reconnect.signal,
+  });
+  const replayReader = res.body!.getReader();
+  let text = "";
+  const timeout = setTimeout(() => reconnect.abort(), 5000);
+  try {
+    while (!text.includes("replayed")) {
+      const chunk = await replayReader.read();
+      if (chunk.done) break;
+      text += new TextDecoder().decode(chunk.value);
+    }
+  } finally {
+    clearTimeout(timeout);
+    reconnect.abort();
+  }
+  expect(text).toContain("replayed");
+});

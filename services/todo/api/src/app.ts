@@ -783,6 +783,24 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
     const b = exportSchema.parse(req.body);
     reply.code(201);
     return store.transaction(async (q) => {
+      const all = [
+        ...b.projects,
+        ...b.sections,
+        ...b.labels,
+        ...b.tasks,
+        ...b.comments,
+      ];
+      if (new Set(all.map((x) => x.id)).size !== all.length)
+        throw new ApiError(400, "Duplicate import ID");
+      const projectIds = new Set(b.projects.map((x) => x.id));
+      const taskIds = new Set(b.tasks.map((x) => x.id));
+      if (
+        b.members.some((x) => !projectIds.has(x.project_id)) ||
+        b.sections.some((x) => !projectIds.has(x.project_id)) ||
+        b.tasks.some((x) => !projectIds.has(x.project_id)) ||
+        b.comments.some((x) => !taskIds.has(x.task_id))
+      )
+        throw new ApiError(400, "Dangling import reference");
       const map = new Map<string, string>();
       for (const p of b.projects)
         map.set(
@@ -858,6 +876,15 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
           ],
         );
       }
+      // Validate after insertion so forward parent references work, while cycles,
+      // cross-project references and invalid assignees roll back the whole import.
+      for (const t of b.tasks) {
+        const row = taskRow.parse(
+          (await q.query("SELECT * FROM tasks WHERE id=$1", [mapped(t.id)]))
+            .rows[0],
+        );
+        await store.validateTask(q, req.user, row.project_id, row.data, row.id);
+      }
       for (const c of b.comments) {
         await q.query(
           "INSERT INTO users(username) VALUES($1) ON CONFLICT DO NOTHING",
@@ -902,7 +929,13 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
     const last = z
       .string()
       .regex(/^\d+$/)
-      .parse(req.headers["last-event-id"] ?? "0");
+      .parse(
+        req.headers["last-event-id"] ??
+          String(
+            (await pool.query("SELECT coalesce(max(id),0) id FROM events"))
+              .rows[0].id,
+          ),
+      );
     app.log.info(
       { user: req.user, path: "/api/events", trace_id: "", span_id: "" },
       "stream connected",
@@ -973,7 +1006,9 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
     wake.add(trigger);
     streams.add(close);
     req.raw.on("close", close);
-    reply.raw.write("event: resync\ndata: {}\n\n");
+    reply.raw.write(
+      `${req.headers["last-event-id"] === undefined ? `id: ${cursor}\n` : ""}event: resync\ndata: {}\n\n`,
+    );
     await send();
   });
   const webRoot = resolve(cfg.WEB_ROOT);

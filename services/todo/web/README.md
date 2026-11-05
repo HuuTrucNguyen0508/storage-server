@@ -3,7 +3,7 @@
 The React UI for the todo app. The API in `../api` serves the built `dist/`
 on the same origin (see `../API.md`). React 19, Vite, TypeScript strict,
 TanStack Query, dnd-kit. Styles come from the shared design system
-(`docs/design/direction.md`) through `ui/`, a copy of `packages/ui`.
+(`docs/design/direction.md`) through direct imports from `packages/ui`.
 
 ## Commands
 
@@ -11,11 +11,10 @@ TanStack Query, dnd-kit. Styles come from the shared design system
 pnpm install --frozen-lockfile
 pnpm typecheck        # tsc, strict
 pnpm lint             # eslint (forbids eval, new Function and unsanitized HTML)
-pnpm test             # vitest: model, live events, writer, components, ui copy
+pnpm test             # vitest: model, live events, writer, components, access and stream checkpoints
 pnpm build            # dist/
 e2e/run-local.sh      # headless smoke test against the real API (Docker Postgres, AUTH_MODE=dev)
 e2e/cluster-proof.sh  # headless proof in the kind cluster through Traefik and Authelia
-pnpm sync-ui          # refresh ui/ after packages/ui changes
 ```
 
 `e2e/run-local.sh` starts PostgreSQL in Docker and two API processes on one
@@ -31,13 +30,13 @@ writes screenshots to `docs/shots/`.
 |---|---|
 | `src/api/` | wire types (`types.ts`) and the fetch helper (`client.ts`): `X-Requested-With: fetch`, `redirect: "manual"`, a redirect reloads the page through sign-in |
 | `src/data/model.ts` | pure cache logic: where a task lives (open, completed, gone), the live event reducer, view rules, tree rows, manual order ranks |
-| `src/data/queries.ts` | TanStack Query hooks; the open and completed lists every view is derived from; roles from project members |
+| `src/data/queries.ts` | TanStack Query hooks; the open and completed lists every view is derived from; roles/counts from the project list; members on demand |
 | `src/data/writer.ts` | every task write: optimistic change, one write per task at a time with the latest version, 409 shows the stored copy with a notice, failures roll back and offer Retry, undo |
 | `src/data/live.ts` | the event stream: resume from the last event ID, apply events, resync, reminders |
 | `src/lib/` | SSE parser and reconnecting stream, dates in the profile timezone, recurrence wording, Markdown (raw HTML off, DOMPurify), colors |
 | `src/app/` | the shell: top bar, routes, shortcuts, drag and drop, dialogs |
 | `src/components/` | list view, rows, quick add, detail panel, recurrence editor, dialogs, sidebar, settings |
-| `ui/` | copy of `packages/ui` (the image builds from this folder alone); a test fails when it drifts |
+| `../../../packages/ui/` | shared styles and fonts, copied directly into the root-context Docker build |
 
 ## How it works
 

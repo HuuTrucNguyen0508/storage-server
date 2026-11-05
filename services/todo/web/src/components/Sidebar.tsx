@@ -160,7 +160,7 @@ function ProjectItem({ project: p, current, count, onNavigate }: { project: Proj
   const s = useSortable({ id: `project:${p.id}`, data: { type: "project", projectId: p.id } });
   const drop = useDroppable({ id: `drop:${p.id}`, data: { type: "project-drop", projectId: p.id } });
   const access = app.access.get(p.id);
-  const members = access?.members?.members.length ?? 0;
+  const members = p.memberCount - 1;
   const role = access?.role;
   return (
     <div

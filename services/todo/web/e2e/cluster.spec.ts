@@ -18,10 +18,12 @@ test.skip(!on, "set CLUSTER=1 (see e2e/cluster-proof.sh)");
 
 type Opts = Parameters<Browser["newContext"]>[0];
 
-async function signIn(browser: Browser, user: string, password: string, opts: Opts = {}): Promise<{ ctx: BrowserContext; page: Page; errors: string[] }> {
+async function signIn(browser: Browser, user: string, password: string, opts: Opts = {}): Promise<{ ctx: BrowserContext; page: Page; errors: string[]; memberRequests: string[] }> {
   const ctx = await browser.newContext({ ignoreHTTPSErrors: true, timezoneId: "Europe/Paris", viewport: { width: 1440, height: 900 }, ...opts });
   const page = await ctx.newPage();
   const errors: string[] = [];
+  const memberRequests: string[] = [];
+  page.on("request", (r) => { if (/\/api\/projects\/[^/]+\/members$/.test(r.url())) memberRequests.push(r.url()); });
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(base + "/");
@@ -31,7 +33,7 @@ async function signIn(browser: Browser, user: string, password: string, opts: Op
   await page.locator("#sign-in-button").click();
   await expect(page).toHaveURL(new RegExp("^" + base.replace(/\./g, "\\.") + "/today"));
   await expect(page.getByRole("heading", { level: 1, name: /^Today/ })).toBeVisible();
-  return { ctx, page, errors };
+  return { ctx, page, errors, memberRequests };
 }
 
 const row = (page: Page, title: string) => page.locator("li.task", { has: page.locator(".task__title", { hasText: title }) }).first();
@@ -237,3 +239,25 @@ test("phone layout: drawer, list and detail at 390 px, light and dark", async ({
 });
 
 
+
+
+test("initial project list provides access without membership fan-out and stream checkpoints history", async ({ browser }) => {
+  const {ctx, page, memberRequests} = await signIn(browser, "alice", process.env.ALICE_PASSWORD!);
+  await page.getByRole("heading", {level: 1, name: /^Today/}).waitFor();
+  expect(memberRequests).toEqual([]);
+  const projects = await (await ctx.request.get(base + "/api/projects")).json();
+  expect(projects.length).toBeGreaterThan(0);
+  for (const p of projects) {
+    expect(["owner", "editor", "viewer"]).toContain(p.role);
+    expect(p.memberCount).toBeGreaterThanOrEqual(1);
+  }
+  const initial = await page.evaluate(async () => {
+    const response = await fetch("/api/events");
+    const reader = response.body!.getReader();
+    const chunk = await reader.read();
+    await reader.cancel();
+    return new TextDecoder().decode(chunk.value);
+  });
+  expect(initial).toMatch(/^id: \d+\nevent: resync\ndata: {}\n\n/);
+  await ctx.close();
+});

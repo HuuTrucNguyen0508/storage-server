@@ -22,6 +22,8 @@ export interface Project {
   id: string;
   owner: string;
   inbox: boolean;
+  role: Role;
+  memberCount: number;
   data: ProjectData;
 }
 

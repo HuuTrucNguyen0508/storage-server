@@ -6,6 +6,7 @@ COPY services/todo/api/package.json services/todo/api/pnpm-lock.yaml services/to
 RUN pnpm install --frozen-lockfile
 COPY services/todo/api/ ./
 RUN pnpm build && pnpm prune --prod
+COPY packages/ui /packages/ui
 WORKDIR /app/web
 COPY services/todo/web/ ./
 RUN pnpm install --frozen-lockfile && pnpm build

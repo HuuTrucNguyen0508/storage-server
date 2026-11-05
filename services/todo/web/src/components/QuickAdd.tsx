@@ -144,7 +144,7 @@ export const QuickAdd = forwardRef<QuickAddHandle, QuickAddProps>(function Quick
     setBusy(true);
     try {
       const order = orderAtEnd(app.projects.map((p) => p.data));
-      const p = await post<Project>("/api/projects", { name, color: colorOf("", name).name, order });
+      const p: Project = { ...await post<Project>("/api/projects", { name, color: colorOf("", name).name, order }), role: "owner", memberCount: 1 };
       qc.setQueryData<Project[]>(keys.projects, (l) => [...(l ?? []).filter((x) => x.id !== p.id), p]);
       setMissing(null);
       await add(p);

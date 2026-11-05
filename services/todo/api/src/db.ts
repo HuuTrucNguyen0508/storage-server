@@ -73,6 +73,10 @@ export const projectRow = z.object({
   }),
   inbox: z.boolean(),
 });
+export const visibleProjectRow = projectRow.extend({
+  role: z.enum(["owner", "editor", "viewer"]),
+  memberCount: z.number().int().positive(),
+});
 export class Store {
   constructor(public pool: pg.Pool) {}
   async transaction<T>(fn: (q: Query) => Promise<T>) {
@@ -137,10 +141,10 @@ export class Store {
   async visible(user: string) {
     return (
       await this.pool.query(
-        `SELECT p.* FROM projects p WHERE p.owner=$1 OR EXISTS(SELECT 1 FROM members m WHERE m.project_id=p.id AND m.username=$1) ORDER BY (p.data->>'order')::float`,
+        `SELECT p.*, CASE WHEN p.owner=$1 THEN 'owner' ELSE m.role END role, (1+(SELECT count(*) FROM members c WHERE c.project_id=p.id))::int AS "memberCount" FROM projects p LEFT JOIN members m ON m.project_id=p.id AND m.username=$1 WHERE p.owner=$1 OR m.username IS NOT NULL ORDER BY (p.data->>'order')::float`,
         [user],
       )
-    ).rows.map((v) => projectRow.parse(v));
+    ).rows.map((v) => visibleProjectRow.parse(v));
   }
   async event(
     q: Query,

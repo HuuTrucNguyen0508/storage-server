@@ -134,3 +134,13 @@ it("parses a chosen weekday set and common recurrence shorthand", () => {
   ).toEqual({ kind: "weekly", interval: 2, days: [1, 3, 5], from: "due" });
   expect(parseQuickAdd("Read daily", { now }).recurrence?.kind).toBe("days");
 });
+it("waits the full interval when a weekly rule returns to the same weekday", () => {
+  expect(
+    nextOccurrence(
+      { kind: "weekly", interval: 2, days: [1], from: "due" },
+      new Date("2026-03-02T09:00Z"),
+      now,
+      "UTC",
+    ).toISOString(),
+  ).toBe("2026-03-16T09:00:00.000Z");
+});

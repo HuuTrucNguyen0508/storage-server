@@ -109,32 +109,16 @@ export function useAllSections(projects: Project[]): Map<string, Section[]> {
 
 export interface Access {
   role: Role | null;
-  members: Members | undefined;
-  /** Owner plus members, the people a task can be assigned to. */
+  /** Project owners, available before member details are requested. */
   people: string[];
 }
 
-/**
- * Membership of every visible project. GET /api/projects carries no role, so
- * the client asks each project once and keeps it fresh through live events.
- */
-export function useAccess(projects: Project[], me: string): Map<string, Access> {
-  const results = useQueries({
-    queries: projects.map((p) => ({ queryKey: keys.members(p.id), queryFn: () => get<Members>(`/api/projects/${p.id}/members`), staleTime: 60_000, enabled: !p.inbox })),
-  });
-  return useMemo(() => {
-    const m = new Map<string, Access>();
-    projects.forEach((p, i) => {
-      const members = p.inbox ? { owner: p.owner, members: [] } : results[i]?.data;
-      let role: Role | null = null;
-      if (p.owner === me) role = "owner";
-      else if (members) role = members.members.find((x) => x.username === me)?.role ?? null;
-      const people = members ? [members.owner, ...members.members.map((x) => x.username)] : [p.owner];
-      m.set(p.id, { role, members, people });
-    });
-    return m;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projects, me, ...results.map((r) => r.data)]);
+/** Access metadata arrives atomically with the project list. Member details load on demand. */
+export function useAccess(projects: Project[]): Map<string, Access> {
+  return useMemo(() => new Map(projects.map((p) => [p.id, {
+    role: p.role,
+    people: [p.owner],
+  }])), [projects]);
 }
 
 export const canWrite = (role: Role | null | undefined) => role === "owner" || role === "editor";

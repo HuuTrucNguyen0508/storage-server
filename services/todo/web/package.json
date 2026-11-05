@@ -10,8 +10,7 @@
     "typecheck": "tsc --noEmit -p .",
     "lint": "eslint .",
     "test": "vitest run",
-    "e2e": "playwright test",
-    "sync-ui": "node scripts/sync-ui.mjs"
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",

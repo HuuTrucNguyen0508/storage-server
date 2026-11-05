@@ -84,7 +84,8 @@ export function nextOccurrence(
     if (
       rule.kind === "weekly" &&
       rule.interval > 1 &&
-      d.getUTCDay() < new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()
+      d.getUTCDay() <=
+        new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()
     )
       d.setUTCDate(d.getUTCDate() + 7 * (rule.interval - 1));
   } else

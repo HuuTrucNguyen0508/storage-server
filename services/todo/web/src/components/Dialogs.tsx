@@ -269,11 +269,11 @@ export function ProjectDialog({ project, onClose }: { project: Project | null; o
       const body = { name: n, color: color || project?.data.color || "ochre", emoji };
       if (project) {
         const p = await patch<Project>(`/api/projects/${project.id}`, body);
-        qc.setQueryData<Project[]>(keys.projects, (l) => l?.map((x) => (x.id === p.id ? p : x)));
+        qc.setQueryData<Project[]>(keys.projects, (l) => l?.map((x) => (x.id === p.id ? { ...x, ...p } : x)));
       } else {
         const order = orderAtEnd(app.projects.map((p) => p.data));
         const p = await post<Project>("/api/projects", { ...body, order });
-        qc.setQueryData<Project[]>(keys.projects, (l) => [...(l ?? []).filter((x) => x.id !== p.id), p]);
+        qc.setQueryData<Project[]>(keys.projects, (l) => [...(l ?? []).filter((x) => x.id !== p.id), { ...p, role: "owner", memberCount: 1 }]);
         navigate(`/p/${p.id}`);
       }
       onClose();

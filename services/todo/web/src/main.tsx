@@ -1,5 +1,5 @@
-import "../ui/tokens.css";
-import "../ui/base.css";
+import "../../../../packages/ui/tokens.css";
+import "../../../../packages/ui/base.css";
 import "./app.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";

@@ -149,7 +149,9 @@ test("alice plans, shares, and bob sees changes live; viewers are read-only", as
 
   // Drag to reorder within the section, and the order survives a reload.
   const firstTitle = () => alice.locator("section.group").first().locator(".task__title").first().textContent();
+  const savedOrder = alice.waitForResponse((r) => r.request().method() === "PATCH" && /\/api\/tasks\//.test(r.url()) && r.ok());
   await dragTo(alice, row(alice, "Measure the kitchen"), row(alice, "Pay rent"));
+  await savedOrder;
   await expect.poll(firstTitle).toBe("Measure the kitchen");
   await alice.reload();
   await expect.poll(firstTitle).toBe("Measure the kitchen");
@@ -233,6 +235,7 @@ test("alice plans, shares, and bob sees changes live; viewers are read-only", as
 
   // A reminder arrives over the stream as a toast.
   await quickAdd(alice, "Ping the landlord");
+  await expect(row(alice, "Ping the landlord")).toHaveAttribute("data-task-id", /^[0-9a-f-]{36}$/);
   const pingId = await row(alice, "Ping the landlord").getAttribute("data-task-id");
   await alice.evaluate(async (id) => {
     const t = await (await fetch(`/api/tasks/${id}`)).json();

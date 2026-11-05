@@ -7,7 +7,7 @@ import {
   timezone,
   recurrence,
 } from "./schema.js";
-import { projectRow } from "./db.js";
+import { projectRow, visibleProjectRow } from "./db.js";
 const ok = z.object({ ok: z.literal(true) });
 const profile = z.object({
   username: z.string(),
@@ -57,7 +57,7 @@ const shapes: Record<string, z.ZodType> = {
     homeUrl: z.string(),
   }),
   "PATCH /api/me": profile,
-  "GET /api/projects": z.array(projectRow),
+  "GET /api/projects": z.array(visibleProjectRow),
   "POST /api/projects": projectRow,
   "PATCH /api/projects/:id": projectRow,
   "DELETE /api/projects/:id": ok,

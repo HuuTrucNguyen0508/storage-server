@@ -78,8 +78,9 @@ export function useLive(opts: { me: string; onReminder: (r: ReminderHit) => void
           qc.setQueryData<Project[]>(keys.projects, (list) => {
             if (!list) return list;
             const i = list.findIndex((p) => p.id === e.project.id);
-            return i < 0 ? [...list, e.project] : list.map((p) => (p.id === e.project.id ? e.project : p));
+            return i < 0 ? list : list.map((p) => (p.id === e.project.id ? { ...p, ...e.project } : p));
           });
+          void qc.invalidateQueries({ queryKey: keys.projects });
           break;
         case "removed-from":
           cb.current.onRemovedFrom(e.projectId);

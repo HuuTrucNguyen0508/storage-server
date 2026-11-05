@@ -87,7 +87,7 @@ function Shell({ me, projects: rawProjects, labels }: { me: Me; projects: Projec
   const projects = useMemo(() => sortProjects(rawProjects), [rawProjects]);
   const projectById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const inbox = useMemo(() => projects.find((p) => p.inbox && p.owner === me.username) ?? null, [projects, me.username]);
-  const access = useAccess(projects, me.username);
+  const access = useAccess(projects);
   const sections = useAllSections(projects);
   const labelById = useMemo(() => new Map(labels.map((l) => [l.id, l])), [labels]);
   const writer = useMemo(() => new TaskWriter(qc, toast), [qc, toast]);

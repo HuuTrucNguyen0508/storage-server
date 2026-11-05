@@ -15,7 +15,7 @@ A self-hosted platform for you and your friends, on Kubernetes. One sign-in open
 You need Linux with Docker, `helm`, `jq`, `envsubst`, `openssl`, `curl` and `make`. Everything else (pinned `kind` and `kubectl`) is downloaded into `.local/bin/`.
 
 ```sh
-make up      # build the cluster and deploy everything (about 3 minutes from scratch)
+make up      # build the cluster and deploy everything (about 8 minutes from scratch)
 make creds   # print the URLs and the generated logins
 ```
 

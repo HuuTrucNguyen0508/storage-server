@@ -7,7 +7,7 @@ One kind cluster on this machine that hosts Home, Storage, Todo, Stirling PDF an
 You need Linux, Docker, `helm`, `jq`, `envsubst`, `openssl` and `curl`. `make up` downloads pinned `kind` and `kubectl` into `.local/bin/` and checks their checksums. It ignores any `kind` or `kubectl` already on your `PATH`.
 
 ```sh
-make up        # create or converge everything (about 3 minutes from scratch, about 15 s when nothing changed)
+make up        # create or converge everything (about 8 minutes from scratch, under a minute when nothing changed)
 make creds     # URLs and every login
 make status    # nodes, Helm releases, unhealthy pods, volumes, routes, certificates
 make smoke     # security checks against the running cluster (about 2 minutes)

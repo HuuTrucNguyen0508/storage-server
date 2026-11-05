@@ -531,6 +531,9 @@ resetLayout();
 resetLayout();
 {
   const sel = 'testid=~"$testid"';
+  // The live-update stream (`kind="stream"`) is held open on purpose, so it would set every
+  // headline latency. It still shows in "p95 by request name".
+  const dur = `${sel}, kind!="stream"`;
   const p = [];
   p.push(text('k6 runs with `--out experimental-prometheus-rw` to `http://prometheus.monitoring.svc.cluster.local:9090/api/v1/write`, tagged `testid`. Trend metrics need `K6_PROMETHEUS_RW_TREND_STATS=p(50),p(90),p(95),p(99),avg,max` (k6 only sends p99 by default); see the README.', { h: 2 }));
   p.push(stat('VUs', [prom(`sum(k6_vus{${sel}})`)], { w: 4, h: 4 }));
@@ -538,16 +541,16 @@ resetLayout();
   p.push(stat('Requests (range)', [prom(`sum(increase(k6_http_reqs_total{${sel}}[$__range]))`)], { w: 4, h: 4, decimals: 0 }));
   p.push(stat('Failed requests', [prom(`avg(k6_http_req_failed_rate{${sel}})`)], { w: 4, h: 4, unit: 'percentunit', decimals: 2, thresholds: T.highIsBad(0.01, 0.05) }));
   p.push(stat('Checks passed', [prom(`avg(k6_checks_rate{${sel}})`)], { w: 4, h: 4, unit: 'percentunit', decimals: 2, thresholds: T.lowIsBad(0.95, 0.99) }));
-  p.push(stat('p95 duration', [prom(`max(k6_http_req_duration_p95{${sel}})`)], { w: 4, h: 4, unit: 's', decimals: 3, thresholds: T.highIsBad(0.5, 1) }));
+  p.push(stat('p95 duration (no streams)', [prom(`max(k6_http_req_duration_p95{${dur}})`)], { w: 4, h: 4, unit: 's', decimals: 3, thresholds: T.highIsBad(0.5, 1) }));
   p.push(timeseries('VUs and request rate', [prom(`sum(k6_vus{${sel}})`, 'VUs'), prom(`sum(rate(k6_http_reqs_total{${sel}}[$__rate_interval]))`, 'req/s')], {
     w: 12, overrides: [{ matcher: { id: 'byName', options: 'req/s' }, properties: [{ id: 'unit', value: 'reqps' }, { id: 'custom.axisPlacement', value: 'right' }] }],
   }));
   p.push(timeseries('Request duration', [
-    prom(`max(k6_http_req_duration_p50{${sel}})`, 'p50'),
-    prom(`max(k6_http_req_duration_p90{${sel}})`, 'p90'),
-    prom(`max(k6_http_req_duration_p95{${sel}})`, 'p95'),
-    prom(`max(k6_http_req_duration_p99{${sel}})`, 'p99'),
-    prom(`max(k6_http_req_duration_avg{${sel}})`, 'avg'),
+    prom(`max(k6_http_req_duration_p50{${dur}})`, 'p50'),
+    prom(`max(k6_http_req_duration_p90{${dur}})`, 'p90'),
+    prom(`max(k6_http_req_duration_p95{${dur}})`, 'p95'),
+    prom(`max(k6_http_req_duration_p99{${dur}})`, 'p99'),
+    prom(`max(k6_http_req_duration_avg{${dur}})`, 'avg'),
   ], { w: 12, unit: 's' }));
   p.push(timeseries('Requests by status', [prom(`sum by (status) (rate(k6_http_reqs_total{${sel}}[$__rate_interval]))`, '{{status}}')], { w: 12, unit: 'reqps', stack: true, fill: 30 }));
   p.push(timeseries('Failure and check rates', [prom(`avg by (testid) (k6_http_req_failed_rate{${sel}})`, '{{testid}} failed'), prom(`avg by (testid) (k6_checks_rate{${sel}})`, '{{testid}} checks passed')], { w: 12, unit: 'percentunit', max: 1 }));

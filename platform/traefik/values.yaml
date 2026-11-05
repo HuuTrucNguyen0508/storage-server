@@ -102,8 +102,10 @@ tracing:
     http:
       enabled: true
       endpoint: http://alloy.monitoring.svc.cluster.local:4318/v1/traces
+# 512Mi was OOM-killed at about 1 400 req/s in a k6 stress run, which dropped every app at
+# once. The chart sets GOMEMLIMIT to 90% of this limit.
 resources:
   requests: {cpu: 50m, memory: 64Mi}
-  limits: {memory: 512Mi}
+  limits: {memory: 1Gi}
 commonLabels:
   app.kubernetes.io/part-of: lab

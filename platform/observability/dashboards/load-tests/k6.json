@@ -450,7 +450,7 @@
     {
       "id": 7,
       "type": "stat",
-      "title": "p95 duration",
+      "title": "p95 duration (no streams)",
       "description": "",
       "datasource": {
         "type": "prometheus",
@@ -470,7 +470,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(k6_http_req_duration_p95{testid=~\"$testid\"})",
+          "expr": "max(k6_http_req_duration_p95{testid=~\"$testid\", kind!=\"stream\"})",
           "legendFormat": "",
           "range": true
         }
@@ -640,7 +640,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(k6_http_req_duration_p50{testid=~\"$testid\"})",
+          "expr": "max(k6_http_req_duration_p50{testid=~\"$testid\", kind!=\"stream\"})",
           "legendFormat": "p50",
           "range": true
         },
@@ -650,7 +650,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(k6_http_req_duration_p90{testid=~\"$testid\"})",
+          "expr": "max(k6_http_req_duration_p90{testid=~\"$testid\", kind!=\"stream\"})",
           "legendFormat": "p90",
           "range": true
         },
@@ -660,7 +660,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(k6_http_req_duration_p95{testid=~\"$testid\"})",
+          "expr": "max(k6_http_req_duration_p95{testid=~\"$testid\", kind!=\"stream\"})",
           "legendFormat": "p95",
           "range": true
         },
@@ -670,7 +670,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(k6_http_req_duration_p99{testid=~\"$testid\"})",
+          "expr": "max(k6_http_req_duration_p99{testid=~\"$testid\", kind!=\"stream\"})",
           "legendFormat": "p99",
           "range": true
         },
@@ -680,7 +680,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(k6_http_req_duration_avg{testid=~\"$testid\"})",
+          "expr": "max(k6_http_req_duration_avg{testid=~\"$testid\", kind!=\"stream\"})",
           "legendFormat": "avg",
           "range": true
         }

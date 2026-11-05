@@ -1,0 +1,63 @@
+# Host-backed volumes under ${DATA_DIR} (mounted at /data in every kind node).
+# No provisioner: each PV is pre-bound to one claim and survives cluster rebuilds.
+# Claims must use storageClassName lab-host, ReadWriteOnce, and request at most the capacity below.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: lab-host
+  labels: {app.kubernetes.io/name: lab-host, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: storage}
+provisioner: kubernetes.io/no-provisioner
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: storage-data
+  labels: {app.kubernetes.io/name: storage-data, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: storage}
+spec:
+  storageClassName: lab-host
+  capacity: {storage: 500Gi}
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  claimRef: {namespace: storage, name: storage-data}
+  hostPath: {path: /data/storage, type: Directory}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: storage-backups
+  labels: {app.kubernetes.io/name: storage-backups, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: storage}
+spec:
+  storageClassName: lab-host
+  capacity: {storage: 50Gi}
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  claimRef: {namespace: storage, name: storage-backups}
+  hostPath: {path: /data/backups/storage, type: Directory}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: todo-backups
+  labels: {app.kubernetes.io/name: todo-backups, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: storage}
+spec:
+  storageClassName: lab-host
+  capacity: {storage: 50Gi}
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  claimRef: {namespace: todo, name: todo-backups}
+  hostPath: {path: /data/backups/todo, type: Directory}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: auth-data
+  labels: {app.kubernetes.io/name: auth-data, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: storage}
+spec:
+  storageClassName: lab-host
+  capacity: {storage: 1Gi}
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  claimRef: {namespace: auth, name: auth-data}
+  hostPath: {path: /data/auth, type: Directory}

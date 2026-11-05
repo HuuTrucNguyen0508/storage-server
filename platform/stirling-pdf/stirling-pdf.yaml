@@ -1,0 +1,131 @@
+# Stirling PDF behind SSO. Its own login is off: Authelia (sso-chain) guards the route.
+# Namespace pdf is Pod Security baseline: the image's entrypoint starts as root and
+# drops to its own users with setpriv; every other capability is dropped.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stirling-pdf
+  namespace: pdf
+  labels: {app.kubernetes.io/name: stirling-pdf, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: pdf}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app.kubernetes.io/name: stirling-pdf}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: stirling-pdf, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: pdf}
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: stirling-pdf
+          image: ${STIRLING_PDF_IMAGE}
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: SECURITY_ENABLELOGIN, value: "false"}
+            - {name: SYSTEM_ENABLEANALYTICS, value: "false"}
+            - {name: SYSTEM_SHOWUPDATE, value: "false"}
+            - {name: SYSTEM_DEFAULTLOCALE, value: en-GB}
+            - {name: SYSTEM_MAXFILESIZE, value: "2000"}
+            - {name: SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE, value: 2000MB}
+            - {name: SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE, value: 2000MB}
+            - {name: SERVER_TOMCAT_MAX_SWALLOW_SIZE, value: "-1"}
+            - {name: SERVER_TOMCAT_CONNECTION_TIMEOUT, value: 10m}
+            - {name: LANGS, value: en_GB}
+            - {name: JAVA_CUSTOM_OPTS, value: "-XX:MaxRAMPercentage=60"}
+          ports:
+            - {name: http, containerPort: 8080}
+          # Java + LibreOffice boot takes 10-60 s depending on the node; allow up to 5 minutes.
+          startupProbe:
+            httpGet: {path: /api/v1/info/status, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /api/v1/info/status, port: http}
+            periodSeconds: 15
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet: {path: /api/v1/info/status, port: http}
+            periodSeconds: 30
+            timeoutSeconds: 15
+            failureThreshold: 5
+          resources:
+            requests: {cpu: 250m, memory: 1Gi}
+            limits: {cpu: "4", memory: 4Gi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+              add: [CHOWN, SETUID, SETGID, FOWNER, DAC_OVERRIDE]
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            - {name: configs, mountPath: /configs}
+      volumes:
+        - {name: tmp, emptyDir: {sizeLimit: 8Gi}}
+        - {name: configs, emptyDir: {sizeLimit: 1Gi}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stirling-pdf
+  namespace: pdf
+  labels: {app.kubernetes.io/name: stirling-pdf, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: pdf}
+spec:
+  selector: {app.kubernetes.io/name: stirling-pdf}
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: stirling-pdf
+  namespace: pdf
+  labels: {app.kubernetes.io/name: stirling-pdf, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: pdf}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`pdf.${DOMAIN}`)
+      kind: Rule
+      middlewares:
+        - name: sso-chain
+          namespace: auth
+      services:
+        - {name: stirling-pdf, port: 8080}
+  tls: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: pdf
+  labels: {app.kubernetes.io/name: stirling-pdf, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: pdf}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: stirling-pdf
+  namespace: pdf
+  labels: {app.kubernetes.io/name: stirling-pdf, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: pdf}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: stirling-pdf}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: traefik}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: storage}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: storage}}
+        # Blackbox probes (Prometheus Probe objects) and Prometheus itself.
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: prometheus-blackbox-exporter}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: prometheus}}
+      ports: [{port: 8080, protocol: TCP}]

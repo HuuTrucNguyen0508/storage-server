@@ -1,0 +1,6 @@
+    # lab-domain-begin (managed by scripts/up.sh)
+    rewrite stop {
+        name regex (?i)^([a-z0-9-]+\.)*${DOMAIN_REGEX}\.$ traefik.traefik.svc.cluster.local.
+        answer auto
+    }
+    # lab-domain-end

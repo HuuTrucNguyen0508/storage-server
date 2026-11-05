@@ -31,10 +31,10 @@ In every profile, data that must survive a cluster rebuild lives on the host und
 ## Configuration and rendering
 
 - `config/local.env` holds committed, non-secret defaults: `PROFILE=local`, `DOMAIN=lab.localhost`, `CLUSTER_NAME=lab`, `LISTEN_ADDRESS=127.0.0.1`, `HTTP_PORT=80`, `HTTPS_PORT=443`, `AUTH_POLICY=one_factor`, `ENVIRONMENT=local`, `DATA_DIR=.local/data`.
-- `config/versions.env` pins tool and chart versions used by scripts (kind, kubectl, node image, charts).
+- `config/versions.env` pins tool and chart versions used by scripts (kind v0.33.0, kubectl v1.37.2, node image `kindest/node:v1.37.0`, charts, image pins). `CERT_ISSUER` and `ACME_EMAIL` select the certificate issuer for the remote profile.
 - An optional untracked `config/override.env` overrides both.
-- YAML files and Helm values that need these values contain `${VAR}` placeholders. `scripts/lib.sh` provides `render FILE...` (and stdin), which runs `envsubst` with an explicit allowlist (`RENDER_VARS`, which includes `DOMAIN`, `ENVIRONMENT`, `AUTH_POLICY`, `IMAGE_TAG` and the variables above). Never run `envsubst` without the allowlist: Grafana dashboards and PromQL contain `$` signs.
-- Generated secrets and credentials live in `.local/` (gitignored, mode 700). `.local/credentials.env` holds `ADMIN_USER`, `ADMIN_PASSWORD`, `ALICE_PASSWORD`, `BOB_PASSWORD`, `LOADGEN_USER`, `LOADGEN_PASSWORD`, `GRAFANA_ADMIN_PASSWORD`. `.local/ca.crt` is the local root CA. Regeneration is idempotent: existing values are kept.
+- YAML files and Helm values that need these values contain `${VAR}` placeholders. `scripts/lib.sh` provides `render FILE...` (and stdin), which runs `envsubst` with an explicit allowlist (`RENDER_VARS`: `PROFILE DOMAIN DOMAIN_REGEX CLUSTER_NAME LISTEN_ADDRESS HTTP_PORT HTTPS_PORT AUTH_POLICY ENVIRONMENT DATA_DIR IMAGE_TAG AUTH_PUBLIC_URL HOME_URL` plus the image pins). Never run `envsubst` without the allowlist: Grafana dashboards and PromQL contain `$` signs.
+- Generated secrets and credentials live in `.local/` (gitignored, mode 700). The CA key `.local/ca.key` is generated once and kept across rebuilds (trust the CA once); the CA only signs `${DOMAIN}` and its subdomains, and its certificate is published as ConfigMap `lab-ca` (key `ca.crt`) in the app namespaces. `.local/credentials.env` holds `ADMIN_USER`, `ADMIN_PASSWORD`, `ALICE_PASSWORD`, `BOB_PASSWORD`, `LOADGEN_USER`, `LOADGEN_PASSWORD`, `GRAFANA_ADMIN_PASSWORD`. `.local/ca.crt` is the local root CA. Regeneration is idempotent: existing values are kept.
 - Scripts use pinned `kind` and `kubectl` binaries downloaded with checksum verification into `.local/bin/` (kubectl within one minor version of the node image), not whatever is on `PATH`.
 - The repo is public. Never commit a secret, password hash, private key or token.
 
@@ -47,9 +47,9 @@ In every profile, data that must survive a cluster rebuild lives on the host und
 3. `platform/observability/install-crds.sh` (Prometheus Operator CRDs, so later charts can create ServiceMonitors).
 4. cert-manager, a self-signed root CA (`ClusterIssuer` named `lab-ca`), and a wildcard certificate for `*.${DOMAIN}` + `${DOMAIN}` in secret `traefik/lab-wildcard-tls`, used as Traefik's default TLS store. The CA is exported to `.local/ca.crt`.
 5. Traefik.
-6. Authelia, the identity middlewares, and the generated users.
-7. CloudNativePG operator (namespace `cnpg-system`) and the host-backed PersistentVolumes listed under "Data".
-8. `platform/observability/install.sh` (full observability stack).
+6. The host-backed PersistentVolumes listed under "Data" (Authelia needs `auth-data`), then Authelia, the identity middlewares, and the generated users.
+7. CloudNativePG operator (namespace `cnpg-system`).
+8. `platform/observability/install.sh` (full observability stack). If it fails, `make up` continues and exits non-zero at the end.
 9. Stirling PDF and the Home portal.
 10. Apps.
 
@@ -61,13 +61,18 @@ Make targets: `up`, `down` (deletes the cluster only; `${DATA_DIR}` and `.local/
 
 - An app is deployable when `services/<app>/Dockerfile` and `services/<app>/deploy/kustomization.yaml` both exist.
 - Images build from the repo root, so a Dockerfile can copy `packages/ui/` and `tools/`: `docker build -f services/<app>/Dockerfile -t lab/<app>:<tag> .`
-- Tags are immutable: `<tag>` is derived from the built image ID. Manifests reference `lab/<app>:${IMAGE_TAG}`; `make deploy-<app>` builds, runs `kind load docker-image`, renders `kubectl kustomize services/<app>/deploy` with `IMAGE_TAG` set, applies it, and waits for the rollout. Deployments use `imagePullPolicy: IfNotPresent`.
+- Tags are immutable: `<tag>` is the first 16 hex characters of the built image ID. Manifests reference `lab/<app>:${IMAGE_TAG}`; `make deploy-<app>` builds, runs `kind load docker-image`, renders `kubectl kustomize services/<app>/deploy` with `IMAGE_TAG` set, applies it, and waits for the rollout. Deployments use `imagePullPolicy: IfNotPresent`.
+- This machine has no `docker buildx`, so the legacy builder runs: Dockerfiles must not use heredocs (`RUN <<EOF`) or `RUN --mount`. The root `.dockerignore` excludes `.git`, `.local`, `**/node_modules`, `**/dist`, `coverage` and `test-results`; per-Dockerfile ignore files don't work.
+- Namespaces belong to the platform: `home`, `storage`, `todo`, `auth`, `traefik`, `cnpg-system` and `loadgen` exist with Pod Security `restricted`, `pdf` with `baseline` (Stirling PDF can't run as non-root). App deploy folders must not include Namespace objects.
+- Every pod an app owns (app, backup and restore Jobs) carries `app.kubernetes.io/name=<app>`; NetworkPolicies and the restore Job rely on it.
 
 ## Ingress and TLS
 
 - Traefik v3 (pinned), installed by Helm into namespace `traefik`. The Traefik Service is `NodePort` with fixed node ports that kind maps from host 80/443 (or a hostPort listener scheduled on the mapped node). Entry points `web` (redirects to HTTPS) and `websecure`. Entry points do not trust client `X-Forwarded-*` headers (`forwardedHeaders.insecure=false`, no trusted IPs unless the remote profile has a real upstream proxy).
 - Routes use Traefik CRDs (`IngressRoute`, `Middleware`). `providers.kubernetesCRD.allowCrossNamespace=true`, so app routes reference middlewares in namespace `auth` as `auth-<name>@kubernetescrd`.
-- Every route uses TLS from the default store (`tls: {}`).
+- Every route uses TLS from the default store (`tls: {}`). There is no IPv6 listener; clients that try `::1` first fall back to `127.0.0.1`.
+- Traefik answers `400` to `%2F`, `%5C` and `%00` in paths. It forwards `//s/x` and `/%73/x` as `/s/x`, and `/assets/..;/api/x` unchanged, so public handlers must never normalise a request into a private route.
+- Traefik's router and service labels arrive in Prometheus as `exported_router` and `exported_service`.
 - Traefik exports Prometheus metrics (entry point `metrics`, port 9100, per-router and per-service labels), OTLP traces to `alloy.monitoring.svc.cluster.local:4318` over HTTP, and JSON access logs with `RequestPath` and all request headers dropped (paths can carry share tokens).
 - Body size: Traefik does not cap request bodies on the storage route. Read and write timeouts on `websecure` allow multi-GiB uploads and downloads and long-lived server-sent event streams.
 
@@ -81,7 +86,11 @@ Make targets: `up`, `down` (deletes the cluster only; `${DATA_DIR}` and `.local/
   - `sso`: Traefik `forwardAuth` to `http://authelia.auth.svc.cluster.local:9091/api/authz/forward-auth`, `trustForwardHeader: true` (safe because entry points don't trust client values), `forwardBody: false`, copying back `Remote-User`, `Remote-Groups`, `Remote-Email`, `Remote-Name`.
   - `sso-chain`: `strip-identity` then `sso`. Every authenticated route uses `auth-sso-chain@kubernetescrd`.
 - Public routes use only `auth-strip-identity@kubernetescrd`. Today only the storage app has them: path prefixes `/s/`, `/api/public/`, `/assets/` and the exact path `/favicon.svg` on `storage.${DOMAIN}`, with a higher priority than the authenticated catch-all route. Prefixes match on segment boundaries (`/s/` does not match `/sx`).
-- Logout link: `${AUTH_PUBLIC_URL}/logout?rd=<URL-encoded ${HOME_URL}>`, where `AUTH_PUBLIC_URL=https://auth.${DOMAIN}` and `HOME_URL=https://home.${DOMAIN}/`. After logout, Home sends the browser to the Authelia login page.
+- Logout link: `${AUTH_PUBLIC_URL}/logout?rd=<URL-encoded ${HOME_URL}>`, for example `https://auth.lab.localhost/logout?rd=https%3A%2F%2Fhome.lab.localhost%2F`, where `AUTH_PUBLIC_URL=https://auth.${DOMAIN}` and `HOME_URL=https://home.${DOMAIN}/`. After logout, Home sends the browser to the Authelia login page.
+- Anonymous GET requests on SSO routes get `302` to `https://auth.${DOMAIN}/?rd=...`; anonymous POST, PUT and DELETE get `303`. An SPA must fetch with `redirect: "manual"` and treat an opaque redirect or 3xx as "signed out" (reload the page).
+- Logging in without a browser (k6, tests): `POST https://auth.${DOMAIN}/api/firstfactor` with JSON `{"username":"...","password":"...","keepMeLoggedIn":false}` returns `{"status":"OK"}` and cookie `authelia_session` (Domain `${DOMAIN}`), valid on every app host.
+- Home serves `GET https://home.${DOMAIN}/api/me` with `{"user","name","email","groups"}` from the identity headers (`401` when absent).
+- Authelia also allows `whoami.${DOMAIN}`, used only by `make smoke`.
 
 ### What an app does with identity
 
@@ -121,7 +130,7 @@ Sibling subdomains are same-site and share the session cookie, so every app enfo
   Pods mount these through PVCs (allowed under Pod Security `restricted`). Deleting the cluster leaves the data on the host.
 - PostgreSQL runs through CloudNativePG. Each app owns its own `Cluster` named `<app>-db` in its namespace (1 instance locally), database `<app>`, owner `<app>`, on the default (local-path) storage class. The app reads `DATABASE_URL` from secret `<app>-db-app`, key `uri`. Apps run migrations at startup under an advisory lock and retry until the database is ready.
 - Database backups: each app's deploy folder includes a CronJob named `<app>-db-backup` (nightly at 03:00, keeps the newest 7) that mounts claim `<app>-backups` at `/backups` and writes `pg_dump --format=custom` to `/backups/<app>-<UTC timestamp YYYYmmddTHHMMSSZ>.dump`, using the `<app>-db-app` secret. It uses a pinned `postgres` client image matching the server's major version and runs as non-root under `restricted`.
-- `make backup` (platform) runs `kubectl create job --from=cronjob/<app>-db-backup` for every app that has one and waits. `make restore` (platform) scales the app's Deployment to 0, runs a one-off Job that restores the newest dump with `pg_restore --clean --if-exists --no-owner` into the app's database, then scales the app back. Restoring blobs needs nothing: `storage-data` is on the host.
+- `make backup` (platform) runs `kubectl create job --from=cronjob/<app>-db-backup` for every app that has one and waits. `make restore` (platform) scales every Deployment in the app's namespace to 0, runs a one-off Job that copies the backup CronJob's pod template and restores the newest dump with `pg_restore --clean --if-exists --no-owner` into the app's database, then scales them back. `pg_restore --clean` only drops objects that are in the dump. Backup images: `postgres:18.6-alpine3.24` (uid 70). A working reference is `platform/smoke/db.yaml`. Restoring blobs needs nothing: `storage-data` is on the host.
 - Storage file contents live on `storage-data`, named by opaque ID, never by user-supplied path.
 
 ## Observability
@@ -154,13 +163,16 @@ Namespace `monitoring`. The observability task owns everything there.
   - App HTTP port from the Traefik pods in namespace `traefik`.
   - Metrics port from the Prometheus pods in namespace `monitoring`.
   - Database pods (`cnpg.io/cluster=<app>-db`, port 5432) from the app's own pods and backup Jobs; CloudNativePG instance ports from the operator in `cnpg-system`.
-  - Authelia port 9091 from Traefik pods only. Stirling PDF port 8080 from Traefik pods and storage app pods.
+  - Authelia port 9091 from Traefik pods only. Stirling PDF port 8080 from Traefik pods and storage app pods (`app.kubernetes.io/name=storage` in namespace `storage`).
+  - Pod labels to select: Traefik `app.kubernetes.io/name=traefik` (namespace `traefik`); Prometheus `app.kubernetes.io/name=prometheus` and the blackbox exporter `app.kubernetes.io/name=prometheus-blackbox-exporter` (namespace `monitoring`); CloudNativePG operator `app.kubernetes.io/name=cloudnative-pg` (namespace `cnpg-system`, ports 8000 and 5432).
   - Egress stays open.
-- kind's default CNI (kindnet in v0.27) enforces NetworkPolicy but fails open if its policy controller doesn't start, so the platform task proves enforcement in the running cluster, and `make smoke` rechecks it.
+- kind's default CNI (kindnet) enforces NetworkPolicy (proven) but fails open if its policy controller doesn't start, so `make smoke` rechecks enforcement. Kubelet probes still reach pods under default deny.
+- In-cluster access to public hostnames: CoreDNS rewrites `*.${DOMAIN}` to the Traefik ClusterIP. curl and Chromium treat `*.localhost` as loopback without asking DNS, so inside pods use `curl --resolve <host>:443:<traefik ClusterIP>`. Go programs (k6) use `/etc/hosts` then DNS.
 - Ports: app HTTP 8080, metrics 9464.
 
 ## Cross-app integration
 
+- Stirling PDF 3.2.2 has no free Prometheus metrics (`/actuator/prometheus` returns 404 without a paid licence); it is covered by Traefik service metrics, probes and logs.
 - Storage previews Office documents (docx, xlsx, pptx, odt, ods, odp) by converting them to PDF through Stirling PDF at `STIRLING_URL=http://stirling-pdf.pdf.svc.cluster.local:8080`, with a concurrency limit and a cache. If conversion fails, the viewer offers a download instead. The API calls are documented in `platform/stirling-pdf/README.md`.
 - Home, Storage and Todo share one top bar: an app switcher (Home, Storage, Todo, PDF, Grafana for admins), the signed-in user, and a sign-out link. Visual tokens come from `packages/ui/tokens.css`. Stirling PDF and Grafana keep their own UI.
 

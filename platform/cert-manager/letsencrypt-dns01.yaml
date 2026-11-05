@@ -1,0 +1,24 @@
+# UNVERIFIED TEMPLATE for the remote profile (CERT_ISSUER=letsencrypt-dns01).
+# Let's Encrypt issues the *.${DOMAIN} wildcard through a DNS-01 challenge, so the
+# machine needs no inbound port 80. This file uses Cloudflare; for another provider,
+# replace the solver (https://cert-manager.io/docs/configuration/acme/dns01/).
+# scripts/up.sh creates Secret cert-manager/dns01-api-token from .local/dns01-api-token.
+# Try the staging server first: set server to
+#   https://acme-staging-v02.api.letsencrypt.org/directory
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-dns01
+  labels: {app.kubernetes.io/name: letsencrypt-dns01, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: tls}
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: ${ACME_EMAIL}
+    privateKeySecretRef: {name: letsencrypt-dns01-account}
+    solvers:
+      - selector:
+          dnsZones: ["${DOMAIN}"]
+        dns01:
+          cloudflare:
+            apiTokenSecretRef: {name: dns01-api-token, key: api-token}

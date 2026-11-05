@@ -1,0 +1,10 @@
+# Images build from the repo root; keep secrets, cluster data and caches out of the context.
+.git
+.local
+config/override.env
+**/node_modules
+**/dist
+**/coverage
+**/test-results
+**/playwright-report
+*.log

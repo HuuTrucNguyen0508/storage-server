@@ -1,0 +1,228 @@
+# Authelia: the only login. ConfigMap authelia-config and Secrets authelia-users /
+# authelia-secrets are created by scripts/up.sh from platform/auth/configuration.yml and .local/.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: auth-data
+  namespace: auth
+  labels: {app.kubernetes.io/name: authelia, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: auth}
+spec:
+  storageClassName: lab-host
+  volumeName: auth-data
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 1Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authelia
+  namespace: auth
+  labels: {app.kubernetes.io/name: authelia, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: auth}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}   # SQLite on a ReadWriteOnce volume, sessions in memory
+  selector:
+    matchLabels: {app.kubernetes.io/name: authelia}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: authelia, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: auth}
+      annotations:
+        lab/config-hash: "${AUTHELIA_CONFIG_HASH}"
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 8000
+        runAsGroup: 8000
+        fsGroup: 8000
+        seccompProfile: {type: RuntimeDefault}
+      initContainers:
+        # Native sidecar: copies the users Secret into an emptyDir with an atomic rename.
+        # Authelia's file watcher sees that rename and reloads users without dropping
+        # sessions; it never sees the kubelet's ..data symlink swap on the Secret volume.
+        - name: users-sync
+          image: ${AUTHELIA_IMAGE}
+          imagePullPolicy: IfNotPresent
+          restartPolicy: Always
+          command:
+            - sh
+            - -c
+            - |
+              src=/users-src/users_database.yml dst=/config/users/users_database.yml
+              while true; do
+                if ! cmp -s "$src" "$dst"; then
+                  cp "$src" /config/users/.users.new && mv /config/users/.users.new "$dst" \
+                    && echo '{"level":"info","msg":"users file synced from Secret","service":"users-sync"}'
+                fi
+                sleep 5
+              done
+          startupProbe:
+            exec: {command: [test, -s, /config/users/users_database.yml]}
+            periodSeconds: 1
+            failureThreshold: 30
+          resources:
+            requests: {cpu: 1m, memory: 8Mi}
+            limits: {cpu: 50m, memory: 32Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: users-src, mountPath: /users-src, readOnly: true}
+            - {name: users, mountPath: /config/users}
+      containers:
+        - name: authelia
+          image: ${AUTHELIA_IMAGE}
+          imagePullPolicy: IfNotPresent
+          command: [authelia, --config, /config/configuration.yml]
+          env:
+            - {name: AUTHELIA_SESSION_SECRET_FILE, value: /secrets/session_secret}
+            - {name: AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE, value: /secrets/storage_encryption_key}
+            - {name: AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE, value: /secrets/jwt_secret}
+            - {name: TZ, value: UTC}
+          ports:
+            - {name: http, containerPort: 9091}
+            - {name: metrics, containerPort: 9959}
+          startupProbe:
+            httpGet: {path: /api/health, port: http}
+            periodSeconds: 2
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /api/health, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /api/health, port: http}
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 20m, memory: 64Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: config, mountPath: /config/configuration.yml, subPath: configuration.yml, readOnly: true}
+            - {name: users, mountPath: /config/users, readOnly: true}
+            - {name: secrets, mountPath: /secrets, readOnly: true}
+            - {name: data, mountPath: /var/lib/authelia}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: config, configMap: {name: authelia-config}}
+        - {name: users-src, secret: {secretName: authelia-users, defaultMode: 0440}}
+        - {name: users, emptyDir: {sizeLimit: 8Mi}}
+        - {name: secrets, secret: {secretName: authelia-secrets, defaultMode: 0440}}
+        - {name: data, persistentVolumeClaim: {claimName: auth-data}}
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authelia
+  namespace: auth
+  labels: {app.kubernetes.io/name: authelia, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: auth}
+spec:
+  selector: {app.kubernetes.io/name: authelia}
+  ports:
+    - {name: http, port: 9091, targetPort: http}
+    - {name: metrics, port: 9959, targetPort: metrics}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: authelia
+  namespace: auth
+  labels: {app.kubernetes.io/name: authelia, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: auth}
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: authelia}
+  endpoints:
+    - {port: metrics, path: /metrics, interval: 30s}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: authelia
+  namespace: auth
+  labels: {app.kubernetes.io/name: authelia, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: auth}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`auth.${DOMAIN}`)
+      kind: Rule
+      middlewares:
+        - name: strip-identity
+      services:
+        - {name: authelia, port: 9091}
+  tls: {}
+---
+# Deletes client-sent identity headers. Every route uses it (directly or via sso-chain).
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-identity
+  namespace: auth
+  labels: {app.kubernetes.io/name: strip-identity, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: auth}
+spec:
+  headers:
+    customRequestHeaders:
+      Remote-User: ""
+      Remote-Groups: ""
+      Remote-Email: ""
+      Remote-Name: ""
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: sso
+  namespace: auth
+  labels: {app.kubernetes.io/name: sso, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: auth}
+spec:
+  forwardAuth:
+    address: http://authelia.auth.svc.cluster.local:9091/api/authz/forward-auth
+    trustForwardHeader: true
+    forwardBody: false
+    authResponseHeaders: [Remote-User, Remote-Groups, Remote-Email, Remote-Name]
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: sso-chain
+  namespace: auth
+  labels: {app.kubernetes.io/name: sso-chain, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: auth}
+spec:
+  chain:
+    middlewares:
+      - name: strip-identity
+      - name: sso
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: auth
+  labels: {app.kubernetes.io/name: authelia, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: auth}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: authelia
+  namespace: auth
+  labels: {app.kubernetes.io/name: authelia, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: auth}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: authelia}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: traefik}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
+      ports: [{port: 9091, protocol: TCP}]
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: prometheus}}
+      ports: [{port: 9959, protocol: TCP}]

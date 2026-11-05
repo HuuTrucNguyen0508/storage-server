@@ -1,0 +1,52 @@
+# A host-backed volume used only by `make smoke` to prove data written through a PVC
+# survives `make down && make up`.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: smoke-data
+  labels: {app.kubernetes.io/name: smoke-data, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: smoke}
+spec:
+  storageClassName: lab-host
+  capacity: {storage: 10Mi}
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  claimRef: {namespace: smoke, name: smoke-data}
+  hostPath: {path: /data/smoke, type: Directory}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: smoke-data
+  namespace: smoke
+  labels: {app.kubernetes.io/name: smoke-data, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: smoke}
+spec:
+  storageClassName: lab-host
+  volumeName: smoke-data
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 10Mi}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: persistence
+  namespace: smoke
+  labels: {app.kubernetes.io/name: persistence, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: smoke}
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext: {runAsNonRoot: true, runAsUser: 100, runAsGroup: 101, seccompProfile: {type: RuntimeDefault}}
+  containers:
+    - name: write
+      image: ${CURL_IMAGE}
+      env: [{name: CLUSTER_ID, value: "${CLUSTER_ID}"}]
+      command:
+        - sh
+        - -c
+        - |
+          set -eu
+          echo "markers already on the volume:"; cat /data/markers.txt 2>/dev/null || echo "(none)"
+          echo "cluster=$CLUSTER_ID written=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> /data/markers.txt
+      resources: {requests: {cpu: 5m, memory: 16Mi}, limits: {cpu: 100m, memory: 32Mi}}
+      securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+      volumeMounts: [{name: data, mountPath: /data}]
+  volumes: [{name: data, persistentVolumeClaim: {claimName: smoke-data}}]

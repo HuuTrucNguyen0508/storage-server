@@ -1,0 +1,36 @@
+# kind cluster for PROFILE=local and remote. Rendered by scripts/up.sh (scripts/lib.sh render).
+# The control-plane node carries the host port mappings; Traefik runs there and
+# listens on fixed NodePorts 30080 (web) and 30443 (websecure).
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: ${CLUSTER_NAME}
+networking:
+  # kindnet ships a NetworkPolicy controller; scripts/smoke.sh proves it enforces.
+  disableDefaultCNI: false
+nodes:
+  - role: control-plane
+    image: ${KIND_NODE_IMAGE}
+    labels:
+      ingress-ready: "true"
+    extraMounts:
+      - hostPath: ${DATA_DIR}
+        containerPath: /data
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: ${HTTP_PORT}
+        listenAddress: "${LISTEN_ADDRESS}"
+        protocol: TCP
+      - containerPort: 30443
+        hostPort: ${HTTPS_PORT}
+        listenAddress: "${LISTEN_ADDRESS}"
+        protocol: TCP
+  - role: worker
+    image: ${KIND_NODE_IMAGE}
+    extraMounts:
+      - hostPath: ${DATA_DIR}
+        containerPath: /data
+  - role: worker
+    image: ${KIND_NODE_IMAGE}
+    extraMounts:
+      - hostPath: ${DATA_DIR}
+        containerPath: /data

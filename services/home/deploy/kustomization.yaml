@@ -1,0 +1,15 @@
+# Rendered by scripts/deploy-app.sh home: `kubectl kustomize` then render (IMAGE_TAG, DOMAIN).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: home
+labels:
+  - pairs:
+      app.kubernetes.io/name: home
+      app.kubernetes.io/part-of: lab
+    includeSelectors: false
+    includeTemplates: true
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingressroute.yaml
+  - networkpolicy.yaml

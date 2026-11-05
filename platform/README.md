@@ -1,23 +1,25 @@
 # Lab platform
 
-One kind cluster on this machine that hosts Home, Storage, Todo, Stirling PDF and the observability stack. Authelia handles sign-in for all of them, Traefik serves them over HTTPS, and app data lives on the host. `docs/architecture.md` is the contract. This file covers how to run the platform.
+One single-node k3s cluster on this machine that hosts Home, Storage, Todo, Stirling PDF and the observability stack. Authelia handles sign-in for all of them, Traefik serves them over HTTPS, and app data lives on the host. `docs/architecture.md` is the contract. This file covers how to run the platform.
 
 ## Bring it up
 
-You need Linux, Docker, `helm`, `jq`, `envsubst`, `openssl` and `curl`. `make up` downloads pinned `kind` and `kubectl` into `.local/bin/` and checks their checksums. It ignores any `kind` or `kubectl` already on your `PATH`.
+You need Linux with systemd, `sudo`, Docker (it builds the app images), `helm`, `jq`, `envsubst`, `openssl` and `curl`. `make up` downloads a pinned `kubectl` into `.local/bin/` and the pinned k3s binary and its `install.sh` into `.local/k3s/`, and checks their checksums. It ignores any `kubectl` already on your `PATH`.
+
+`make up` installs k3s system-wide: the binary at `/usr/local/bin/k3s`, its config at `/etc/rancher/k3s/config.yaml` (from `cluster/k3s.yaml`), and systemd unit `k3s`, which starts on boot. That needs `sudo`. Step 1 uses `sudo` only when k3s must change (another version, a changed config, a stopped service) or `.local/kubeconfig` must be rewritten. Steps 9 and 10, like every `make deploy-<app>`, first look for each app image in the node's image list (no `sudo`) and run `sudo k3s ctr` only when the node doesn't list it: to check containerd itself and import the image. A rebuilt image always needs `sudo`, and sudo asks again whenever its cached credential has expired (5 minutes by default), so a first install can ask twice. `make up` owns this machine's k3s: don't run it where k3s already serves something else.
 
 ```sh
-make up        # create or converge everything (about 8 minutes from scratch, under a minute when nothing changed)
+make up        # install or converge k3s and everything on it
 make creds     # URLs and every login
 make status    # nodes, Helm releases, unhealthy pods, volumes, routes, certificates
 make smoke     # security checks against the running cluster (about 2 minutes)
-make down CONFIRM=1   # delete the cluster; .local/ and the data directory stay
+make down CONFIRM=1   # uninstall k3s from this machine; .local/ and the data directory stay
 ```
 
 `make up` is idempotent: rerun it after a failure or a change. It runs these steps:
 
-1. Create the kind cluster (1 control plane and 2 workers; one node for `PROFILE=ci`).
-2. Patch CoreDNS so `*.${DOMAIN}` resolves to Traefik inside the cluster.
+1. Install or converge the k3s server (one node in every profile). If the old kind cluster still runs, it stops and points to "Migration from kind".
+2. Add the CoreDNS rewrite (ConfigMap `kube-system/coredns-custom`) so `*.${DOMAIN}` resolves to Traefik inside the cluster.
 3. Install the Prometheus Operator CRDs.
 4. Install cert-manager and issue the wildcard certificate.
 5. Install Traefik.
@@ -29,9 +31,9 @@ make down CONFIRM=1   # delete the cluster; .local/ and the data directory stay
 
 Set `SKIP_APPS=1` to skip step 10. If step 8 or an app fails, the remaining steps still run, and `make up` exits non-zero at the end.
 
-`kubectl` setup: `export KUBECONFIG=$PWD/.local/kubeconfig`. `make up` also adds context `kind-lab` to `~/.kube/config`.
+`kubectl` setup: `export KUBECONFIG=$PWD/.local/kubeconfig`. `make up` copies k3s's root-only admin kubeconfig (`/etc/rancher/k3s/k3s.yaml`) there with context `k3s-lab`, and also adds that context to `~/.kube/config`. k3s's own `kubectl`, `crictl` and `ctr` symlinks aren't created, so the `kubectl` on your `PATH` stays yours.
 
-Deploy a single app with `make deploy-<app>`. It builds `services/<app>/Dockerfile` from the repo root and tags the image `lab/<app>:<16 hex chars of the image ID>`, so the tag is immutable. It then loads the image into kind, renders `kubectl kustomize services/<app>/deploy` with `IMAGE_TAG` set, applies it and waits for the rollout. This machine has no `docker buildx`, so the legacy builder runs: no `RUN <<EOF` heredocs and no `RUN --mount`.
+Deploy a single app with `make deploy-<app>`. It builds `services/<app>/Dockerfile` from the repo root and tags the image `lab/<app>:<16 hex chars of the image ID>`, so the tag is immutable. It then imports the image into k3s's containerd unless the node already lists that tag (`sudo k3s ctr images import`, so a new image asks for your password), renders `kubectl kustomize services/<app>/deploy` with `IMAGE_TAG` set, applies it and waits for the rollout. This machine has no `docker buildx`, so the legacy builder runs: no `RUN <<EOF` heredocs and no `RUN --mount`.
 
 ## URLs and logins
 
@@ -81,7 +83,7 @@ Changes go to Secret `auth/authelia-users`. A sidecar copies the Secret into Aut
 
 ## How it fits together
 
-- **Ingress:** Traefik v3.7 (Helm chart pinned in `config/versions.env`) runs on the control-plane node behind a NodePort Service: 30080 and 30443, with `externalTrafficPolicy: Local`. kind maps host `127.0.0.1:80` and `127.0.0.1:443` to those ports.
+- **Ingress:** Traefik v3.7 (Helm chart pinned in `config/versions.env`) runs behind a NodePort Service on node ports `${HTTP_PORT}` and `${HTTPS_PORT}` (80 and 443), with `externalTrafficPolicy: Local`. kube-proxy serves node ports only on `LISTEN_ADDRESS` (`127.0.0.1` locally). Traefik can't use a hostPort, because namespace `traefik` enforces Pod Security `restricted`; host networking would bypass the NetworkPolicies that admit app traffic only from Traefik pods.
   - HTTP redirects to HTTPS, and the entry points ignore client `X-Forwarded-*` headers.
   - `websecure` has no read or write timeout and no body limit.
   - Traefik rejects `%2F`, `%5C` and `%00` in paths, and drops header aliases such as `Remote_User`.
@@ -96,13 +98,13 @@ Changes go to Secret `auth/authelia-users`. A sidecar copies the Secret into Aut
   - Middlewares `auth-strip-identity@kubernetescrd` and `auth-sso-chain@kubernetescrd`. Apps read `Remote-User`, `Remote-Groups`, `Remote-Email` and `Remote-Name`.
   - Sessions live in memory, so restarting Authelia signs everyone out.
 - **Databases:** CloudNativePG operator in `cnpg-system`. Each app owns its `Cluster`. `platform/smoke/db.yaml` is a complete example that follows the contract: Cluster, backup CronJob, claim and NetworkPolicies.
-- **Network:** every app namespace denies ingress by default and allows only what it needs. kindnet enforces NetworkPolicy, and `make smoke` proves it every run.
+- **Network:** every app namespace denies ingress by default and allows only what it needs. k3s's embedded kube-router controller enforces NetworkPolicy, and `make smoke` proves it every run.
 - **Pod Security:** `home`, `storage`, `todo`, `auth`, `traefik`, `loadgen` and `cnpg-system` enforce `restricted`. `pdf` enforces `baseline`; `platform/stirling-pdf/README.md` explains why.
 - **Stirling PDF:** see `platform/stirling-pdf/README.md` for its API, limits and metrics.
 
 ## Data and backups
 
-Data that must survive a rebuild lives on the host under `DATA_DIR` (default `.local/data`), which is mounted at `/data` in every kind node:
+Data that must survive a rebuild lives on the host under `DATA_DIR` (default `.local/data`). `DATA_DIR` must not sit inside `/var/lib/rancher`, `/var/lib/kubelet`, `/run/k3s`, `/etc/rancher` or `/var/lib/cni`, because `make down` deletes those; the scripts refuse such a path. The host-backed volumes point at these directories directly:
 
 | Path | What |
 |---|---|
@@ -111,7 +113,7 @@ Data that must survive a rebuild lives on the host under `DATA_DIR` (default `.l
 | `auth/` | Authelia's SQLite database (TOTP and WebAuthn registrations, bans) and `notification.txt` |
 | `smoke/` | marker file written by `make smoke` (safe to delete) |
 
-`make down` and `make up` keep all of this. `make smoke` proves it: a marker written through a PVC by an earlier cluster is still there after the rebuild. The PostgreSQL data directories live on kind's local-path storage and are rebuilt empty, which is why the dumps exist.
+`make down` and `make up` keep all of this. `make smoke` proves it: a marker written through a PVC by an earlier cluster is still there after the rebuild. The PostgreSQL data directories live on k3s's local-path storage (`/var/lib/rancher/k3s/storage`), which `make down` deletes, so they come back empty. That is why the dumps exist.
 
 - `make backup` runs every `<app>-db-backup` CronJob now and waits (`APPS="todo"` to limit).
 - `make restore` restores the newest dump of each app:
@@ -132,30 +134,51 @@ To back up the machine, copy `DATA_DIR` (pods write files there as their own UID
 
 The local profile listens only on `127.0.0.1`. To let friends in, run the same stack on a machine they can reach, with a real domain:
 
-1. **Pick an address.** The easiest is a Tailscale tailnet: invite your friends, then use the machine's Tailscale IP (`tailscale ip -4`). Ports 443 and 80 on that address must be free. On this machine `tailscale serve` already holds `100.82.114.81:443`; stop it or use another address. A public IP also works, but then the whole internet reaches your Authelia login.
+1. **Pick an address.** The easiest is a Tailscale tailnet: invite your friends, then use the machine's Tailscale IP (`tailscale ip -4`). Ports 443 and 80 on that address must be free: kube-proxy takes them over, so a program already listening there stops getting traffic. On this machine `tailscale serve` already holds `100.82.114.81:443`; stop it or use another address. A public IP also works, but then the whole internet reaches your Authelia login.
 2. **DNS:** create the records `lab.example.com` and `*.lab.example.com` pointing at that address.
 3. **Configure:** `cp config/remote.env.example config/override.env` and set `DOMAIN`, `LISTEN_ADDRESS`, `ACME_EMAIL`. The example sets `AUTH_POLICY=two_factor` and `CERT_ISSUER=letsencrypt-dns01`.
 4. **Certificates:** `platform/cert-manager/letsencrypt-dns01.yaml` issues the wildcard through Let's Encrypt DNS-01, so no inbound port 80 is needed. It is written for Cloudflare; put an API token with `Zone:DNS:Edit` in `.local/dns01-api-token`. For another DNS provider, swap the solver. **This template is unverified.** It needs a real domain and DNS credentials, so it was not tested here. Point it at Let's Encrypt staging first: the file says how.
-5. Run `make down CONFIRM=1 && make up`. The host port mappings are fixed when the cluster is created, so a running cluster has to be recreated.
+5. Run `make up`. It writes the new address into k3s's config (`nodeport-addresses`) and restarts k3s; the cluster doesn't have to be rebuilt. Firewall TCP ports 6443 and 10250 if the address is reachable by people you don't trust (see "Security on the server").
 6. **Two-factor:** each user signs in, then registers TOTP or a passkey. Authelia verifies identity with a one-time code. The filesystem notifier writes that code to `${DATA_DIR}/auth/notification.txt`; read it there and pass it on. For email delivery, replace `notifier.filesystem` in `platform/auth/configuration.yml` with an SMTP notifier.
 
-With a real CA, users don't need `.local/ca.crt`. The `ci` profile (`PROFILE=ci`) uses `cluster/kind-ci.yaml`, a single node, for GitHub Actions.
+With a real CA, users don't need `.local/ca.crt`. The `ci` profile (`PROFILE=ci`) is the local profile with smaller retention, for GitHub Actions; `make up` installs k3s on the runner the same way.
+
+## Security on the server
+
+- k3s listens on every interface, not only on `LISTEN_ADDRESS`: the API server on TCP 6443 and the kubelet on TCP 10250. Both require TLS client certificates or tokens. On a network you don't trust (a shared LAN, a public IP), firewall them so only this machine reaches them. flannel uses the `host-gw` backend (`cluster/k3s.yaml`), so k3s's default VXLAN port (UDP 8472, no authentication) is not open.
+- The server forwards packets for the pod and service networks (10.42.0.0/16, 10.43.0.0/16). A machine on the same LAN that adds a route to them through the server reaches Traefik directly, without going through `LISTEN_ADDRESS`; the NetworkPolicies still keep it away from the apps, Authelia and the databases. Firewall forwarded traffic from the LAN if that matters on your network.
+- Pods are routable from the host, and kube-router admits traffic that comes from the node itself (that is how kubelet probes work). So any process on the server can reach app pods directly, skip Traefik, and send forged `Remote-*` headers. Don't give untrusted people a shell on the server. (Under kind, the pod network sat inside Docker, so this is new.)
+- `make down` runs k3s's uninstaller, which also runs `tailscale set --advertise-routes=` when Tailscale is installed: it clears routes this machine advertises to the tailnet. Advertise them again afterwards if you use them.
+- node-exporter runs in the pod network (`hostNetwork: false`), so its unauthenticated host metrics are not served on port 9100 of the host's interfaces.
+
+## Migration from kind
+
+Earlier versions ran the platform on a kind cluster. If that cluster still exists, `make up` stops and prints these steps, because the kind cluster holds host ports 80 and 443:
+
+1. With the previous checkout (from before the move to k3s), run `make backup`. Check that new dumps are in `DATA_DIR/backups/storage/` and `DATA_DIR/backups/todo/`.
+2. Delete the kind cluster with the `kind` binary still in `.local/bin/`: `.local/bin/kind delete cluster --name lab`. This deletes the PostgreSQL volumes. The dumps, uploaded files, Authelia data, credentials and CA stay in `DATA_DIR` and `.local/`.
+3. Update the checkout.
+4. Run `make up`. It asks for your sudo password to install k3s.
+5. Run `make restore`.
+
+Browsers that trust `.local/ca.crt` keep trusting it: the CA is the same.
 
 ## Files
 
 | Path | What |
 |---|---|
 | `config/local.env`, `config/versions.env` | settings and pins; `config/override.env` (untracked) overrides both |
-| `cluster/kind.yaml`, `cluster/kind-ci.yaml` | kind cluster templates |
+| `cluster/k3s.yaml` | k3s server config template, rendered to `.local/k3s-config.yaml` and installed as `/etc/rancher/k3s/config.yaml` |
 | `scripts/lib.sh` | config loading, `render` (envsubst with the `RENDER_VARS` allowlist), `k`/`h` wrappers, wait helpers |
 | `scripts/up.sh`, `down.sh`, `status.sh`, `creds.sh`, `tools.sh`, `secrets.sh` | lifecycle |
+| `scripts/k3s.sh` | `make up` step 1: install or converge k3s, write `.local/kubeconfig`; stops while the old kind cluster exists |
 | `scripts/users.sh` | SSO users |
 | `scripts/deploy-app.sh` | build and deploy one app |
 | `scripts/backup.sh`, `scripts/restore.sh` | database dumps |
 | `scripts/smoke.sh` | security and platform checks (`ONLY=sso,netpol,...`, `KEEP=1`) |
 | `platform/namespaces/` | namespaces with Pod Security labels |
 | `platform/storage/` | StorageClass `lab-host` and the static host volumes |
-| `platform/dns/` | CoreDNS rewrite block |
+| `platform/dns/` | CoreDNS rewrite block, applied as ConfigMap `kube-system/coredns-custom` |
 | `platform/cert-manager/` | chart values, issuers, remote DNS-01 template |
 | `platform/traefik/` | chart values and NetworkPolicy |
 | `platform/auth/` | Authelia config and manifests, identity middlewares |

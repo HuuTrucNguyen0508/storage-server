@@ -90,7 +90,7 @@ AUTH_MODE=dev APP_ENV=development DEV_USER=alice DEV_GROUPS=users,admins go run 
 ## Deploy and prove
 
 ```sh
-make deploy-storage                           # build, kind load, render, apply, wait
+make deploy-storage                           # build, import into k3s, render, apply, wait
 services/storage/web/e2e/cluster-proof.sh     # headless Chromium through Traefik + Authelia: alice, bob, a guest
 services/storage/web/e2e/cluster-proof.sh --big   # plus a 2 GiB upload and checksum-verified download
 ```

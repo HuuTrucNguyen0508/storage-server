@@ -18,7 +18,7 @@ Alertmanager: `https://alertmanager.${DOMAIN}/`. All three are behind Authelia, 
 
 ## What runs where
 
-| Component | Chart (version) / image | Kind | Service (port) | Storage |
+| Component | Chart (version) / image | Workload | Service (port) | Storage |
 |---|---|---|---|---|
 | Prometheus v3.15.1 | kube-prometheus-stack 92.20.0 | StatefulSet `prometheus-kps-prometheus` | `prometheus` (9090), also `kps-prometheus` | PVC 10 GiB, 7 days / 9 GiB |
 | Alertmanager | kube-prometheus-stack | StatefulSet `alertmanager-kps-alertmanager` | `alertmanager` (9093) | PVC 1 GiB |
@@ -62,9 +62,10 @@ comes first.
 | Stirling PDF 3.2.2 | Traefik service metrics, probe, container CPU, memory and restarts | Logs (plain text, so no `level` label) | Traefik span only | Native Prometheus metrics need a paid licence. Checked on this cluster: `/actuator` lists `health` only, and `/actuator/prometheus` and `/actuator/metrics` return 404. Office conversions the storage app requests show on the Storage dashboard (`storage_office_conversion*`). |
 | PostgreSQL (CloudNativePG) | `cnpg_*` from each instance (PodMonitor `monitoring/cnpg-clusters`, port 9187), operator metrics (cnpg-system PodMonitor) | JSON logs (`container="postgres"`) | Apps' `pg.query*` client spans | No server-side traces. |
 | Grafana | `grafana_*` | JSON logs | OTLP gRPC to Alloy | |
-| Prometheus, Alertmanager, Loki, Tempo, Alloy, operator, kube-state-metrics, node-exporter, CoreDNS, cert-manager, kubelet/cAdvisor, API server | Own metrics via ServiceMonitors | Logs | none | |
+| Prometheus, Alertmanager, Loki, Tempo, Alloy, operator, kube-state-metrics, node-exporter, CoreDNS, cert-manager | Own metrics via ServiceMonitors | Logs | none | |
+| kubelet/cAdvisor, API server | Own metrics via ServiceMonitors | none | none | They run inside the k3s process, not in pods, so Alloy can't tail their logs. Read them with `journalctl -u k3s`. |
 | Kubernetes events | | `app="kubernetes-events"` | | |
-| kube-controller-manager, kube-scheduler, etcd, kube-proxy | none | Logs | none | kind binds them to 127.0.0.1 inside the node container. Their scrape jobs, dashboards and alerts are off, so they don't raise permanent `*Down` alerts. |
+| kube-controller-manager, kube-scheduler, kube-proxy | none | none | none | They also run inside the k3s process, which binds their metrics to 127.0.0.1. Their scrape jobs, dashboards and alerts are off, so they don't raise permanent `*Down` alerts. Logs: `journalctl -u k3s`. There is no etcd: k3s keeps cluster state in SQLite (kine). |
 | k6 load tests | `k6_*` via Prometheus remote write, tagged `testid` | Job logs | none | |
 | Public URLs | Blackbox probes (`probe_*`, including `probe_ssl_earliest_cert_expiry`) | | | Signed-in user journeys come from the load generator's k6 synthetic CronJob. |
 
@@ -162,7 +163,7 @@ example.
 | `LabSLOErrorBudgetBurnSlow` | 3x (1d and 2h windows) or 1x (3d and 6h) | | warning |
 | `LabPodCrashLooping` | A container is in CrashLoopBackOff (replaces the chart's `KubePodCrashLooping`) | 5m | warning |
 | `LabPersistentVolumeClaimAlmostFull` | A PVC is over 85% used (kubelet volume stats) | 5m | warning |
-| `LabHostVolumeAlmostFull` | The host filesystem behind the nodes' `/var` (every PVC) or `/data` (`DATA_DIR`) is over 85% full. This is kind's stand-in for the rule above: local-path and hostPath volumes report no kubelet volume stats. | 5m | warning |
+| `LabHostVolumeAlmostFull` | A real host filesystem is over 85% full, one alert per device. tmpfs, ramfs, overlay, squashfs, nsfs, autofs, FUSE mounts other than `fuseblk`, and anything under `/boot`, `/run` or `/snap` don't count. This stands in for the rule above: k3s's local-path PVCs (under `/var/lib/rancher/k3s/storage`) and the hostPath volumes under `DATA_DIR` report no kubelet volume stats. | 5m | warning |
 | `LabStorageVolumeLowFreeSpace` | `storage_volume_free_bytes / storage_volume_size_bytes` is below 10% | 5m | warning |
 | `LabCNPGInstanceDown` | A CNPG instance reports PostgreSQL down, can't be scraped, or isn't Ready | 2m | critical |
 | `LabCertificateExpiringSoon` | A probed URL's certificate expires in under 14 days | 10m | warning |
@@ -174,8 +175,8 @@ example.
 | `LabRemoteWriteReceiveErrors` | The remote-write receiver answers with 5xx | 10m | warning |
 
 The chart's default Kubernetes, node, Prometheus and Alertmanager rules stay on. The exceptions
-are the components kind can't expose, `NodeMemoryMajorPagesFaults` (noisy on a shared laptop
-kernel), and `KubePodCrashLooping`.
+are the components k3s doesn't expose (see the signal matrix), `NodeMemoryMajorPagesFaults`
+(noisy on a busy laptop), and `KubePodCrashLooping`.
 
 To unit test the rules, run `bash platform/observability/rules/test.sh`. It runs
 `promtool check rules` and `promtool test rules` in `quay.io/prometheus/prometheus:v3.15.1`.
@@ -204,8 +205,9 @@ Because of these policies, the API server's service proxy (`kubectl get --raw
 
 ## Resource use
 
-Measured on the local profile with `kubectl top pods -n monitoring`, about 30 minutes after
-install, with the storage and todo apps running:
+Measured on the earlier three-node kind cluster (local profile, so three node-exporters) with
+`kubectl top pods -n monitoring`, about 30 minutes after install, with the storage and todo apps
+running. k3s runs one node, so expect one node-exporter; these numbers aren't re-measured yet:
 
 | Pod | Memory |
 |---|---|
@@ -247,5 +249,14 @@ Run these from the repo root against the live cluster:
 - **The grafana/tempo single-binary chart is deprecated upstream** in favour of
   tempo-distributed. 1.24.4 with Tempo 2.9.0 works. Move to tempo-distributed, or to Tempo's own
   manifests, when the chart stops getting releases.
-- **node-exporter in kind reports the host** (all nodes share the host kernel and disks), so
-  host CPU and memory gauges average the three identical series.
+- **node-exporter runs in the pod network** (`hostNetwork: false`), so host metrics aren't
+  served on every host interface, and NetworkPolicy `node-exporter` admits only Prometheus.
+  CPU, memory and filesystem metrics still describe the host (host PID namespace, read-only
+  `/proc`, `/sys` and `/`). Metrics that Linux keeps per network namespace now describe the
+  node-exporter pod, not the host: interface traffic, errors and drops (`node_network_receive_*`,
+  `node_network_transmit_*`), `node_netstat_*`, `node_sockstat_*` and conntrack
+  (`node_nf_conntrack_*`). The lab's own dashboards and rules don't use them. In the chart's
+  content, the network panels of _Node Exporter / Nodes_ and _Node Exporter / USE Method_, the
+  TCP retransmit panels of _Kubernetes / Networking / Cluster_, and the alerts
+  `NodeNetworkReceiveErrs`, `NodeNetworkTransmitErrs` and `NodeHighNumberConntrackEntriesUsed`
+  see only that pod. Per-pod traffic (cAdvisor's `container_network_*`) is unaffected.

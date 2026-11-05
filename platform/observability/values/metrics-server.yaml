@@ -1,6 +1,7 @@
 # metrics-server (chart version pinned in install.sh): the resource metrics API behind
-# `kubectl top` and HorizontalPodAutoscalers. kind's kubelets serve self-signed
-# certificates, hence --kubelet-insecure-tls (local cluster only).
+# `kubectl top` and HorizontalPodAutoscalers. k3s's own metrics-server is disabled
+# (cluster/k3s.yaml), so this one serves the API. k3s's kubelet serves a certificate
+# signed by k3s's own CA, hence --kubelet-insecure-tls (single-node lab cluster).
 fullnameOverride: metrics-server
 args:
   - --kubelet-insecure-tls

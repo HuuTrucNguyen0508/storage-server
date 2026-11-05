@@ -15,7 +15,7 @@ DATABASE_URL=postgres://... APP_ENV=development AUTH_MODE=dev DEV_USER=alice pnp
 
 Tests start an isolated `postgres:18.6-alpine3.24` Docker container on an ephemeral loopback port and remove it after the suite. Docker must be available. The two Fastify instances in integration tests share this real database. No browser is used.
 
-From the repository root, `make deploy-todo` builds the image, loads kind and applies the manifests, waiting for both replicas. `make backup APPS=todo` writes a custom PostgreSQL dump to `.local/data/backups/todo/`. Nightly backups retain seven files. `make restore APPS=todo` uses the platform restore procedure. The app is stateless; durable users/projects/tasks/comments/events/reminder claims live in PostgreSQL. Startup applies ordered migrations under a session advisory lock after up to 120 database connection retries.
+From the repository root, `make deploy-todo` builds the image, imports it into k3s and applies the manifests, waiting for both replicas. `make backup APPS=todo` writes a custom PostgreSQL dump to `.local/data/backups/todo/`. Nightly backups retain seven files. `make restore APPS=todo` uses the platform restore procedure. The app is stateless; durable users/projects/tasks/comments/events/reminder claims live in PostgreSQL. Startup applies ordered migrations under a session advisory lock after up to 120 database connection retries.
 
 ## Environment
 

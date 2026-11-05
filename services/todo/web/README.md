@@ -14,7 +14,7 @@ pnpm lint             # eslint (forbids eval, new Function and unsanitized HTML)
 pnpm test             # vitest: model, live events, writer, components, access and stream checkpoints
 pnpm build            # dist/
 e2e/run-local.sh      # headless smoke test against the real API (Docker Postgres, AUTH_MODE=dev)
-e2e/cluster-proof.sh  # headless proof in the kind cluster through Traefik and Authelia
+e2e/cluster-proof.sh  # headless proof in the lab cluster through Traefik and Authelia
 ```
 
 `e2e/run-local.sh` starts PostgreSQL in Docker and two API processes on one

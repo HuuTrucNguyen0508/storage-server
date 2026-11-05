@@ -6,10 +6,10 @@ SHELL := /usr/bin/env bash
 help: ## List targets
 	@grep -hE '^[a-z0-9%-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
 
-up: ## Create or converge the cluster and everything on it
+up: ## Install or converge k3s (may ask for sudo) and everything on it
 	@scripts/up.sh
 
-down: ## Delete the cluster (keeps DATA_DIR and .local/; needs CONFIRM=1)
+down: ## Uninstall k3s and its cluster (keeps DATA_DIR and .local/; needs CONFIRM=1)
 	@CONFIRM=$(CONFIRM) scripts/down.sh
 
 status: ## Nodes, releases, unhealthy pods, volumes, routes
@@ -18,7 +18,7 @@ status: ## Nodes, releases, unhealthy pods, volumes, routes
 creds: ## Print URLs and logins
 	@scripts/creds.sh
 
-tools: ## Download pinned kind and kubectl into .local/bin
+tools: ## Download pinned kubectl and k3s into .local/ and verify them
 	@scripts/tools.sh
 
 secrets: ## Generate .local/ secrets (idempotent)

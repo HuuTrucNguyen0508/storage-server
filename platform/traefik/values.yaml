@@ -1,8 +1,8 @@
 # Traefik v3 (chart pinned in config/versions.env). Rendered with scripts/lib.sh render.
 deployment:
   replicas: 1
-  # Pinned to the node that carries the host port mappings, so the NodePorts with
-  # externalTrafficPolicy Local deliver straight to this pod.
+# The node labelled ingress-ready (cluster/k3s.yaml): with externalTrafficPolicy Local the
+# node ports deliver only to a Traefik pod on the node that received the connection.
 nodeSelector:
   ingress-ready: "true"
 tolerations:
@@ -12,20 +12,26 @@ tolerations:
 global:
   checkNewVersion: false
   sendAnonymousUsage: false
+# The host ports themselves are the node ports. kube-proxy serves them only on LISTEN_ADDRESS
+# (cluster/k3s.yaml, nodeport-addresses), so the local profile stays on 127.0.0.1. Not a
+# hostPort: Pod Security "restricted" in namespace traefik rejects those. Not hostNetwork:
+# Traefik's requests would then come from the node, not from a pod the apps' NetworkPolicies
+# can select.
+# externalTrafficPolicy Local keeps the client address for the remote profile.
 service:
   spec:
     type: NodePort
     externalTrafficPolicy: Local
 ports:
   web:
-    nodePort: 30080
+    nodePort: ${HTTP_PORT}
     http:
       redirections:
         entryPoint: {to: websecure, scheme: https, permanent: true}
     forwardedHeaders: {insecure: false, trustedIPs: []}
     proxyProtocol: {insecure: false, trustedIPs: []}
   websecure:
-    nodePort: 30443
+    nodePort: ${HTTPS_PORT}
     http:
       tls: {enabled: true}
       # Remote_User and other aliases of identity headers are dropped, not merged.

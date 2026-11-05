@@ -258,9 +258,11 @@ resetLayout();
   p.push(stat('Pods not ready', [prom('sum(kube_pod_status_ready{condition="false"} * on (namespace, pod) group_left () (kube_pod_status_phase{phase=~"Running|Pending"} == 1)) or vector(0)')], { w: 3, h: 4, thresholds: T.highIsBad(1, 3), description: 'Running or Pending pods that are not Ready (finished Job pods excluded).' }));
   p.push(stat('Pods CPU', [prom('sum(rate(container_cpu_usage_seconds_total{container!="", pod!=""}[5m]))')], { w: 3, h: 4, unit: 'none', decimals: 2, description: 'CPU cores used by all containers.' }));
   p.push(stat('Pods memory', [prom('sum(container_memory_working_set_bytes{container!="", pod!=""})')], { w: 3, h: 4, unit: 'bytes', decimals: 1 }));
-  p.push(gauge('Host CPU', [prom('1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))')], { w: 3, h: 4, thresholds: T.highIsBad(0.7, 0.9), description: 'kind nodes share the host kernel, so node-exporter reports the host.' }));
+  p.push(gauge('Host CPU', [prom('1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))')], { w: 3, h: 4, thresholds: T.highIsBad(0.7, 0.9), description: 'The k3s node is the host itself, so node-exporter reports the whole machine.' }));
   p.push(gauge('Host memory', [prom('1 - avg(node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)')], { w: 3, h: 4, thresholds: T.highIsBad(0.8, 0.9) }));
-  p.push(gauge('Host disk', [prom('1 - min(node_filesystem_avail_bytes{mountpoint=~"/|/var|/data", fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint=~"/|/var|/data", fstype!="tmpfs"})')], { w: 3, h: 4, thresholds: T.highIsBad(0.8, 0.9), description: 'Fullest of the host filesystems behind /var (images, PVCs) and /data (DATA_DIR).' }));
+  // Real host filesystems: the same selection as LabHostVolumeAlmostFull (rules/lab.rules.yaml).
+  const hostFs = 'fstype!~"tmpfs|ramfs|overlay|squashfs|nsfs|autofs|fuse|fuse[.].+", mountpoint!~"/(boot|run|snap)(/.*)?"';
+  p.push(gauge('Host disk', [prom(`1 - min(node_filesystem_avail_bytes{${hostFs}} / node_filesystem_size_bytes{${hostFs}})`)], { w: 3, h: 4, thresholds: T.highIsBad(0.8, 0.9), description: 'Fullest real host filesystem. PVCs live under /var/lib/rancher/k3s/storage, DATA_DIR wherever it is set.' }));
   p.push(stat('Targets down', [prom('count(up == 0) or vector(0)')], { w: 3, h: 4, thresholds: T.highIsBad(1, 1), description: 'Prometheus scrape targets that fail.' }));
   p.push(table('Active alerts', [prom('ALERTS{alertstate="firing", alertname!~"Watchdog|InfoInhibitor"}', '', { instant: true, range: false, format: 'table' })], {
     w: 12, h: 7,

@@ -43,7 +43,27 @@ fi
 # Derived values.
 case "$DATA_DIR" in /*) ;; *) DATA_DIR="$ROOT/$DATA_DIR" ;; esac
 export DATA_DIR
-export KCTX="kind-${CLUSTER_NAME}"
+# make down runs k3s-uninstall.sh, which deletes these directories; DATA_DIR must outlive it.
+__data_real=$(realpath -m -- "$DATA_DIR" 2>/dev/null || printf '%s' "$DATA_DIR")
+for __d in /etc/rancher /run/k3s /run/flannel /var/lib/rancher /var/lib/kubelet /var/lib/cni; do
+  case "$__data_real/" in "$__d"/*) die "DATA_DIR=$DATA_DIR is inside $__d, which make down (k3s-uninstall.sh) deletes" ;; esac
+done
+# Traefik's Service takes HTTP_PORT and HTTPS_PORT as node ports (cluster/k3s.yaml), and
+# kube-proxy serves them on LISTEN_ADDRESS only.
+for __p in HTTP_PORT HTTPS_PORT; do
+  [[ "${!__p}" =~ ^[1-9][0-9]{0,4}$ ]] && [ "${!__p}" -le 32767 ] \
+    || die "$__p=${!__p}: must be a port from 1 to 32767 (k3s serves it as a node port)"
+done
+[ "$HTTP_PORT" != "$HTTPS_PORT" ] || die "HTTP_PORT and HTTPS_PORT must differ"
+[[ "$LISTEN_ADDRESS" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || die "LISTEN_ADDRESS=$LISTEN_ADDRESS: must be an IPv4 address"
+export NODE_PORT_RANGE="$(( HTTP_PORT < HTTPS_PORT ? HTTP_PORT : HTTPS_PORT ))-32767"
+if [ "$LISTEN_ADDRESS" = 0.0.0.0 ]; then NODE_PORT_ADDRESSES=0.0.0.0/0; else NODE_PORT_ADDRESSES="$LISTEN_ADDRESS/32"; fi
+export NODE_PORT_ADDRESSES
+# k3s: the verified downloads (scripts/tools.sh) and the system-wide install (scripts/k3s.sh).
+export K3S_DOWNLOAD="$LOCAL_DIR/k3s/k3s-${K3S_VERSION}"
+export K3S_INSTALLER="$LOCAL_DIR/k3s/install-${K3S_VERSION}.sh"
+export K3S_BIN=/usr/local/bin/k3s
+export KCTX="k3s-${CLUSTER_NAME}"
 export KUBECONFIG="$LOCAL_DIR/kubeconfig"
 export HELM_KUBECONTEXT="$KCTX"
 export AUTH_PUBLIC_URL="https://auth.${DOMAIN}"
@@ -56,8 +76,8 @@ export PATH="$LOCAL_DIR/bin:$PATH"
 
 # Variables `render` may substitute. Anything else with a `$` is left alone.
 RENDER_VARS="PROFILE DOMAIN DOMAIN_REGEX CLUSTER_NAME LISTEN_ADDRESS HTTP_PORT HTTPS_PORT
-AUTH_POLICY ENVIRONMENT DATA_DIR IMAGE_TAG AUTH_PUBLIC_URL HOME_URL CERT_ISSUER ACME_EMAIL KIND_NODE_IMAGE AUTHELIA_IMAGE
-STIRLING_PDF_IMAGE NGINX_UNPRIVILEGED_IMAGE WHOAMI_IMAGE POSTGRES_CLIENT_IMAGE CURL_IMAGE"
+AUTH_POLICY ENVIRONMENT DATA_DIR IMAGE_TAG AUTH_PUBLIC_URL HOME_URL CERT_ISSUER ACME_EMAIL NODE_PORT_RANGE
+NODE_PORT_ADDRESSES AUTHELIA_IMAGE STIRLING_PDF_IMAGE NGINX_UNPRIVILEGED_IMAGE WHOAMI_IMAGE POSTGRES_CLIENT_IMAGE CURL_IMAGE"
 
 # render FILE... (or stdin): envsubst limited to RENDER_VARS.
 render() {
@@ -69,7 +89,8 @@ render() {
 k() { kubectl --context "$KCTX" "$@"; }
 h() { helm --kube-context "$KCTX" "$@"; }
 
-cluster_exists() { kind get clusters 2>/dev/null | grep -qx "$CLUSTER_NAME"; }
+# The cluster exists when k3s is installed, its service is running and make up wrote the kubeconfig.
+cluster_exists() { [ -x "$K3S_BIN" ] && [ -f "$KUBECONFIG" ] && systemctl is-active --quiet k3s 2>/dev/null; }
 require_cluster() { cluster_exists || die "cluster $CLUSTER_NAME does not exist; run make up"; }
 
 # wait_for DESCRIPTION TIMEOUT_SECONDS COMMAND...: retry COMMAND until it succeeds.

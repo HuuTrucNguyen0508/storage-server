@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Proof in the live kind cluster, through Traefik and Authelia, with headless
+# Proof in the live lab cluster, through Traefik and Authelia, with headless
 # Chromium. Usage: services/storage/web/e2e/cluster-proof.sh [--big]
 # --big also uploads a 2 GiB file through the ingress and verifies a streamed
 # download's checksum. Screenshots go to services/storage/docs/shots/.

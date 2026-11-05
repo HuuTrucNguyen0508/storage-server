@@ -1,5 +1,5 @@
-# Namespace monitoring. Privileged: node-exporter needs the host network, PID namespace
-# and root filesystem. Everything else in here runs non-root.
+# Namespace monitoring. Privileged: node-exporter needs the host PID namespace and the
+# host's /proc, /sys and root filesystem. Everything else in here runs non-root.
 apiVersion: v1
 kind: Namespace
 metadata:

@@ -106,7 +106,9 @@ CronJob `synthetic-checks` (`*/5 * * * *`, `concurrencyPolicy: Forbid`, history 
 
 `loadgen/test-rules.sh` unit-tests both with promtool. To try the alert yourself, create a run that cannot work: `kubectl -n loadgen create job synthetic-checks-broken --from=cronjob/synthetic-checks` with `DOMAIN` set to something that does not exist.
 
-## Capacity numbers (measured on this machine)
+## Capacity numbers (measured on this machine, on kind)
+
+These numbers were measured on the earlier kind cluster, before the platform moved to native single-node k3s. They haven't been re-measured on k3s.
 
 Machine: 24 logical CPUs, 30 GB, kind with one control plane and two workers, the k6 pod limited to 2 CPUs and 1 GiB. All apps run one replica except todo (two). Generator and system under test share the machine.
 

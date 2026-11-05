@@ -18,8 +18,12 @@ URLS
 }
 if [ "${1:-}" = --urls ]; then urls; exit 0; fi
 
+echo "== k3s"
+if [ -x "$K3S_BIN" ]; then installed=$("$K3S_BIN" --version | head -n 1); else installed="not installed at $K3S_BIN"; fi
+echo "  $installed (pinned $K3S_VERSION)," \
+  "service $(systemctl is-active k3s 2>/dev/null || true)"
 require_cluster
-echo "== nodes"; k get nodes -o wide
+echo; echo "== nodes"; k get nodes -o wide
 echo; echo "== helm releases"; h list -A
 echo; echo "== workloads not ready"
 k get pods -A --no-headers | awk '$4 != "Running" && $4 != "Completed" {print}' | sed 's/^/  /' || true

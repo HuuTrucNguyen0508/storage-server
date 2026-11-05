@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Proof in the live kind cluster, through Traefik and Authelia, with headless
+# Proof in the live lab cluster, through Traefik and Authelia, with headless
 # Chromium. Usage: services/todo/web/e2e/cluster-proof.sh
 # Screenshots go to services/todo/web/docs/shots/.
 set -euo pipefail

@@ -21,41 +21,29 @@ done
 [ "$(stat -c %a "$LOCAL_DIR")" = 700 ] || chmod 700 "$LOCAL_DIR"
 
 # ---------------------------------------------------------------------------
-step "1. kind cluster $CLUSTER_NAME ($PROFILE)"
+step "1. k3s server ($PROFILE)"
 t=$(date +%s)
-if cluster_exists; then
-  log "cluster $CLUSTER_NAME already exists"
-else
-  cfg_src="$ROOT/cluster/kind.yaml"; [ "$PROFILE" = ci ] && cfg_src="$ROOT/cluster/kind-ci.yaml"
-  cfg="$LOCAL_DIR/kind-config.yaml"
-  render "$cfg_src" > "$cfg"
-  kind create cluster --name "$CLUSTER_NAME" --config "$cfg" --kubeconfig "$KUBECONFIG" --wait 180s
-fi
-kind export kubeconfig --name "$CLUSTER_NAME" --kubeconfig "$KUBECONFIG" >/dev/null
-chmod 600 "$KUBECONFIG"
-# Also add the context to the default kubeconfig so `kubectl --context kind-lab` works anywhere.
-env -u KUBECONFIG kind export kubeconfig --name "$CLUSTER_NAME" >/dev/null 2>&1 || warn "could not update ~/.kube/config"
-k wait --for=condition=Ready nodes --all --timeout=180s >/dev/null
-timed "cluster" "$t"
+"$ROOT/scripts/k3s.sh"
+timed "k3s" "$t"
 
 step "1b. namespaces"
 k apply -f "$ROOT/platform/namespaces/namespaces.yaml" >/dev/null
 
 # ---------------------------------------------------------------------------
 step "2. CoreDNS: *.${DOMAIN} and ${DOMAIN} -> traefik.traefik.svc.cluster.local"
-corefile=$(k -n kube-system get configmap coredns -o jsonpath='{.data.Corefile}')
-block=$(render "$ROOT/platform/dns/rewrite.corefile")
-new=$(printf '%s\n' "$corefile" | BLOCK="$block" awk '
-  /# lab-domain-begin/ { skip = 1; next }
-  /# lab-domain-end/   { skip = 0; next }
-  skip { next }
-  { print }
-  /^[[:space:]]*ready[[:space:]]*$/ && !done { print ENVIRON["BLOCK"]; done = 1 }')
-if [ "$new" != "$corefile" ]; then
-  k -n kube-system get configmap coredns -o json \
-    | jq --arg c "$new" '.data.Corefile = $c' | k apply -f - >/dev/null
+# k3s deploys CoreDNS from its own manifests shortly after the API server starts.
+wait_for "k3s to deploy CoreDNS" 180 k -n kube-system get deployment/coredns || die "deployment kube-system/coredns does not exist"
+# k3s's CoreDNS imports every *.override key of the optional ConfigMap
+# kube-system/coredns-custom into its main server block. k3s rewrites its own coredns
+# ConfigMap whenever it starts, so that one is never edited.
+override=$(render "$ROOT/platform/dns/rewrite.corefile")
+current=$(k -n kube-system get configmap coredns-custom -o json 2>/dev/null | jq -r '.data["lab-domain.override"] // ""' || true)
+if [ "$override" != "$current" ]; then
+  k -n kube-system create configmap coredns-custom --from-literal=lab-domain.override="$override" \
+    --dry-run=client -o yaml | k apply -f - >/dev/null
+  # Restart so the new rule applies now, not whenever the mounted ConfigMap refreshes.
   k -n kube-system rollout restart deployment/coredns >/dev/null
-  log "CoreDNS Corefile updated"
+  log "CoreDNS override updated"
 fi
 wait_rollout kube-system deployment/coredns
 
@@ -106,7 +94,12 @@ timed "traefik" "$t"
 # ---------------------------------------------------------------------------
 step "6. host-backed volumes, Authelia, identity middlewares, users"
 t=$(date +%s)
-k apply -f "$ROOT/platform/storage/storage.yaml" >/dev/null
+# hostPath can't change on an existing PV, so a PV made for another DATA_DIR (for example
+# before the checkout moved) would fail the apply below with a less useful message.
+stale=$(k get pv -l app.kubernetes.io/part-of=lab -o json | jq -r --arg d "$DATA_DIR/" \
+  '.items[] | select(.spec.hostPath != null and (.spec.hostPath.path | startswith($d) | not)) | "\(.metadata.name) (\(.spec.hostPath.path))"')
+[ -z "$stale" ] || die "these volumes point outside DATA_DIR=$DATA_DIR: ${stale//$'\n'/, }. Set DATA_DIR back, or move the data and recreate them (make backup, make down CONFIRM=1, make up, make restore)"
+render "$ROOT/platform/storage/storage.yaml" | k apply -f - >/dev/null
 # A PV whose claim was deleted is Released and never rebinds; clear the stale claim UID.
 for pv in $(k get pv -l app.kubernetes.io/part-of=lab -o jsonpath='{range .items[?(@.status.phase=="Released")]}{.metadata.name}{" "}{end}'); do
   log "releasing stale claim on PV $pv"

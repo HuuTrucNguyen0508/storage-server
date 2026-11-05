@@ -1,0 +1,23 @@
+# Claims bound to the platform's host-backed PersistentVolumes (they survive a
+# cluster rebuild). The blobs on storage-data are named by random id only.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: storage-data
+  labels: {app.kubernetes.io/name: storage, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: data}
+spec:
+  storageClassName: lab-host
+  volumeName: storage-data
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 500Gi}}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: storage-backups
+  labels: {app.kubernetes.io/name: storage, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: backup}
+spec:
+  storageClassName: lab-host
+  volumeName: storage-backups
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 50Gi}}

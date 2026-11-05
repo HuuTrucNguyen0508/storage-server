@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storage
+  labels: {app.kubernetes.io/name: storage, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: app}
+spec:
+  replicas: 1
+  # One writer to the data volume and the upload locks: never two pods at once.
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app.kubernetes.io/name: storage, app.kubernetes.io/component: app}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: storage, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: app}
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: storage
+          image: lab/storage:${IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8080}
+            - {name: metrics, containerPort: 9464}
+          env:
+            - name: DATABASE_URL
+              valueFrom: {secretKeyRef: {name: storage-db-app, key: uri}}
+            - {name: DATA_DIR, value: /data}
+            - {name: DOMAIN, value: "${DOMAIN}"}
+            - {name: PUBLIC_URL, value: "https://storage.${DOMAIN}"}
+            - {name: AUTH_PUBLIC_URL, value: "${AUTH_PUBLIC_URL}"}
+            - {name: HOME_URL, value: "${HOME_URL}"}
+            - {name: AUTH_MODE, value: header}
+            - {name: APP_ENV, value: "${ENVIRONMENT}"}
+            - {name: STIRLING_URL, value: "http://stirling-pdf.pdf.svc.cluster.local:8080"}
+            - {name: OFFICE_CONCURRENCY, value: "2"}
+            - {name: OFFICE_TIMEOUT, value: 120s}
+            - {name: DEFAULT_QUOTA_BYTES, value: "53687091200"}
+            - {name: MIN_FREE_PERCENT, value: "5"}
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://alloy.monitoring.svc.cluster.local:4318"}
+            - {name: OTEL_SERVICE_NAME, value: storage}
+            - {name: OTEL_RESOURCE_ATTRIBUTES, value: "deployment.environment=${ENVIRONMENT},service.namespace=lab"}
+            - name: GOMEMLIMIT
+              valueFrom: {resourceFieldRef: {resource: limits.memory, divisor: "1"}}
+          startupProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 2
+            failureThreshold: 90
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "2", memory: 1Gi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: storage-data}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage
+  labels: {app.kubernetes.io/name: storage, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: app}
+spec:
+  selector: {app.kubernetes.io/name: storage, app.kubernetes.io/component: app}
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+    - {name: metrics, port: 9464, targetPort: metrics}

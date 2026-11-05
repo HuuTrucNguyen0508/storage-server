@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: storage
+  labels: {app.kubernetes.io/name: storage, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: app}
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: storage, app.kubernetes.io/component: app}
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+# PostgreSQL metrics: the observability stack's PodMonitor "cnpg-clusters"
+# already scrapes every CloudNativePG instance (port 9187), so none here.

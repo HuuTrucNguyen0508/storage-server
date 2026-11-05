@@ -1,0 +1,5 @@
+ui-dist/*
+!ui-dist/.gitkeep
+node_modules/
+test-results/
+playwright-report/

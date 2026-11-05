@@ -38,11 +38,16 @@ func start() {
 	// No tmpfs data directory: it kept the container from starting on GitHub's runners.
 	out, err := exec.Command("docker", "run", "-d", "-p", "127.0.0.1::5432",
 		"-e", "POSTGRES_PASSWORD=test", "-e", "POSTGRES_USER=test", "-e", "POSTGRES_DB=test",
-		Image, "-c", "fsync=off", "-c", "max_connections=500").CombinedOutput()
+		Image, "-c", "fsync=off", "-c", "max_connections=500").Output()
 	if err != nil {
-		startErr = fmt.Errorf("docker run %s: %v: %s", Image, err, out)
+		var stderr []byte
+		if ee, ok := err.(*exec.ExitError); ok {
+			stderr = ee.Stderr
+		}
+		startErr = fmt.Errorf("docker run %s: %v: %s", Image, err, stderr)
 		return
 	}
+	// stdout is only the container ID; pull progress goes to stderr.
 	container = strings.TrimSpace(string(out))
 	var port []byte
 	for i := 0; i < 50; i++ { // the published port appears once the container runs

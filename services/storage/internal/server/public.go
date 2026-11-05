@@ -212,7 +212,7 @@ func (s *Server) pubContent(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid", "this is a folder; download it as a ZIP")
 		return
 	}
-	if !isRangeContinuation(r) {
+	if r.Method != http.MethodHead && !isRangeContinuation(r, n) {
 		if err := s.store.CountLinkDownload(r.Context(), l, n.ID); err != nil {
 			s.fail(w, r, err)
 			return
@@ -221,11 +221,42 @@ func (s *Server) pubContent(w http.ResponseWriter, r *http.Request) {
 	s.sendFile(w, r, n, false, "public")
 }
 
-// isRangeContinuation is true for a Range request that does not start at
-// byte 0, so resuming a download does not count as another download.
-func isRangeContinuation(r *http.Request) bool {
-	rg := r.Header.Get("Range")
-	return strings.HasPrefix(rg, "bytes=") && !strings.HasPrefix(rg, "bytes=0-")
+// isRangeContinuation exempts only a single range beginning after byte zero.
+// Suffix ranges can return the whole file, and a stale If-Range causes
+// ServeContent to ignore Range entirely, so both must count as downloads.
+func isRangeContinuation(r *http.Request, n *store.Node) bool {
+	if ir := r.Header.Get("If-Range"); ir != "" && ir != `"`+n.BlobID+`"` {
+		return false
+	}
+	rg, ok := strings.CutPrefix(r.Header.Get("Range"), "bytes=")
+	if !ok || strings.Contains(rg, ",") {
+		return false
+	}
+	start, end, ok := strings.Cut(rg, "-")
+	if !ok || start == "" {
+		return false
+	}
+	for _, c := range start {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	offset, err := strconv.ParseInt(start, 10, 64)
+	if err != nil || offset <= 0 || offset >= n.Size {
+		return false
+	}
+	if end != "" {
+		for _, c := range end {
+			if c < '0' || c > '9' {
+				return false
+			}
+		}
+		last, err := strconv.ParseInt(end, 10, 64)
+		if err != nil || last < offset {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Server) pubRaw(w http.ResponseWriter, r *http.Request) {
@@ -273,9 +304,11 @@ func (s *Server) pubZip(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if err := s.store.CountLinkDownload(r.Context(), l, l.NodeID); err != nil {
-		s.fail(w, r, err)
-		return
+	if r.Method != http.MethodHead {
+		if err := s.store.CountLinkDownload(r.Context(), l, l.NodeID); err != nil {
+			s.fail(w, r, err)
+			return
+		}
 	}
 	s.sendZip(w, r, linkSubject(l), ids, "public")
 }

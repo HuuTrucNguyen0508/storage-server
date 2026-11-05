@@ -224,3 +224,38 @@ func TestDropLinkUploadsWithoutSeeing(t *testing.T) {
 		t.Fatalf("cross-origin guest upload: %d", r.Status)
 	}
 }
+
+func TestLinkRangeAccounting(t *testing.T) {
+	e := newEnv(t)
+	alice := e.as("alice")
+	f := alice.upload(alice.root(), "range.txt", []byte("abcdef"))
+	for _, rg := range []string{"bytes=00-", "bytes=-6", "bytes=0-0,1-", "bytes=1-"} {
+		t.Run(rg, func(t *testing.T) {
+			l := alice.link(f.ID, map[string]any{"kind": "view", "maxDownloads": 1})
+			p := "/api/public/" + l.Token + "/nodes/" + f.ID + "/content"
+			g := e.guest()
+			headers := []string{"Range", rg}
+			// A stale If-Range makes ServeContent ignore Range and send the whole file.
+			if rg == "bytes=1-" {
+				headers = append(headers, "If-Range", `"stale"`)
+			}
+			r := g.get(p, headers...)
+			if r.Status != 200 && r.Status != 206 {
+				t.Fatalf("download status %d", r.Status)
+			}
+			g.must(g.get(p), 410)
+		})
+	}
+}
+
+func TestLinkHeadDoesNotConsumeDownload(t *testing.T) {
+	e := newEnv(t)
+	alice := e.as("alice")
+	f := alice.upload(alice.root(), "head.txt", []byte("abcdef"))
+	l := alice.link(f.ID, map[string]any{"kind": "view", "maxDownloads": 1})
+	p := "/api/public/" + l.Token + "/nodes/" + f.ID + "/content"
+	g := e.guest()
+	g.must(g.req("HEAD", p, nil), 200)
+	g.must(g.get(p), 200)
+	g.must(g.get(p), 410)
+}

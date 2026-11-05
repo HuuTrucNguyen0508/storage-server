@@ -277,6 +277,15 @@ func (s *Store) Rename(ctx context.Context, subj Subject, id, rawName string) (*
 func (s *Store) Move(ctx context.Context, subj Subject, ids []string, targetID string) ([]*Node, error) {
 	var out []string
 	err := s.Tx(ctx, func(tx pgx.Tx) error {
+		// All reparenting in one owner's tree must see prior committed moves.
+		// Otherwise two individually acyclic moves can form a cycle together.
+		if !ValidID(targetID) {
+			return ErrNotFound
+		}
+		if _, err := tx.Exec(ctx, "SELECT 1 FROM users WHERE id = (SELECT owner_id FROM nodes WHERE id = $1) FOR UPDATE", targetID); err != nil {
+			return err
+		}
+
 		target, _, err := s.Authorize(ctx, tx, subj, targetID, NeedEdit)
 		if err != nil {
 			return err

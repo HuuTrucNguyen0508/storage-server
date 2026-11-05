@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -704,5 +705,37 @@ func pollOffice(c *client, id string) *resp {
 			return r
 		}
 		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+func TestConcurrentMovesCannotCreateCycle(t *testing.T) {
+	e := newEnv(t)
+	alice := e.as("alice")
+	root := alice.root()
+	// Delay the row writes to exercise overlapping ancestry checks reliably.
+	_, err := e.st.Pool.Exec(context.Background(), `
+ CREATE FUNCTION delay_move() RETURNS trigger LANGUAGE plpgsql AS $$
+ BEGIN PERFORM pg_sleep(0.05); RETURN NEW; END $$;
+ CREATE TRIGGER delay_move BEFORE UPDATE OF parent_id ON nodes
+ FOR EACH ROW EXECUTE FUNCTION delay_move()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 5; i++ {
+		a := alice.mkdir(root, fmt.Sprintf("A%d", i))
+		b := alice.mkdir(root, fmt.Sprintf("B%d", i))
+		start := make(chan struct{})
+		results := make(chan int, 2)
+		for _, pair := range [][2]string{{a.ID, b.ID}, {b.ID, a.ID}} {
+			go func(from, to string) {
+				<-start
+				results <- alice.req("POST", "/api/nodes/move", map[string]any{"ids": []string{from}, "parentId": to}).Status
+			}(pair[0], pair[1])
+		}
+		close(start)
+		x, y := <-results, <-results
+		if !((x == 200 && y == 400) || (x == 400 && y == 200)) {
+			t.Fatalf("concurrent opposite moves: %d, %d; want one success and one refused cycle", x, y)
+		}
 	}
 }

@@ -279,10 +279,11 @@ func (s *Store) Move(ctx context.Context, subj Subject, ids []string, targetID s
 	err := s.Tx(ctx, func(tx pgx.Tx) error {
 		// All reparenting in one owner's tree must see prior committed moves.
 		// Otherwise two individually acyclic moves can form a cycle together.
+		// NO KEY UPDATE also permits concurrent INSERTs to check their user FKs.
 		if !ValidID(targetID) {
 			return ErrNotFound
 		}
-		if _, err := tx.Exec(ctx, "SELECT 1 FROM users WHERE id = (SELECT owner_id FROM nodes WHERE id = $1) FOR UPDATE", targetID); err != nil {
+		if _, err := tx.Exec(ctx, "SELECT 1 FROM users WHERE id = (SELECT owner_id FROM nodes WHERE id = $1) FOR NO KEY UPDATE", targetID); err != nil {
 			return err
 		}
 
@@ -354,11 +355,11 @@ func (s *Store) nodesByID(ctx context.Context, ids []string, viewer int64) ([]*N
 	return collectNodes(s.Pool.Query(ctx, nodeSelect("$2")+"WHERE n.id = ANY($1::uuid[]) ORDER BY lower(n.name)", ids, viewer))
 }
 
-// QuotaCheck is called with the owner and the extra bytes about to be
-// stored; it refuses with ErrQuota or ErrVolumeFull. Callers hold the owner's
-// row lock while it runs.
+// checkQuota serializes quota reservations and copies with moves in this
+// owner's space. NO KEY UPDATE conflicts with other owner locks, but permits
+// the KEY SHARE locks taken by foreign-key checks in concurrent INSERTs.
 func (s *Store) checkQuota(ctx context.Context, tx pgx.Tx, ownerID, extra int64) error {
-	if _, err := tx.Exec(ctx, "SELECT 1 FROM users WHERE id = $1 FOR UPDATE", ownerID); err != nil {
+	if _, err := tx.Exec(ctx, "SELECT 1 FROM users WHERE id = $1 FOR NO KEY UPDATE", ownerID); err != nil {
 		return err
 	}
 	u, err := s.Usage(ctx, tx, ownerID)

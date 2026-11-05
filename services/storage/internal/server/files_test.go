@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -737,5 +738,70 @@ func TestConcurrentMovesCannotCreateCycle(t *testing.T) {
 		if !((x == 200 && y == 400) || (x == 400 && y == 200)) {
 			t.Fatalf("concurrent opposite moves: %d, %d; want one success and one refused cycle", x, y)
 		}
+	}
+}
+
+// Folder creates, uploads and moves in one space at once, as a k6 stress run
+// makes them. Foreign-key checks take a share lock on the owner's users row, so
+// the per-owner serialization lock must not conflict with them (deadlock, 500).
+func TestConcurrentWritesInOneSpaceDoNotDeadlock(t *testing.T) {
+	e := newEnv(t)
+	alice := e.as("alice")
+	root := alice.root()
+	dest := alice.mkdir(root, "dest")
+	const workers, rounds = 16, 8
+	start, stop := make(chan struct{}), make(chan struct{})
+	failures := make(chan string, workers*rounds*4)
+	var wg sync.WaitGroup
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func(w int) {
+			defer wg.Done()
+			<-start
+			for i := 0; i < rounds; i++ {
+				check := func(what string, r *resp, want int) *resp {
+					if r.Status != want {
+						failures <- fmt.Sprintf("%s: status %d: %s", what, r.Status, r.Body)
+					}
+					return r
+				}
+				var dir struct{ Node node }
+				check("mkdir", alice.req("POST", "/api/folders", map[string]any{"parentId": root, "name": fmt.Sprintf("d-%d-%d", w, i)}), 201).json(&dir)
+				data := []byte(fmt.Sprintf("file %d %d", w, i))
+				var up struct {
+					Upload struct {
+						ID string `json:"id"`
+					} `json:"upload"`
+				}
+				check("upload create", alice.req("POST", "/api/uploads", map[string]any{"parentId": root, "name": fmt.Sprintf("f-%d-%d.txt", w, i), "size": len(data)}), 201).json(&up)
+				check("upload chunk", alice.req("PUT", "/api/uploads/"+up.Upload.ID, data, "Upload-Offset", "0"), 201)
+				if dir.Node.ID != "" {
+					check("move", alice.req("POST", "/api/nodes/move", map[string]any{"ids": []string{dir.Node.ID}, "parentId": dest.ID}), 200)
+				}
+			}
+		}(w)
+	}
+	// Each pod re-upserts its signed-in users every minute (userCache), which gives the
+	// users row new versions while transactions hold locks on it. Do it continuously.
+	churnDone := make(chan struct{})
+	go func() {
+		defer close(churnDone)
+		<-start
+		for ctx := context.Background(); ; {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			e.st.Pool.Exec(ctx, "UPDATE users SET last_seen_at = now() WHERE username = 'alice'") //nolint:errcheck
+		}
+	}()
+	close(start)
+	wg.Wait()
+	close(stop)
+	<-churnDone
+	close(failures)
+	for f := range failures {
+		t.Error(f)
 	}
 }

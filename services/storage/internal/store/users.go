@@ -76,11 +76,13 @@ func (s *Store) UpsertUser(ctx context.Context, id Identity) (*User, error) {
 }
 
 // EnsurePlaceholder returns the user with that username, creating a
-// placeholder row for someone who has never signed in.
+// placeholder row for someone who has never signed in. The no-op update must
+// target a non-key column so reciprocal shares can check their creator FKs
+// without conflicting with each other's grantee locks.
 func (s *Store) EnsurePlaceholder(ctx context.Context, q pgx.Tx, username string) (*User, error) {
 	u, err := scanUser(q.QueryRow(ctx, `
 		INSERT INTO users (username, placeholder, quota_bytes) VALUES ($1, true, $2)
-		ON CONFLICT (username) DO UPDATE SET username = EXCLUDED.username
+		ON CONFLICT (username) DO UPDATE SET placeholder = users.placeholder
 		RETURNING `+userCols, username, s.DefaultQuota))
 	if err != nil {
 		return nil, err

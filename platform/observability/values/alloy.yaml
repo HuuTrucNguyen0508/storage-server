@@ -1,0 +1,54 @@
+# Grafana Alloy (chart version pinned in install.sh). One Deployment replica tails every
+# pod's logs through the Kubernetes API (no hostPath), collects events, and receives OTLP
+# on Service `alloy` (4317 gRPC, 4318 HTTP). install.sh creates ConfigMap alloy-config
+# from alloy/config.alloy (the chart would run it through Helm's tpl, which breaks on {{ }}).
+fullnameOverride: alloy
+alloy:
+  configMap:
+    create: false
+    name: alloy-config
+    key: config.alloy
+  stabilityLevel: generally-available
+  enableReporting: false
+  storagePath: /var/lib/alloy
+  extraPorts:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+      appProtocol: grpc
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+  mounts:
+    varlog: false
+    dockercontainers: false
+    extra:
+      - name: data
+        mountPath: /var/lib/alloy
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 473
+    runAsGroup: 473
+    capabilities: {drop: [ALL]}
+    seccompProfile: {type: RuntimeDefault}
+  resources:
+    requests: {cpu: 50m, memory: 192Mi}
+    limits: {memory: 768Mi}
+controller:
+  type: deployment
+  replicas: 1
+  podLabels:
+    app.kubernetes.io/part-of: lab
+  volumes:
+    extra:
+      - name: data
+        emptyDir: {sizeLimit: 1Gi}
+  securityContext:
+    fsGroup: 473
+    seccompProfile: {type: RuntimeDefault}
+serviceMonitor:
+  enabled: true

@@ -1,0 +1,254 @@
+// Grafana Alloy pipeline for the lab (one Deployment replica in namespace monitoring).
+//
+//   pod logs (Kubernetes API) --+
+//   Kubernetes events ----------+--> redact share tokens --> Loki
+//   OTLP traces  --> k8s metadata --> redact share tokens --> Tempo
+//   OTLP metrics --> redact --> Prometheus remote write
+//   OTLP logs    --> redact --> Loki (OTLP endpoint)
+//
+// Share tokens live in the path segment after /s/ and /api/public/ on storage.<domain>.
+// They are replaced with {token} here, before anything is stored.
+
+logging {
+  level  = "info"
+  format = "json"
+}
+
+// ---------------------------------------------------------------------------
+// Pod logs
+// ---------------------------------------------------------------------------
+
+discovery.kubernetes "pods" {
+  role = "pod"
+}
+
+discovery.relabel "pod_logs" {
+  targets = discovery.kubernetes.pods.targets
+
+  // Pods that already finished have nothing new to say.
+  rule {
+    source_labels = ["__meta_kubernetes_pod_phase"]
+    regex         = "Succeeded|Failed"
+    action        = "drop"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_name"]
+    target_label  = "container"
+  }
+  // app = app.kubernetes.io/name, falling back to the older `app` and `k8s-app` labels.
+  rule {
+    source_labels = [
+      "__meta_kubernetes_pod_label_app_kubernetes_io_name",
+      "__meta_kubernetes_pod_label_app",
+      "__meta_kubernetes_pod_label_k8s_app",
+    ]
+    separator    = ";"
+    regex        = `^;*([^;]+).*$`
+    target_label = "app"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+    separator     = "/"
+    target_label  = "job"
+  }
+}
+
+loki.source.kubernetes "pods" {
+  targets    = discovery.relabel.pod_logs.output
+  forward_to = [loki.process.pods.receiver]
+}
+
+loki.process "pods" {
+  // 1. Redact share tokens from the raw line first.
+  stage.replace {
+    expression = `(?:/s/|/api/public/)([^/?#\s"'&\\]+)`
+    replace    = "{token}"
+  }
+
+  // 2. JSON lines: pick up level and trace_id (silently skipped for non-JSON lines).
+  stage.json {
+    expressions = {
+      level    = "level",
+      trace_id = "trace_id",
+    }
+  }
+
+  // Normalise level to debug|info|warn|error; anything else gets no level label.
+  stage.template {
+    source   = "level"
+    template = `{{- $l := ToLower .Value -}}{{- if or (eq $l "debug") (eq $l "trace") -}}debug{{- else if eq $l "info" -}}info{{- else if or (eq $l "warn") (eq $l "warning") -}}warn{{- else if or (eq $l "error") (eq $l "err") (eq $l "fatal") (eq $l "panic") (eq $l "critical") -}}error{{- end -}}`
+  }
+
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+
+  // trace_id as structured metadata: `{app="storage"} | trace_id="..."` without a label.
+  stage.structured_metadata {
+    values = {
+      trace_id = "",
+    }
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// Kubernetes events
+// ---------------------------------------------------------------------------
+
+loki.source.kubernetes_events "events" {
+  job_name   = "kubernetes-events"
+  log_format = "json"
+  forward_to = [loki.process.events.receiver]
+}
+
+loki.process "events" {
+  stage.replace {
+    expression = `(?:/s/|/api/public/)([^/?#\s"'&\\]+)`
+    replace    = "{token}"
+  }
+  stage.static_labels {
+    values = {
+      app = "kubernetes-events",
+    }
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+  }
+}
+
+// ---------------------------------------------------------------------------
+// OTLP: traces, metrics and logs from Traefik, Grafana and the apps
+// ---------------------------------------------------------------------------
+
+otelcol.receiver.otlp "default" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+  output {
+    traces  = [otelcol.processor.k8sattributes.default.input]
+    metrics = [otelcol.processor.transform.redact.input]
+    logs    = [otelcol.processor.transform.redact.input]
+  }
+}
+
+// Adds k8s.namespace.name, k8s.pod.name, ... from the sender's pod IP.
+otelcol.processor.k8sattributes "default" {
+  extract {
+    metadata = [
+      "k8s.namespace.name",
+      "k8s.pod.name",
+      "k8s.deployment.name",
+      "k8s.node.name",
+    ]
+    label {
+      from     = "pod"
+      key      = "app.kubernetes.io/name"
+      tag_name = "app"
+    }
+  }
+  pod_association {
+    source {
+      from = "connection"
+    }
+  }
+  output {
+    traces = [otelcol.processor.transform.redact.input]
+  }
+}
+
+// Every string attribute (url.path, url.full, http.target, http.route, http.url, ...),
+// span names and log bodies lose the share token.
+otelcol.processor.transform "redact" {
+  error_mode = "ignore"
+
+  trace_statements {
+    context    = "resource"
+    statements = [
+      `replace_all_patterns(attributes, "value", "(/s/|/api/public/)[^/?#\\s\"]+", "${1}{token}")`,
+    ]
+  }
+  trace_statements {
+    context    = "span"
+    statements = [
+      `replace_all_patterns(attributes, "value", "(/s/|/api/public/)[^/?#\\s\"]+", "${1}{token}")`,
+      `replace_pattern(name, "(/s/|/api/public/)[^/?#\\s\"]+", "${1}{token}")`,
+    ]
+  }
+  trace_statements {
+    context    = "spanevent"
+    statements = [
+      `replace_all_patterns(attributes, "value", "(/s/|/api/public/)[^/?#\\s\"]+", "${1}{token}")`,
+    ]
+  }
+  metric_statements {
+    context    = "datapoint"
+    statements = [
+      `replace_all_patterns(attributes, "value", "(/s/|/api/public/)[^/?#\\s\"]+", "${1}{token}")`,
+    ]
+  }
+  log_statements {
+    context    = "log"
+    statements = [
+      `replace_all_patterns(attributes, "value", "(/s/|/api/public/)[^/?#\\s\"]+", "${1}{token}")`,
+      `replace_pattern(body, "(/s/|/api/public/)[^/?#\\s\"]+", "${1}{token}")`,
+    ]
+  }
+
+  output {
+    traces  = [otelcol.processor.batch.default.input]
+    metrics = [otelcol.processor.batch.default.input]
+    logs    = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    traces  = [otelcol.exporter.otlp.tempo.input]
+    metrics = [otelcol.exporter.prometheus.default.input]
+    logs    = [otelcol.exporter.otlphttp.loki.input]
+  }
+}
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo.monitoring.svc.cluster.local:4317"
+    tls {
+      insecure = true
+    }
+  }
+}
+
+otelcol.exporter.prometheus "default" {
+  forward_to = [prometheus.remote_write.default.receiver]
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
+  }
+}
+
+otelcol.exporter.otlphttp "loki" {
+  client {
+    endpoint = "http://loki.monitoring.svc.cluster.local:3100/otlp"
+  }
+}

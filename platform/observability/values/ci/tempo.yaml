@@ -1,0 +1,11 @@
+# PROFILE=ci overlay: 1 day of traces on a small volume.
+tempo:
+  retention: 24h
+  resources:
+    requests: {cpu: 20m, memory: 128Mi}
+    limits: {memory: 768Mi}
+  extraEnv:
+    - name: GOMEMLIMIT
+      value: 600MiB
+persistence:
+  size: 2Gi

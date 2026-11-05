@@ -1,0 +1,11 @@
+# Namespace monitoring. Privileged: node-exporter needs the host network, PID namespace
+# and root filesystem. Everything else in here runs non-root.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/part-of: lab
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: baseline
+    pod-security.kubernetes.io/audit: baseline

@@ -1,0 +1,58 @@
+# Blackbox probes for every public URL in the contract, through the real ingress (CoreDNS
+# sends *.${DOMAIN} to Traefik). The `app` label is the URL's first host label.
+# Every probe also exports probe_ssl_earliest_cert_expiry (certificate expiry alert).
+# Rendered with scripts/lib.sh `render`.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: lab-sso
+  namespace: monitoring
+  labels: {app.kubernetes.io/name: lab-probes, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: probes}
+spec:
+  jobName: lab-sso
+  interval: 30s
+  scrapeTimeout: 15s
+  module: http_sso_redirect
+  prober:
+    url: blackbox-exporter.monitoring.svc.cluster.local:9115
+  targets:
+    staticConfig:
+      labels:
+        access: sso
+      static:
+        - https://home.${DOMAIN}/
+        - https://storage.${DOMAIN}/
+        - https://todo.${DOMAIN}/
+        - https://pdf.${DOMAIN}/
+        - https://grafana.${DOMAIN}/
+        - https://prometheus.${DOMAIN}/
+        - https://alertmanager.${DOMAIN}/
+        - https://traefik.${DOMAIN}/dashboard/
+      relabelingConfigs:
+        - sourceLabels: [__param_target]
+          regex: 'https://([^.]+)\..*'
+          targetLabel: app
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: lab-public
+  namespace: monitoring
+  labels: {app.kubernetes.io/name: lab-probes, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: probes}
+spec:
+  jobName: lab-public
+  interval: 30s
+  scrapeTimeout: 15s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc.cluster.local:9115
+  targets:
+    staticConfig:
+      labels:
+        access: public
+      static:
+        - https://auth.${DOMAIN}/
+      relabelingConfigs:
+        - sourceLabels: [__param_target]
+          regex: 'https://([^.]+)\..*'
+          targetLabel: app

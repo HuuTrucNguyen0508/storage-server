@@ -137,7 +137,7 @@ Sibling subdomains are same-site and share the session cookie, so every app enfo
 
 Namespace `monitoring`. The observability task owns everything there.
 
-- Prometheus (kube-prometheus-stack) selects every `ServiceMonitor`, `PodMonitor`, `PrometheusRule` and `Probe` in every namespace with no label selector, stores exemplars, and accepts remote write (k6) at `http://prometheus.monitoring.svc.cluster.local:9090/api/v1/write` (Service `prometheus`, port 9090).
+- Prometheus (kube-prometheus-stack) selects every `ServiceMonitor`, `PodMonitor`, `PrometheusRule` and `Probe` in every namespace with no label selector, stores exemplars, and accepts remote write (k6) at `http://prometheus.monitoring.svc.cluster.local:9090/api/v1/write` (Service `prometheus`, port 9090; the chart's own Service is `kps-prometheus`). Alertmanager is also reachable as `alertmanager.monitoring:9093`. Namespace `monitoring` is Pod Security `privileged` because node-exporter reads the host; metrics-server runs there too, so `kubectl top` works.
 - Grafana Alloy receives OTLP at `alloy.monitoring.svc.cluster.local` ports 4317 (gRPC) and 4318 (HTTP), forwards traces to Tempo, and ships every pod's logs and Kubernetes events to Loki. It redacts share tokens (path segments after `/s/` and `/api/public/`) from span attributes and log lines.
 - Grafana signs users in from the `Remote-User` header (auth proxy behind `sso-chain`; only admins reach it). Datasources Prometheus, Loki, Tempo and Alertmanager with fixed UIDs, linked so a trace opens its logs, a log line with `trace_id` opens its trace, and a latency exemplar opens its trace.
 - `platform/observability/README.md` keeps a signal matrix: for every component, which metrics, logs and traces exist, and which don't and why (for example, Stirling PDF's native Prometheus metrics need a paid tier, so it is covered by Traefik service metrics, probes and its logs).
@@ -154,6 +154,8 @@ Namespace `monitoring`. The observability task owns everything there.
   - Todo: `todo_tasks_created_total`; `todo_tasks_completed_total`; `todo_tasks_open` (gauge); `todo_projects` (gauge); `todo_live_connections` (gauge, server-sent event clients).
 - Health: `GET /healthz` (process alive, no dependencies) and `GET /readyz` (database reachable) on the app port.
 - Database metrics come from the observability task's PodMonitor for every CloudNativePG cluster (port 9187); app NetworkPolicies allow that port from Prometheus pods. Apps don't ship their own database PodMonitor.
+- k6 runs set `K6_PROMETHEUS_RW_TREND_STATS=p(50),p(90),p(95),p(99),avg,max` (k6 v2.3 sends only p99 by default) and tag every run with `testid`. Authelia answers `401` instead of `302` to requests without an `Accept` header, so k6 must log in through `/api/firstfactor` before calling an app.
+- Alloy runs as one Deployment that tails logs through the Kubernetes API (no hostPath, non-root); a new pod's first lines arrive 10 to 30 seconds late.
 - Alerts route to an in-cluster webhook sink by default (its received alerts land in Loki), so alert delivery is testable without outside services.
 
 ## Kubernetes conventions

@@ -1,0 +1,24 @@
+# Scrape configs for components outside monitoring that don't ship their own.
+#
+# CloudNativePG: every Cluster in namespaces storage and todo (pods labelled
+# cnpg.io/cluster, exporter port `metrics` 9187). The apps' NetworkPolicies must let the
+# Prometheus pods reach port 9187 on their database pods.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: cnpg-clusters
+  namespace: monitoring
+  labels: {app.kubernetes.io/name: cnpg-clusters, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: database}
+spec:
+  namespaceSelector:
+    matchNames: [storage, todo]
+  selector:
+    matchExpressions:
+      - {key: cnpg.io/cluster, operator: Exists}
+      - {key: cnpg.io/podRole, operator: In, values: [instance]}
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 30s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_label_cnpg_io_cluster]
+          targetLabel: cluster

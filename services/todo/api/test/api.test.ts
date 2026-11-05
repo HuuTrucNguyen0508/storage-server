@@ -599,3 +599,26 @@ it("new streams checkpoint current history while reconnects replay from the supp
   }
   expect(text).toContain("replayed");
 });
+it("counts a live stream as an active request only while it is open", async () => {
+  const address = a.app.server.listening
+    ? `http://127.0.0.1:${(a.app.server.address() as { port: number }).port}`
+    : await a.app.listen({ host: "127.0.0.1", port: 0 });
+  const active = async () =>
+    (await a.metrics.active.get()).values[0]?.value ?? 0;
+  const settle = async (want: number) => {
+    for (let i = 0; i < 100 && (await active()) !== want; i++)
+      await new Promise((r) => setTimeout(r, 20));
+    return active();
+  };
+  // Every stream the earlier tests opened has been aborted, so none may still count.
+  expect(await settle(0)).toBe(0);
+  const ctrl = new AbortController();
+  const r = await fetch(address + "/api/events", {
+    headers: headers(),
+    signal: ctrl.signal,
+  });
+  await r.body!.getReader().read();
+  expect(await active()).toBe(1);
+  ctrl.abort();
+  expect(await settle(0)).toBe(0);
+});

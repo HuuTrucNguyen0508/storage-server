@@ -998,6 +998,8 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
       wake.delete(trigger);
       streams.delete(close);
       m.live.dec();
+      // A hijacked reply skips onResponse, so the stream ends its own active request.
+      m.active.dec();
       reply.raw.end();
     };
     const trigger = () => {

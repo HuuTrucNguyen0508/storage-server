@@ -34,9 +34,11 @@ func start() {
 		baseURL = u
 		return
 	}
-	out, err := exec.Command("docker", "run", "-d", "--rm", "-p", "127.0.0.1::5432",
+	// No --rm: if Postgres exits during startup, its logs must still be readable.
+	// No tmpfs data directory: it kept the container from starting on GitHub's runners.
+	out, err := exec.Command("docker", "run", "-d", "-p", "127.0.0.1::5432",
 		"-e", "POSTGRES_PASSWORD=test", "-e", "POSTGRES_USER=test", "-e", "POSTGRES_DB=test",
-		"--tmpfs", "/var/lib/postgresql:rw", Image, "-c", "fsync=off", "-c", "max_connections=500").CombinedOutput()
+		Image, "-c", "fsync=off", "-c", "max_connections=500").CombinedOutput()
 	if err != nil {
 		startErr = fmt.Errorf("docker run %s: %v: %s", Image, err, out)
 		return
@@ -50,7 +52,7 @@ func start() {
 		time.Sleep(200 * time.Millisecond)
 	}
 	if err != nil {
-		startErr = fmt.Errorf("docker port: %v", err)
+		startErr = fmt.Errorf("docker port: %v; %s", err, containerState())
 		return
 	}
 	hostport := strings.TrimSpace(strings.Split(string(port), "\n")[0])
@@ -69,7 +71,14 @@ func start() {
 		}
 		time.Sleep(300 * time.Millisecond)
 	}
-	startErr = fmt.Errorf("postgres in %s never became ready", container)
+	startErr = fmt.Errorf("postgres in %s never became ready; %s", container, containerState())
+}
+
+// containerState describes why the test container isn't serving, for the error message.
+func containerState() string {
+	state, _ := exec.Command("docker", "inspect", "-f", "{{.State.Status}} exit={{.State.ExitCode}} {{.State.Error}}", container).CombinedOutput()
+	logs, _ := exec.Command("docker", "logs", "--tail", "30", container).CombinedOutput()
+	return fmt.Sprintf("container %s: %s\nlast logs:\n%s", container, strings.TrimSpace(string(state)), logs)
 }
 
 // Stop removes the container; call it from TestMain after m.Run.

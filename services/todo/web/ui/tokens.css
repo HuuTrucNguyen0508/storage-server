@@ -1,0 +1,204 @@
+/*
+ * Lab UI tokens.
+ *
+ * One visual language for Home, Storage and Todo. Every color an app paints
+ * with is a token from this file; apps never write hex values of their own.
+ *
+ * Themes: light is the default. Dark applies when the OS asks for it (unless
+ * the page pins data-theme="light") and whenever the page pins
+ * data-theme="dark". Each app overrides --app-accent on :root (see the end of
+ * this file); everything accent-colored follows.
+ *
+ * Contrast is measured, not estimated: docs/design/tools/contrast.mjs reads
+ * this file and docs/design/contrast.txt holds its last run.
+ */
+
+:root {
+  /* Type. Plex Sans carries the whole interface; Plex Mono is for code,
+     paths and hashes only, never for labels or numbers in tables. */
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --fs-1: 0.75rem;   /* 12  fine print, badges */
+  --fs-2: 0.8125rem; /* 13  secondary text, table meta */
+  --fs-3: 0.875rem;  /* 14  app body, controls */
+  --fs-4: 1rem;      /* 16  reading body (Home, public share, markdown) */
+  --fs-5: 1.125rem;  /* 18  panel titles */
+  --fs-6: 1.375rem;  /* 22  page titles */
+  --fs-7: 1.75rem;   /* 28  display */
+  --fs-8: 2.25rem;   /* 36  portal wordmark */
+
+  --lh-tight: 1.25;
+  --lh-body: 1.5;
+  --lh-reading: 1.6;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+
+  --measure: 68ch;
+
+  /* Space: a 4px grid. */
+  --sp-1: 0.25rem;  /* 4 */
+  --sp-2: 0.5rem;   /* 8 */
+  --sp-3: 0.75rem;  /* 12 */
+  --sp-4: 1rem;     /* 16 */
+  --sp-5: 1.5rem;   /* 24 */
+  --sp-6: 2rem;     /* 32 */
+  --sp-7: 3rem;     /* 48 */
+  --sp-8: 4rem;     /* 64 */
+
+  /* Radius encodes hierarchy: chips are nearly square, controls are soft,
+     floating layers are the roundest. Nothing in between. */
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 8px;
+  --r-full: 999px;
+
+  /* Layout */
+  --topbar-h: 3rem;      /* 48 */
+  --sidebar-w: 15rem;    /* 240 */
+  --panel-w: 22rem;      /* 352  todo task detail */
+  --spine-w: 4px;        /* the colored spine: app identity mark */
+  --control-h: 2rem;     /* 32  inputs, buttons, selects */
+  --control-h-lg: 2.5rem;/* 40  primary actions on Home and public pages */
+  --gutter: 1rem;        /* phone side gutter */
+
+  /* Motion. Only in response to an action; nothing moves on page load. */
+  --dur-1: 120ms;
+  --dur-2: 180ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Color, light theme. Cool grey-green paper, deep ink. */
+  --bg: #f1f3f0;          /* page */
+  --surface: #ffffff;     /* panels, rows, inputs */
+  --surface-2: #e7eae6;   /* table heads, hover, inset wells */
+  --surface-3: #dde1dc;   /* pressed, skeleton bones */
+  --ink: #1b201e;         /* primary text */
+  --ink-2: #4b534f;       /* secondary text */
+  --ink-3: #626a66;       /* muted text, placeholders, icons at rest */
+  --line: #d3d8d3;        /* dividers (decorative) */
+  --line-strong: #7a847f; /* control borders, 3:1 on --surface */
+
+  --accent-lab: #1f6f5e;      /* platform: Home, auth, neutral apps */
+  --accent-storage: #2956b8;  /* Storage */
+  --accent-todo: #8a5100;     /* Todo */
+  --on-accent: #ffffff;
+
+  --ok: #1d7a3e;
+  --warn: #8a5100;
+  --danger: #b42318;
+  --on-status: #ffffff;
+
+  --overlay: rgb(27 32 30 / 0.45);
+  --shadow-float:
+    0 1px 2px rgb(27 32 30 / 0.12),
+    0 8px 24px rgb(27 32 30 / 0.14);
+  --shadow-sheet:
+    0 -1px 0 rgb(27 32 30 / 0.08),
+    0 -12px 32px rgb(27 32 30 / 0.16);
+
+  /* Default accent: the platform green. Apps override below. */
+  --app-accent: var(--accent-lab);
+  /* 12 % wash of the accent on the surface: selected rows, active nav. */
+  --accent-wash: color-mix(in srgb, var(--app-accent) 12%, var(--surface));
+  --accent-wash-strong: color-mix(in srgb, var(--app-accent) 22%, var(--surface));
+  --ok-wash: color-mix(in srgb, var(--ok) 12%, var(--surface));
+  --warn-wash: color-mix(in srgb, var(--warn) 14%, var(--surface));
+  --danger-wash: color-mix(in srgb, var(--danger) 10%, var(--surface));
+
+  color-scheme: light;
+}
+
+/* Dark theme: a clearly green-black slate, not a tinted #111. Accents are
+   lifted so they read as text; buttons flip to dark text on light fills. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151a18;
+    --surface: #1c2220;
+    --surface-2: #262d2a;
+    --surface-3: #313936;
+    --ink: #e7ebe8;
+    --ink-2: #b1bab4;
+    --ink-3: #96a09a;
+    --line: #2f3834;
+    --line-strong: #6d796f;
+
+    --accent-lab: #5fc8ad;
+    --accent-storage: #93b6ff;
+    --accent-todo: #e6b35a;
+    --on-accent: #0f1412;
+
+    --ok: #63cc84;
+    --warn: #e6b35a;
+    --danger: #f28b82;
+    --on-status: #0f1412;
+
+    --overlay: rgb(0 0 0 / 0.6);
+    --shadow-float:
+      0 1px 2px rgb(0 0 0 / 0.5),
+      0 12px 32px rgb(0 0 0 / 0.55);
+    --shadow-sheet:
+      0 -1px 0 rgb(255 255 255 / 0.06),
+      0 -12px 32px rgb(0 0 0 / 0.6);
+
+    --accent-wash: color-mix(in srgb, var(--app-accent) 16%, var(--surface));
+    --accent-wash-strong: color-mix(in srgb, var(--app-accent) 28%, var(--surface));
+    --ok-wash: color-mix(in srgb, var(--ok) 16%, var(--surface));
+    --warn-wash: color-mix(in srgb, var(--warn) 16%, var(--surface));
+    --danger-wash: color-mix(in srgb, var(--danger) 14%, var(--surface));
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #151a18;
+  --surface: #1c2220;
+  --surface-2: #262d2a;
+  --surface-3: #313936;
+  --ink: #e7ebe8;
+  --ink-2: #b1bab4;
+  --ink-3: #96a09a;
+  --line: #2f3834;
+  --line-strong: #6d796f;
+
+  --accent-lab: #5fc8ad;
+  --accent-storage: #93b6ff;
+  --accent-todo: #e6b35a;
+  --on-accent: #0f1412;
+
+  --ok: #63cc84;
+  --warn: #e6b35a;
+  --danger: #f28b82;
+  --on-status: #0f1412;
+
+  --overlay: rgb(0 0 0 / 0.6);
+  --shadow-float:
+    0 1px 2px rgb(0 0 0 / 0.5),
+    0 12px 32px rgb(0 0 0 / 0.55);
+  --shadow-sheet:
+    0 -1px 0 rgb(255 255 255 / 0.06),
+    0 -12px 32px rgb(0 0 0 / 0.6);
+
+  --accent-wash: color-mix(in srgb, var(--app-accent) 16%, var(--surface));
+  --accent-wash-strong: color-mix(in srgb, var(--app-accent) 28%, var(--surface));
+  --ok-wash: color-mix(in srgb, var(--ok) 16%, var(--surface));
+  --warn-wash: color-mix(in srgb, var(--warn) 16%, var(--surface));
+  --danger-wash: color-mix(in srgb, var(--danger) 14%, var(--surface));
+
+  color-scheme: dark;
+}
+
+/* Per-app accent. An app sets data-app on <html>; the mockups and the Home
+   portal do the same. Anything else keeps the platform green. */
+:root[data-app="storage"] { --app-accent: var(--accent-storage); }
+:root[data-app="todo"]    { --app-accent: var(--accent-todo); }
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+  }
+}

@@ -1,0 +1,3 @@
+# Standalone project (no root workspace); see docs/architecture.md.
+allowBuilds:
+  esbuild: true

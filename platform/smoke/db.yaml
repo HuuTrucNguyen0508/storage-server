@@ -1,0 +1,128 @@
+# Throwaway app "smokedb" that follows the contract's database shape, used by
+# `make smoke` (group db) to prove `make backup` and `make restore`. App tasks can copy it:
+# Cluster <app>-db, CronJob <app>-db-backup, claim <app>-backups, secret <app>-db-app.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: smokedb
+  labels:
+    app.kubernetes.io/part-of: lab
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: smokedb-db
+  namespace: smokedb
+  labels: {app.kubernetes.io/name: smokedb, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: database}
+spec:
+  instances: 1
+  bootstrap:
+    initdb: {database: smokedb, owner: smokedb}
+  storage: {size: 1Gi}
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 512Mi}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: smokedb-backups
+  namespace: smokedb
+  labels: {app.kubernetes.io/name: smokedb, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: backup}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 1Gi}}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: smokedb-db-backup
+  namespace: smokedb
+  labels: {app.kubernetes.io/name: smokedb, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: db-backup}
+spec:
+  schedule: "0 3 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels: {app.kubernetes.io/name: smokedb, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: db-backup}
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext: {runAsNonRoot: true, runAsUser: 70, runAsGroup: 70, seccompProfile: {type: RuntimeDefault}}
+          containers:
+            - name: backup
+              image: ${POSTGRES_CLIENT_IMAGE}
+              env:
+                - name: DATABASE_URL
+                  valueFrom: {secretKeyRef: {name: smokedb-db-app, key: uri}}
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  f="/backups/smokedb-$(date -u +%Y%m%dT%H%M%SZ).dump"
+                  pg_dump --format=custom --file="$f.partial" "$DATABASE_URL"
+                  mv "$f.partial" "$f"
+                  ls -1 /backups | grep -E '^smokedb-[0-9]{8}T[0-9]{6}Z\.dump$' | sort -r | tail -n +8 | sed 's|^|/backups/|' | xargs -r rm -f
+                  echo "wrote $f ($(wc -c < "$f") bytes)"
+              resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 256Mi}}
+              securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+              volumeMounts:
+                - {name: backups, mountPath: /backups}
+                - {name: tmp, mountPath: /tmp}
+          volumes:
+            - {name: backups, persistentVolumeClaim: {claimName: smokedb-backups}}
+            - {name: tmp, emptyDir: {}}
+---
+# Stand-in for the app: restore scales it to 0 and back.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smokedb
+  namespace: smokedb
+  labels: {app.kubernetes.io/name: smokedb, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: api}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app.kubernetes.io/name: smokedb, app.kubernetes.io/component: api}}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: smokedb, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: api}
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 65532, runAsGroup: 65532, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: app
+          image: ${WHOAMI_IMAGE}
+          args: [--port, "8080"]
+          resources: {requests: {cpu: 5m, memory: 16Mi}, limits: {memory: 32Mi}}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-ingress, namespace: smokedb}
+spec: {podSelector: {}, policyTypes: [Ingress]}
+---
+# Database: 5432 from the app's own pods (app, backup and restore Jobs share
+# app.kubernetes.io/name), instance ports from the CloudNativePG operator.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: smokedb-db, namespace: smokedb}
+spec:
+  podSelector: {matchLabels: {cnpg.io/cluster: smokedb-db}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {app.kubernetes.io/name: smokedb}}
+      ports: [{port: 5432, protocol: TCP}]
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cnpg-system}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: cloudnative-pg}}
+      ports: [{port: 8000, protocol: TCP}, {port: 5432, protocol: TCP}]

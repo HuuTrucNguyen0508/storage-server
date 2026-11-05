@@ -1,0 +1,51 @@
+<!-- title: Storage, shared with me -->
+<!-- app: storage -->
+<!-- shell: storage -->
+<!-- nav: shared -->
+    <main class="main main--flush">
+      <div style="padding: var(--sp-4) var(--sp-4) 0">
+        <div class="page-head">
+          <h1>Shared with me</h1>
+          <label class="select select--quiet select--sm"><select aria-label="Filter"><option>From anyone</option><option>From Bob</option><option>From admin</option></select></label>
+        </div>
+      </div>
+      <table class="table" aria-label="Shared with me">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th class="hide-sm">Shared by</th>
+            <th>Access</th>
+            <th class="hide-sm num">Shared on</th>
+            <th class="col-num hide-sm">Size</th>
+            <th class="col-actions hide-sm"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><div class="name-cell"><svg class="ficon ficon--folder"><use href="#f-folder"/></svg><a href="#">Hanoi trip</a></div></td>
+            <td class="hide-sm"><span class="row"><span class="avatar avatar--sm">B</span>Bob</span></td>
+            <td><span class="badge badge--accent">Can edit</span></td>
+            <td class="hide-sm num">19 Oct</td>
+            <td class="col-num hide-sm muted">140 items</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet btn--icon" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button></span></td>
+          </tr>
+          <tr>
+            <td><div class="name-cell"><svg class="ficon ficon--sheet"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">XLS</text></svg><a href="#">shared-costs-2026.xlsx</a></div></td>
+            <td class="hide-sm"><span class="row"><span class="avatar avatar--sm">B</span>Bob</span></td>
+            <td><span class="badge badge--accent">Can edit</span></td>
+            <td class="hide-sm num">2 Nov</td>
+            <td class="col-num hide-sm">88 KB</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet btn--icon" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button></span></td>
+          </tr>
+          <tr>
+            <td><div class="name-cell"><svg class="ficon ficon--pdf"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">PDF</text></svg><a href="#">house-rules.pdf</a></div></td>
+            <td class="hide-sm"><span class="row"><span class="avatar avatar--sm">a</span>admin</span></td>
+            <td><span class="badge">Can view</span></td>
+            <td class="hide-sm num">12 Sep</td>
+            <td class="col-num hide-sm">320 KB</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet btn--icon" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button></span></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="text-2 faint" style="padding: var(--sp-3) var(--sp-4)">Things people shared with you stay here until they stop sharing. Edit access means you can upload into a folder and replace files; you can't delete the folder itself.</p>
+    </main>

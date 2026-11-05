@@ -1,0 +1,32 @@
+# Public share paths: identity headers stripped, no sign-in, higher priority.
+# The app serves these from a separate router that never reads identity.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: storage-public
+  labels: {app.kubernetes.io/name: storage, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: ingress}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`storage.${DOMAIN}`) && (PathPrefix(`/s/`) || PathPrefix(`/api/public/`) || PathPrefix(`/assets/`) || Path(`/favicon.svg`))
+      kind: Rule
+      priority: 100
+      middlewares: [{name: strip-identity, namespace: auth}]
+      services: [{name: storage, port: 8080}]
+  tls: {}
+---
+# Everything else needs single sign-on.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: storage
+  labels: {app.kubernetes.io/name: storage, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: ingress}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`storage.${DOMAIN}`)
+      kind: Rule
+      priority: 10
+      middlewares: [{name: sso-chain, namespace: auth}]
+      services: [{name: storage, port: 8080}]
+  tls: {}

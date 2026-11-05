@@ -1,0 +1,55 @@
+# Tempo single binary (chart version pinned in install.sh). Local block storage on a PVC.
+# The metrics generator writes span metrics and service-graph metrics to Prometheus.
+fullnameOverride: tempo
+tempo:
+  reportingEnabled: false
+  retention: 168h
+  resources:
+    requests: {cpu: 50m, memory: 256Mi}
+    limits: {memory: 1536Mi}
+  extraEnv:
+    - name: GOMEMLIMIT
+      value: 1200MiB
+  # Alloy sends OTLP. The chart's templates require its default Jaeger receivers to stay.
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: http://prometheus.monitoring.svc.cluster.local:9090/api/v1/write
+    storage:
+      path: /var/tempo/generator/wal
+      remote_write:
+        - url: http://prometheus.monitoring.svc.cluster.local:9090/api/v1/write
+          send_exemplars: true
+    traces_storage:
+      path: /var/tempo/generator/traces
+    registry:
+      external_labels:
+        source: tempo
+    processor:
+      service_graphs:
+        dimensions: [service.namespace, deployment.environment]
+      span_metrics:
+        dimensions: [service.namespace, deployment.environment, http.request.method, http.response.status_code]
+        enable_target_info: true
+  overrides:
+    defaults:
+      metrics_generator:
+        processors: [service-graphs, span-metrics, local-blocks]
+    per_tenant_override_config: /conf/overrides.yaml
+  podLabels: {}
+
+podLabels:
+  app.kubernetes.io/part-of: lab
+
+persistence:
+  enabled: true
+  size: 10Gi
+
+serviceMonitor:
+  enabled: true

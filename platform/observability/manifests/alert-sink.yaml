@@ -1,0 +1,64 @@
+# Alertmanager's default receiver: logs each webhook body as JSON (alert-sink.py, mounted
+# from ConfigMap alert-sink, which install.sh creates from the file next to this one).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alert-sink
+  namespace: monitoring
+  labels: {app.kubernetes.io/name: alert-sink, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: alerting}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: alert-sink}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: alert-sink, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: alerting}
+      annotations:
+        lab/script-hash: "${ALERT_SINK_HASH}"
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: alert-sink
+          image: python:3.14.8-alpine3.24
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "-u", "/app/alert-sink.py"]
+          env:
+            - {name: PORT, value: "8080"}
+            - {name: PYTHONDONTWRITEBYTECODE, value: "1"}
+          ports:
+            - {name: http, containerPort: 8080}
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 30
+          resources:
+            requests: {cpu: 5m, memory: 16Mi}
+            limits: {cpu: 200m, memory: 64Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: app, mountPath: /app, readOnly: true}
+      volumes:
+        - name: app
+          configMap: {name: alert-sink}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alert-sink
+  namespace: monitoring
+  labels: {app.kubernetes.io/name: alert-sink, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: alerting}
+spec:
+  selector: {app.kubernetes.io/name: alert-sink}
+  ports:
+    - {name: http, port: 8080, targetPort: http}

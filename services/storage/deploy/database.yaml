@@ -1,0 +1,26 @@
+# PostgreSQL through CloudNativePG: database "storage", owner "storage".
+# The operator writes the connection string to secret storage-db-app, key uri.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: storage-db
+  labels: {app.kubernetes.io/name: storage-db, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: database}
+spec:
+  instances: 1
+  inheritedMetadata:
+    labels: {app.kubernetes.io/part-of: lab, app.kubernetes.io/component: database}
+  bootstrap:
+    initdb:
+      database: storage
+      owner: storage
+      # The app creates it too (pg_trgm is trusted); doing it here keeps restores simple.
+      postInitApplicationSQL:
+        - CREATE EXTENSION IF NOT EXISTS pg_trgm
+  postgresql:
+    parameters:
+      max_connections: "100"
+      shared_buffers: 128MB
+  storage: {size: 2Gi}
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {memory: 768Mi}

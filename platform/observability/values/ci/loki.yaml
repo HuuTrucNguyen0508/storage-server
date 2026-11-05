@@ -1,0 +1,14 @@
+# PROFILE=ci overlay: 1 day of logs on a small volume.
+loki:
+  limits_config:
+    retention_period: 24h
+    reject_old_samples_max_age: 24h
+singleBinary:
+  persistence:
+    size: 2Gi
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 768Mi}
+  extraEnv:
+    - name: GOMEMLIMIT
+      value: 600MiB

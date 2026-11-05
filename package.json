@@ -1,5 +1,5 @@
 {
-  "name": "storage-server",
+  "name": "lab",
   "private": true,
-  "packageManager": "pnpm@12.16.1"
+  "packageManager": "pnpm@12.17.0"
 }

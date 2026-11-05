@@ -1,15 +1,10 @@
+# Images build from the repo root; keep secrets, cluster data and caches out of the context.
 .git
-.env
-.env.*
-!.env.example
+.local
+config/override.env
 **/node_modules
-web/dist
-!web/dist/.keep
-web/test-results
-web/playwright-report
-state
-.audit
-HANDOVER*.md
-data
-bin
-*.tar.gz
+**/dist
+**/coverage
+**/test-results
+**/playwright-report
+*.log

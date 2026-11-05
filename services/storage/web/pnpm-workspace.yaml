@@ -1,0 +1,1 @@
+# No release-age exclusions: every pinned dependency is older than pnpm's minimumReleaseAge.

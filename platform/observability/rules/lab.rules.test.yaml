@@ -1,0 +1,298 @@
+# promtool unit tests for rules/lab.rules.yaml. Run rules/test.sh.
+rule_files:
+  - lab.rules.yaml
+evaluation_interval: 1m
+
+tests:
+  # Traefik service names map to app names; 10 rps of 200s and 1 rps of 500s.
+  - interval: 1m
+    input_series:
+      - series: 'traefik_service_requests_total{exported_service="storage-storage-8080@kubernetescrd", code="200"}'
+        values: '0+600x30'
+      - series: 'traefik_service_requests_total{exported_service="storage-storage-8080@kubernetescrd", code="500"}'
+        values: '0+60x30'
+      - series: 'traefik_service_requests_total{exported_service="monitoring-grafana-80@kubernetescrd", code="200"}'
+        values: '0+60x30'
+      - series: 'traefik_service_requests_total{exported_service="monitoring-kps-alertmanager-9093@kubernetescrd", code="200"}'
+        values: '0+60x30'
+      - series: 'traefik_service_requests_total{exported_service="pdf-stirling-pdf-8080@kubernetescrd", code="200"}'
+        values: '0+120x30'
+      # An idle app with one failure every two minutes: under the traffic guard.
+      - series: 'traefik_service_requests_total{exported_service="todo-todo-8080@kubernetescrd", code="500"}'
+        values: '0+0.5x30'
+    promql_expr_test:
+      - expr: app:traefik_requests:rate5m
+        eval_time: 10m
+        exp_samples:
+          - labels: 'app:traefik_requests:rate5m{app="storage"}'
+            value: 11
+          - labels: 'app:traefik_requests:rate5m{app="grafana"}'
+            value: 1
+          - labels: 'app:traefik_requests:rate5m{app="alertmanager"}'
+            value: 1
+          - labels: 'app:traefik_requests:rate5m{app="pdf"}'
+            value: 2
+          - labels: 'app:traefik_requests:rate5m{app="todo"}'
+            value: 0.008333333333333333
+      - expr: app:slo_errors:ratio_rate5m
+        eval_time: 10m
+        exp_samples:
+          - labels: 'app:slo_errors:ratio_rate5m{app="storage"}'
+            value: 0.09090909090909091
+          - labels: 'app:slo_errors:ratio_rate5m{app="todo"}'
+            value: 1
+    alert_rule_test:
+      # Ratio is above 5% from minute 1; pending for 5 minutes first.
+      - alertname: LabAppHigh5xxRatio
+        eval_time: 5m
+        exp_alerts: []
+      - alertname: LabAppHigh5xxRatio
+        eval_time: 15m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              app: storage
+            exp_annotations:
+              summary: "storage returns 5xx for 9.091% of requests"
+              description: "More than 5% of requests to storage through Traefik failed with a 5xx status for 5 minutes."
+      # 9% errors burns 18x the 0.5% budget: the fast-burn alert fires for storage (todo
+      # has a 100% error ratio too; SLO burn has no traffic guard by design).
+      - alertname: LabSLOErrorBudgetBurnFast
+        eval_time: 20m
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              slo: availability-99.5
+              app: storage
+            exp_annotations:
+              summary: "storage is burning its 99.5% availability error budget fast"
+              description: "storage 5xx ratio is 9.091%; at this rate the monthly error budget is gone in days."
+          - exp_labels:
+              severity: critical
+              slo: availability-99.5
+              app: todo
+            exp_annotations:
+              summary: "todo is burning its 99.5% availability error budget fast"
+              description: "todo 5xx ratio is 100%; at this rate the monthly error budget is gone in days."
+
+  # A probe that fails pages after 2 minutes, not before.
+  - interval: 1m
+    input_series:
+      - series: 'probe_success{job="probe/monitoring/lab-sso", app="todo", instance="https://todo.lab.localhost/"}'
+        values: '1 1 0 0 0 0 0'
+      - series: 'probe_success{job="probe/monitoring/lab-public", app="auth", instance="https://auth.lab.localhost/"}'
+        values: '1 1 1 1 1 1 1'
+    alert_rule_test:
+      - alertname: LabAppDown
+        eval_time: 3m
+        exp_alerts: []
+      - alertname: LabAppDown
+        eval_time: 5m
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              app: todo
+              job: probe/monitoring/lab-sso
+              instance: https://todo.lab.localhost/
+            exp_annotations:
+              summary: "todo is down"
+              description: "Blackbox probe https://todo.lab.localhost/ (probe/monitoring/lab-sso) has failed for 2 minutes."
+              dashboard: "https://grafana.${DOMAIN}/d/lab-overview"
+
+  # p95 latency from the apps' own histogram, ignoring streaming routes.
+  - interval: 1m
+    input_series:
+      # /api/tasks: every request takes 2-5 s.
+      - series: 'http_server_request_duration_seconds_bucket{namespace="todo", job="todo", route="/api/tasks", le="1"}'
+        values: '0x30'
+      - series: 'http_server_request_duration_seconds_bucket{namespace="todo", job="todo", route="/api/tasks", le="5"}'
+        values: '0+60x30'
+      - series: 'http_server_request_duration_seconds_bucket{namespace="todo", job="todo", route="/api/tasks", le="+Inf"}'
+        values: '0+60x30'
+      - series: 'http_server_request_duration_seconds_count{namespace="todo", job="todo", route="/api/tasks"}'
+        values: '0+60x30'
+      # /api/events (SSE): minutes per request, excluded.
+      - series: 'http_server_request_duration_seconds_bucket{namespace="storage", job="storage", route="/api/events", le="60"}'
+        values: '0x30'
+      - series: 'http_server_request_duration_seconds_bucket{namespace="storage", job="storage", route="/api/events", le="+Inf"}'
+        values: '0+60x30'
+      - series: 'http_server_request_duration_seconds_count{namespace="storage", job="storage", route="/api/events"}'
+        values: '0+60x30'
+    alert_rule_test:
+      - alertname: LabAppHighLatency
+        eval_time: 10m
+        exp_alerts: []
+      - alertname: LabAppHighLatency
+        eval_time: 20m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: todo
+              job: todo
+            exp_annotations:
+              summary: "todo p95 latency is 4.8s"
+              description: "p95 latency of todo/todo (excluding streaming and transfer routes) has been above 1s for 10 minutes."
+
+  # Traefik-measured latency for apps without their own histogram.
+  - interval: 1m
+    input_series:
+      - series: 'traefik_service_request_duration_seconds_bucket{exported_service="auth-authelia-9091@kubernetescrd", code="200", le="1.2"}'
+        values: '0x30'
+      - series: 'traefik_service_request_duration_seconds_bucket{exported_service="auth-authelia-9091@kubernetescrd", code="200", le="5"}'
+        values: '0+60x30'
+      - series: 'traefik_service_request_duration_seconds_bucket{exported_service="auth-authelia-9091@kubernetescrd", code="200", le="+Inf"}'
+        values: '0+60x30'
+      - series: 'traefik_service_requests_total{exported_service="auth-authelia-9091@kubernetescrd", code="200"}'
+        values: '0+60x30'
+      # Stirling PDF conversions are slow by design and not alerted on.
+      - series: 'traefik_service_request_duration_seconds_bucket{exported_service="pdf-stirling-pdf-8080@kubernetescrd", code="200", le="5"}'
+        values: '0x30'
+      - series: 'traefik_service_request_duration_seconds_bucket{exported_service="pdf-stirling-pdf-8080@kubernetescrd", code="200", le="+Inf"}'
+        values: '0+60x30'
+      - series: 'traefik_service_requests_total{exported_service="pdf-stirling-pdf-8080@kubernetescrd", code="200"}'
+        values: '0+60x30'
+    alert_rule_test:
+      - alertname: LabAppHighLatencyTraefik
+        eval_time: 20m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              app: auth
+            exp_annotations:
+              summary: "auth p95 latency is 4.81s"
+              description: "p95 latency of auth through Traefik has been above 1s for 10 minutes."
+
+  # Kubernetes, storage, database and certificate alerts.
+  - interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_waiting_reason{namespace="todo", pod="todo-abc", container="todo", reason="CrashLoopBackOff"}'
+        values: '0 0 1 1 1 1 1 1 1 1 1 1'
+      - series: 'kubelet_volume_stats_used_bytes{namespace="monitoring", persistentvolumeclaim="storage-loki-0"}'
+        values: '9x15'
+      - series: 'kubelet_volume_stats_capacity_bytes{namespace="monitoring", persistentvolumeclaim="storage-loki-0"}'
+        values: '10x15'
+      - series: 'node_filesystem_avail_bytes{instance="172.18.0.2:9100", mountpoint="/var", fstype="btrfs"}'
+        values: '10x15'
+      - series: 'node_filesystem_size_bytes{instance="172.18.0.2:9100", mountpoint="/var", fstype="btrfs"}'
+        values: '100x15'
+      - series: 'node_filesystem_avail_bytes{instance="172.18.0.2:9100", mountpoint="/data", fstype="btrfs"}'
+        values: '50x15'
+      - series: 'node_filesystem_size_bytes{instance="172.18.0.2:9100", mountpoint="/data", fstype="btrfs"}'
+        values: '100x15'
+      - series: 'storage_volume_free_bytes{namespace="storage", job="storage", pod="storage-1"}'
+        values: '5x15'
+      - series: 'storage_volume_size_bytes{namespace="storage", job="storage", pod="storage-1"}'
+        values: '100x15'
+      - series: 'cnpg_collector_up{namespace="todo", pod="todo-db-1", cluster="todo-db", job="monitoring/cnpg-clusters"}'
+        values: '1 1 0 0 0 0 0 0 0 0'
+      - series: 'kube_pod_status_ready{namespace="storage", pod="storage-db-1", condition="true"}'
+        values: '0x10'
+      - series: 'kube_pod_labels{namespace="storage", pod="storage-db-1", label_cnpg_io_cluster="storage-db"}'
+        values: '1x10'
+      - series: 'probe_ssl_earliest_cert_expiry{job="probe/monitoring/lab-public", app="auth", instance="https://auth.lab.localhost/"}'
+        values: '864000x30'
+    alert_rule_test:
+      - alertname: LabPodCrashLooping
+        eval_time: 9m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: todo
+              pod: todo-abc
+              container: todo
+              reason: CrashLoopBackOff
+            exp_annotations:
+              summary: "todo/todo-abc (todo) is crash looping"
+              description: 'Container todo has been in CrashLoopBackOff for 5 minutes. Logs: {namespace="todo", pod="todo-abc"} in Loki.'
+      - alertname: LabPersistentVolumeClaimAlmostFull
+        eval_time: 6m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              persistentvolumeclaim: storage-loki-0
+            exp_annotations:
+              summary: "PVC monitoring/storage-loki-0 is 90% full"
+              description: "The volume is more than 85% full."
+      - alertname: LabHostVolumeAlmostFull
+        eval_time: 6m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              mountpoint: /var
+            exp_annotations:
+              summary: "Host filesystem behind /var is 90% full"
+              description: "Persistent volumes (/var) or DATA_DIR (/data) share this host filesystem; it is more than 85% full."
+      - alertname: LabStorageVolumeLowFreeSpace
+        eval_time: 6m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: storage
+              job: storage
+            exp_annotations:
+              summary: "Storage volume has 5% free"
+              description: "storage-data (the host directory under DATA_DIR) has less than 10% free space."
+      - alertname: LabCNPGInstanceDown
+        eval_time: 5m
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              namespace: todo
+              pod: todo-db-1
+            exp_annotations:
+              summary: "PostgreSQL instance todo/todo-db-1 is down"
+              description: "The CloudNativePG instance is not ready, not scrapable, or reports PostgreSQL down, for 2 minutes."
+          - exp_labels:
+              severity: critical
+              namespace: storage
+              pod: storage-db-1
+            exp_annotations:
+              summary: "PostgreSQL instance storage/storage-db-1 is down"
+              description: "The CloudNativePG instance is not ready, not scrapable, or reports PostgreSQL down, for 2 minutes."
+      # Expiry 10 days after t=0 (time() starts at 0 in promtool).
+      - alertname: LabCertificateExpiringSoon
+        eval_time: 15m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              app: auth
+              job: probe/monitoring/lab-public
+              instance: https://auth.lab.localhost/
+            exp_annotations:
+              summary: "TLS certificate for https://auth.lab.localhost/ expires in 9d 23h 45m 0s"
+              description: "The certificate served for https://auth.lab.localhost/ expires in under 14 days. cert-manager should have renewed it; check `kubectl -n traefik describe certificate lab-wildcard`."
+
+  # Ingestion errors in the telemetry pipeline.
+  - interval: 1m
+    input_series:
+      - series: 'loki_discarded_samples_total{namespace="monitoring", job="loki", reason="rate_limited"}'
+        values: '0+10x20'
+      - series: 'prometheus_http_requests_total{namespace="monitoring", job="kps-prometheus", handler="/api/v1/write", code="500"}'
+        values: '0+5x20'
+      - series: 'tempo_discarded_spans_total{namespace="monitoring", job="tempo"}'
+        values: '0x20'
+    alert_rule_test:
+      - alertname: LabLokiIngestionErrors
+        eval_time: 16m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              job: loki
+            exp_annotations:
+              summary: "Loki is dropping or failing log pushes"
+              description: "Loki discarded samples or answered pushes with 5xx for 10 minutes."
+      - alertname: LabRemoteWriteReceiveErrors
+        eval_time: 16m
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              job: kps-prometheus
+            exp_annotations:
+              summary: "Prometheus rejects remote-write requests"
+              description: "The remote-write receiver (k6, Tempo, Alloy) answered with 5xx for 10 minutes."
+      - alertname: LabTempoIngestionErrors
+        eval_time: 16m
+        exp_alerts: []

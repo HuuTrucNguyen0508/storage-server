@@ -1,0 +1,35 @@
+# Alerts on the synthetic checks. Prometheus selects every PrometheusRule in every
+# namespace; Alertmanager routes the alerts to the in-cluster webhook sink.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: loadgen-synthetic
+  labels:
+    app.kubernetes.io/component: alerts
+spec:
+  groups:
+    - name: lab.synthetic
+      rules:
+        # A run is a Job named synthetic-checks-<epoch minutes>. It fails when any threshold
+        # or check in any journey fails (k6 exits 99), or when the pod cannot run at all.
+        # Stays active for 10 minutes after the failed run started.
+        - alert: LabSyntheticJourneyFailed
+          expr: |
+            kube_job_status_failed{namespace="loadgen", job_name=~"synthetic-checks-.+"} > 0
+              and on (namespace, job_name)
+            (time() - kube_job_status_start_time{namespace="loadgen", job_name=~"synthetic-checks-.+"}) < 600
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "A synthetic user journey failed ({{ $labels.job_name }})"
+            description: "The 5-minute synthetic check run failed. Read which journey in the Job's log: kubectl -n loadgen logs job/{{ $labels.job_name }}, or in Loki {namespace=\"loadgen\"} |= \"k6 summary\"."
+        - alert: LabSyntheticChecksNotSucceeding
+          expr: |
+            time() - kube_cronjob_status_last_successful_time{namespace="loadgen", cronjob="synthetic-checks"} > 1200
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "No synthetic check run has succeeded for 20 minutes"
+            description: "CronJob synthetic-checks in namespace loadgen last succeeded {{ $value | humanizeDuration }} ago. It may be suspended, unschedulable or failing."

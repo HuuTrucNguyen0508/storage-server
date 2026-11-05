@@ -1,0 +1,54 @@
+# Default deny, then only what each pod needs (egress stays open).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  labels: {app.kubernetes.io/name: storage, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: network}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+# App port from Traefik; metrics port from Prometheus.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: storage-app
+  labels: {app.kubernetes.io/name: storage, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: network}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: storage, app.kubernetes.io/component: app}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: traefik}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
+      ports: [{port: 8080, protocol: TCP}]
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: prometheus}}
+      ports: [{port: 9464, protocol: TCP}]
+---
+# Database: 5432 from the app and its backup/restore Jobs (they all carry
+# app.kubernetes.io/name=storage), instance ports from the CloudNativePG
+# operator, exporter metrics from Prometheus.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: storage-db
+  labels: {app.kubernetes.io/name: storage-db, app.kubernetes.io/part-of: lab, app.kubernetes.io/component: network}
+spec:
+  podSelector:
+    matchLabels: {cnpg.io/cluster: storage-db}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {app.kubernetes.io/name: storage}}
+      ports: [{port: 5432, protocol: TCP}]
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cnpg-system}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: cloudnative-pg}}
+      ports: [{port: 8000, protocol: TCP}, {port: 5432, protocol: TCP}]
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: prometheus}}
+      ports: [{port: 9187, protocol: TCP}]

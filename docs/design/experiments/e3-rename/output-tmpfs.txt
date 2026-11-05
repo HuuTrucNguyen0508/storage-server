@@ -1,5 +1,0 @@
-filesystem magic: 0x1021994
-noreplace file over file: file exists
-noreplace dir over dir:   file exists
-2000 rounds of 8 racers: wins=2000 losses=14000 (exactly one winner per round means wins=2000)
-200 kill -9 trials: published files=3927 torn=0, stranded spool files for the sweeper=197

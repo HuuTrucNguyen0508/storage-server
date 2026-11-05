@@ -1,0 +1,72 @@
+<!-- title: Storage, viewer (code with line numbers) -->
+<!-- app: storage -->
+<!-- shell: viewer -->
+<div class="viewer" role="dialog" aria-label="server.go">
+  <div class="viewer__bar">
+    <button class="btn btn--quiet btn--icon" aria-label="Back to Home server"><svg class="icon"><use href="#i-arrow-l"/></svg></button>
+    <div class="viewer__title"><svg class="ficon ficon--code hide-sm"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">GO</text></svg><span class="truncate">server.go</span><span class="faint text-2 hide-sm">2.1 KB, 64 lines, UTF-8</span></div>
+    <button class="btn btn--quiet hide-sm" aria-pressed="false"><svg class="icon"><use href="#i-wrap"/></svg>Wrap lines</button>
+    <button class="btn hide-sm"><svg class="icon"><use href="#i-copy"/></svg>Copy</button>
+    <button class="btn"><svg class="icon"><use href="#i-download"/></svg><span class="hide-sm">Download</span></button>
+    <button class="btn btn--quiet btn--icon" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button>
+  </div>
+  <div class="viewer__stage viewer__stage--doc">
+    <div class="code" role="region" aria-label="File contents">
+<pre class="code__gutter">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28</pre><pre class="code__body"><span class="tok-k">package</span> main
+
+<span class="tok-k">import</span> (
+	<span class="tok-s">"context"</span>
+	<span class="tok-s">"log/slog"</span>
+	<span class="tok-s">"net/http"</span>
+	<span class="tok-s">"os"</span>
+	<span class="tok-s">"time"</span>
+)
+
+<span class="tok-c">// Serve runs the API until ctx is cancelled, then drains in-flight uploads.</span>
+<span class="tok-k">func</span> Serve(ctx context.Context, h http.Handler) <span class="tok-k">error</span> {
+	srv := &amp;http.Server{
+		Addr:              <span class="tok-s">":8080"</span>,
+		Handler:           h,
+		ReadHeaderTimeout: <span class="tok-n">10</span> * time.Second,
+	}
+	<span class="tok-k">go</span> <span class="tok-k">func</span>() {
+		&lt;-ctx.Done()
+		shutdown, cancel := context.WithTimeout(context.Background(), <span class="tok-n">30</span>*time.Second)
+		<span class="tok-k">defer</span> cancel()
+		<span class="tok-k">if</span> err := srv.Shutdown(shutdown); err != <span class="tok-k">nil</span> {
+			slog.Error(<span class="tok-s">"shutdown"</span>, <span class="tok-s">"err"</span>, err)
+		}
+	}()
+	slog.Info(<span class="tok-s">"listening"</span>, <span class="tok-s">"addr"</span>, srv.Addr, <span class="tok-s">"pid"</span>, os.Getpid())
+	<span class="tok-k">return</span> srv.ListenAndServe()
+}</pre>
+    </div>
+  </div>
+</div>

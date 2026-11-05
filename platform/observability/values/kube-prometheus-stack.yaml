@@ -1,0 +1,337 @@
+# kube-prometheus-stack (chart version pinned in install.sh). Rendered with scripts/lib.sh
+# `render`, so only the RENDER_VARS placeholders (DOMAIN, ENVIRONMENT, ...) are substituted.
+# PromQL and Grafana `$` signs below are left alone by that allowlist.
+fullnameOverride: kps
+commonLabels:
+  app.kubernetes.io/part-of: lab
+
+# platform/observability/install-crds.sh installs the operator CRDs at bring-up step 3.
+crds:
+  enabled: false
+
+# kind runs the controller manager, scheduler, etcd and kube-proxy bound to 127.0.0.1
+# inside the node container, so Prometheus can't reach them. Turning them off removes
+# their scrape jobs, dashboards and rules (no permanent *Down alerts).
+kubeControllerManager: {enabled: false}
+kubeScheduler: {enabled: false}
+kubeEtcd: {enabled: false}
+kubeProxy: {enabled: false}
+windowsMonitoring: {enabled: false}
+# Linux nodes only: drop the AIX and macOS node dashboards.
+nodeExporter:
+  operatingSystems:
+    aix: {enabled: false}
+    darwin: {enabled: false}
+
+defaultRules:
+  create: true
+  rules:
+    windows: false
+  disabled:
+    # kind nodes share the host kernel and filesystems; these fire on any busy laptop.
+    NodeMemoryMajorPagesFaults: true
+    # Replaced by LabPodCrashLooping (rules/lab.rules.yaml), which fires sooner.
+    KubePodCrashLooping: true
+
+prometheusOperator:
+  resources:
+    requests: {cpu: 20m, memory: 64Mi}
+    limits: {memory: 256Mi}
+  admissionWebhooks:
+    patch:
+      resources:
+        requests: {cpu: 10m, memory: 32Mi}
+        limits: {memory: 128Mi}
+  prometheusConfigReloader:
+    resources:
+      requests: {cpu: 5m, memory: 16Mi}
+      limits: {memory: 64Mi}
+
+prometheus:
+  prometheusSpec:
+    externalUrl: https://prometheus.${DOMAIN}
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    retention: 7d
+    retentionSize: 9GiB
+    # k6 (--out experimental-prometheus-rw), Tempo's metrics generator and Alloy write here.
+    enableRemoteWriteReceiver: true
+    enableFeatures:
+      - exemplar-storage
+      - native-histograms
+    exemplars:
+      maxSize: 100000
+    # Select every ServiceMonitor, PodMonitor, PrometheusRule, Probe and ScrapeConfig in
+    # every namespace, without the chart's release label selector.
+    ruleSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    scrapeConfigSelectorNilUsesHelmValues: false
+    ruleSelector: {}
+    ruleNamespaceSelector: {}
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+    podMonitorSelector: {}
+    podMonitorNamespaceSelector: {}
+    probeSelector: {}
+    probeNamespaceSelector: {}
+    externalLabels:
+      cluster: ${CLUSTER_NAME}
+      environment: ${ENVIRONMENT}
+    resources:
+      requests: {cpu: 200m, memory: 1Gi}
+      limits: {memory: 3Gi}
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 10Gi
+
+alertmanager:
+  alertmanagerSpec:
+    externalUrl: https://alertmanager.${DOMAIN}
+    retention: 120h
+    resources:
+      requests: {cpu: 10m, memory: 32Mi}
+      limits: {memory: 128Mi}
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 1Gi
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: webhook-sink
+      group_by: [alertname, namespace, job]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      routes:
+        # Watchdog always fires (it proves the pipeline works); InfoInhibitor only
+        # suppresses info alerts. Neither should page anyone.
+        - receiver: "null"
+          matchers: ['alertname = "Watchdog"']
+        - receiver: "null"
+          matchers: ['alertname = "InfoInhibitor"']
+    inhibit_rules:
+      - source_matchers: ['severity = critical']
+        target_matchers: ['severity =~ warning|info']
+        equal: [namespace, alertname]
+      - source_matchers: ['severity = warning']
+        target_matchers: ['severity = info']
+        equal: [namespace, alertname]
+      - source_matchers: ['alertname = InfoInhibitor']
+        target_matchers: ['severity = info']
+        equal: [namespace]
+    receivers:
+      - name: "null"
+      # Default receiver: platform/observability/manifests/alert-sink.yaml logs every
+      # notification as JSON, so delivered alerts are searchable in Loki
+      # ({namespace="monitoring", app="alert-sink"}).
+      - name: webhook-sink
+        webhook_configs:
+          - url: http://alert-sink.monitoring.svc.cluster.local:8080/alerts
+            send_resolved: true
+      # Email example (remote profile). Put the SMTP password in a Secret, mount it with
+      # alertmanager.alertmanagerSpec.secrets and point auth_password_file at it.
+      # - name: email
+      #   email_configs:
+      #     - to: you@example.com
+      #       from: alertmanager@example.com
+      #       smarthost: smtp.example.com:587
+      #       auth_username: alertmanager@example.com
+      #       auth_password_file: /etc/alertmanager/secrets/smtp/password
+      #       send_resolved: true
+    templates: []
+
+kube-state-metrics:
+  resources:
+    requests: {cpu: 10m, memory: 48Mi}
+    limits: {memory: 256Mi}
+  metricLabelsAllowlist:
+    - pods=[app.kubernetes.io/name,app.kubernetes.io/component,cnpg.io/cluster,cnpg.io/instanceRole]
+    - namespaces=[app.kubernetes.io/part-of]
+
+prometheus-node-exporter:
+  resources:
+    requests: {cpu: 10m, memory: 24Mi}
+    limits: {memory: 96Mi}
+
+grafana:
+  fullnameOverride: grafana
+  defaultDashboardsTimezone: browser
+  deploymentStrategy: {type: Recreate}
+  admin:
+    # Created by install.sh from .local/credentials.env (GRAFANA_ADMIN_PASSWORD).
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  persistence:
+    enabled: true
+    size: 1Gi
+  # Grafana 13 settles around 450-500 MiB here.
+  resources:
+    requests: {cpu: 50m, memory: 256Mi}
+    limits: {memory: 1Gi}
+  serviceMonitor:
+    enabled: true
+  grafana.ini:
+    server:
+      domain: grafana.${DOMAIN}
+      root_url: https://grafana.${DOMAIN}/
+      enforce_domain: false
+    analytics:
+      reporting_enabled: false
+      check_for_updates: false
+      check_for_plugin_updates: false
+      feedback_links_enabled: false
+    log:
+      mode: console
+    log.console:
+      format: json
+    security:
+      cookie_secure: true
+      cookie_samesite: lax
+      disable_gravatar: true
+    users:
+      allow_sign_up: false
+      auto_assign_org: true
+      # Authelia only lets group `admins` reach Grafana, and the auth proxy cannot map
+      # Remote-Groups to roles (team sync is Enterprise), so everyone who arrives is an
+      # org Admin. Authelia's `admin` user matches Grafana's built-in `admin` login and
+      # is also a Grafana server admin.
+      auto_assign_org_role: Admin
+      default_theme: system
+    auth:
+      disable_login_form: true
+      # Signing out goes through Authelia so the SSO session ends too.
+      signout_redirect_url: https://auth.${DOMAIN}/logout?rd=https%3A%2F%2Fhome.${DOMAIN}%2F
+    auth.proxy:
+      enabled: true
+      header_name: Remote-User
+      header_property: username
+      auto_sign_up: true
+      sync_ttl: 15
+      headers: "Email:Remote-Email Name:Remote-Name Groups:Remote-Groups"
+      enable_login_token: false
+    # Basic auth stays on for the API (install.sh and port-forwarded admin use the
+    # generated admin password); only Authelia admins and the stack itself reach Grafana.
+    auth.basic:
+      enabled: true
+    auth.anonymous:
+      enabled: false
+    tracing.opentelemetry.otlp:
+      address: alloy.monitoring.svc.cluster.local:4317
+      propagation: w3c
+    tracing.opentelemetry:
+      custom_attributes: "deployment.environment:${ENVIRONMENT},service.namespace:lab"
+    unified_alerting:
+      enabled: true
+    news:
+      news_feed_enabled: false
+  sidecar:
+    resources:
+      requests: {cpu: 10m, memory: 64Mi}
+      limits: {memory: 192Mi}
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: monitoring
+      folderAnnotation: grafana_folder
+      # kube-prometheus-stack's own Kubernetes dashboards land in this folder.
+      annotations:
+        grafana_folder: Kubernetes
+      provider:
+        foldersFromFilesStructure: true
+        allowUiUpdates: false
+    datasources:
+      enabled: true
+      defaultDatasourceEnabled: true
+      isDefaultDatasource: true
+      name: Prometheus
+      uid: prometheus
+      url: http://prometheus.monitoring.svc.cluster.local:9090/
+      # A latency exemplar with trace_id opens the trace in Tempo.
+      exemplarTraceIdDestinations:
+        datasourceUid: tempo
+        traceIdLabelName: trace_id
+        urlDisplayLabel: Open trace
+      alertmanager:
+        enabled: true
+        name: Alertmanager
+        uid: alertmanager
+  # `$$` keeps Grafana's provisioning from treating ${__...} as environment variables.
+  additionalDataSources:
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100
+      jsonData:
+        maxLines: 2000
+        derivedFields:
+          # App logs (contract: JSON key trace_id).
+          - name: trace_id
+            matcherType: regex
+            matcherRegex: '"trace_id":"([0-9a-f]{32})"'
+            datasourceUid: tempo
+            url: '$${__value.raw}'
+            urlDisplayLabel: Open trace
+          # Traefik JSON access logs.
+          - name: TraceId
+            matcherType: regex
+            matcherRegex: '"TraceId":"([0-9a-f]{32})"'
+            datasourceUid: tempo
+            url: '$${__value.raw}'
+            urlDisplayLabel: Open trace
+    - name: Tempo
+      uid: tempo
+      type: tempo
+      access: proxy
+      url: http://tempo.monitoring.svc.cluster.local:3200
+      jsonData:
+        httpMethod: GET
+        serviceMap:
+          datasourceUid: prometheus
+        nodeGraph:
+          enabled: true
+        search:
+          hide: false
+        lokiSearch:
+          datasourceUid: loki
+        traceQuery:
+          timeShiftEnabled: true
+          spanStartTimeShift: -10m
+          spanEndTimeShift: 10m
+        # A span opens every log line that carries its trace ID.
+        tracesToLogsV2:
+          datasourceUid: loki
+          spanStartTimeShift: -5m
+          spanEndTimeShift: 5m
+          filterByTraceID: false
+          filterBySpanID: false
+          customQuery: true
+          query: '{namespace=~".+"} |= "$${__span.traceId}"'
+        # A span opens the RED metrics Tempo's metrics generator wrote for its service.
+        tracesToMetrics:
+          datasourceUid: prometheus
+          spanStartTimeShift: -10m
+          spanEndTimeShift: 10m
+          tags:
+            - key: service.name
+              value: service
+          queries:
+            - name: Request rate
+              query: 'sum by (span_name) (rate(traces_spanmetrics_calls_total{$$__tags}[5m]))'
+            - name: Error rate
+              query: 'sum by (span_name) (rate(traces_spanmetrics_calls_total{$$__tags, status_code="STATUS_CODE_ERROR"}[5m]))'
+            - name: p95 latency
+              query: 'histogram_quantile(0.95, sum by (le, span_name) (rate(traces_spanmetrics_latency_bucket{$$__tags}[5m])))'

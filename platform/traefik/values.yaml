@@ -1,0 +1,111 @@
+# Traefik v3 (chart pinned in config/versions.env). Rendered with scripts/lib.sh render.
+deployment:
+  replicas: 1
+  # Pinned to the node that carries the host port mappings, so the NodePorts with
+  # externalTrafficPolicy Local deliver straight to this pod.
+nodeSelector:
+  ingress-ready: "true"
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+service:
+  spec:
+    type: NodePort
+    externalTrafficPolicy: Local
+ports:
+  web:
+    nodePort: 30080
+    http:
+      redirections:
+        entryPoint: {to: websecure, scheme: https, permanent: true}
+    forwardedHeaders: {insecure: false, trustedIPs: []}
+    proxyProtocol: {insecure: false, trustedIPs: []}
+  websecure:
+    nodePort: 30443
+    http:
+      tls: {enabled: true}
+      # Remote_User and other aliases of identity headers are dropped, not merged.
+      aliasHeadersStrategy: delete
+      # Reject %2F, %5C and %00 in paths (400) so `/s/..%2fapi` can never slip a
+      # private path past a public PathPrefix route.
+      encodedCharacters:
+        allowEncodedSlash: false
+        allowEncodedBackSlash: false
+        allowEncodedNullCharacter: false
+    forwardedHeaders: {insecure: false, trustedIPs: []}
+    proxyProtocol: {insecure: false, trustedIPs: []}
+    transport:
+      respondingTimeouts:
+        # 0 = no limit: multi-GiB uploads and downloads, long-lived SSE streams.
+        readTimeout: 0
+        writeTimeout: 0
+        idleTimeout: 180s
+  metrics:
+    port: 9100
+providers:
+  kubernetesCRD:
+    enabled: true
+    allowCrossNamespace: true
+    allowExternalNameServices: false
+    allowEmptyServices: false
+  kubernetesIngress:
+    enabled: false
+api:
+  dashboard: true
+ingressRoute:
+  dashboard:
+    enabled: true
+    matchRule: Host(`traefik.${DOMAIN}`)
+    entryPoints: [websecure]
+    middlewares:
+      - name: sso-chain
+        namespace: auth
+    tls: {}
+tlsStore:
+  default:
+    defaultCertificate:
+      secretName: lab-wildcard-tls
+log:
+  format: json
+  level: INFO
+accessLog:
+  enabled: true
+  format: json
+  fields:
+    defaultMode: keep
+    names:
+      # Paths and query strings can carry share tokens.
+      RequestPath: drop
+    headers:
+      defaultMode: drop
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+    service:
+      enabled: true
+    serviceMonitor:
+      enabled: true
+tracing:
+  serviceName: traefik
+  resourceAttributes:
+    deployment.environment: ${ENVIRONMENT}
+    service.namespace: lab
+  otlp:
+    enabled: true
+    http:
+      enabled: true
+      endpoint: http://alloy.monitoring.svc.cluster.local:4318/v1/traces
+# 512Mi was OOM-killed at about 1 400 req/s in a k6 stress run, which dropped every app at
+# once. The chart sets GOMEMLIMIT to 90% of this limit.
+resources:
+  requests: {cpu: 50m, memory: 64Mi}
+  limits: {memory: 1Gi}
+commonLabels:
+  app.kubernetes.io/part-of: lab

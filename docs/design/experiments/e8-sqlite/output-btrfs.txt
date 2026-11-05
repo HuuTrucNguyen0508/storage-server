@@ -1,2 +1,0 @@
-BenchmarkJournaledMoveTx-24    	     966	   2580159 ns/op
-PASS

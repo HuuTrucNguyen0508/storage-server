@@ -1,0 +1,69 @@
+<!-- title: Storage, trash -->
+<!-- app: storage -->
+<!-- shell: storage -->
+<!-- nav: trash -->
+    <main class="main main--flush">
+      <div style="padding: var(--sp-4) var(--sp-4) 0">
+        <div class="page-head">
+          <h1>Trash</h1>
+          <button class="btn btn--danger"><svg class="icon"><use href="#i-trash"/></svg>Empty trash</button>
+        </div>
+        <div class="notice" style="margin-bottom: var(--sp-3)">
+          <svg class="icon"><use href="#i-info"/></svg>
+          <div>Items stay here for 30 days, then they're deleted for good. Trashed files still count toward your 200 GB.</div>
+        </div>
+        <div class="selbar" role="status">
+          <span class="selbar__count">1 selected</span>
+          <button class="btn btn--sm"><svg class="icon"><use href="#i-restore"/></svg>Restore</button>
+          <button class="btn btn--sm btn--danger"><svg class="icon"><use href="#i-trash"/></svg>Delete forever</button>
+          <span class="toolbar__spacer"></span>
+          <button class="btn btn--sm btn--quiet btn--icon" aria-label="Clear selection"><svg class="icon"><use href="#i-x"/></svg></button>
+        </div>
+      </div>
+      <table class="table" aria-label="Trash">
+        <thead>
+          <tr>
+            <th class="col-check"><input class="check" type="checkbox" aria-label="Select all"></th>
+            <th>Name</th>
+            <th class="hide-sm">Was in</th>
+            <th class="num">Deleted</th>
+            <th class="col-num hide-sm">Size</th>
+            <th class="col-actions hide-sm"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="is-selected">
+            <td class="col-check"><input class="check" type="checkbox" checked aria-label="Select old-lease-2024.pdf"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--pdf"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">PDF</text></svg><a href="#">old-lease-2024.pdf</a></div></td>
+            <td class="hide-sm muted">Projects / Lease renewal</td>
+            <td class="num">Today<span class="faint hide-sm">, 29 days left</span></td>
+            <td class="col-num hide-sm">1.6 MB</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet" aria-label="Restore old-lease-2024.pdf"><svg class="icon"><use href="#i-restore"/></svg>Restore</button></span></td>
+          </tr>
+          <tr>
+            <td class="col-check"><input class="check" type="checkbox" aria-label="Select Screenshots"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--folder"><use href="#f-folder"/></svg><a href="#">Screenshots</a></div></td>
+            <td class="hide-sm muted">Files</td>
+            <td class="num">3 Nov<span class="faint hide-sm">, 27 days left</span></td>
+            <td class="col-num hide-sm muted">212 items</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet" aria-label="Restore Screenshots"><svg class="icon"><use href="#i-restore"/></svg>Restore</button></span></td>
+          </tr>
+          <tr>
+            <td class="col-check"><input class="check" type="checkbox" aria-label="Select IMG_2201.heic"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--image"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">HEIC</text></svg><a href="#">IMG_2201.heic</a></div></td>
+            <td class="hide-sm muted">Flat photos</td>
+            <td class="num">12 Oct<span class="faint hide-sm">, 6 days left</span></td>
+            <td class="col-num hide-sm">2.0 MB</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet" aria-label="Restore IMG_2201.heic"><svg class="icon"><use href="#i-restore"/></svg>Restore</button></span></td>
+          </tr>
+          <tr>
+            <td class="col-check"><input class="check" type="checkbox" aria-label="Select backup-2023.tar.gz"></td>
+            <td><div class="name-cell"><svg class="ficon"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">TGZ</text></svg><a href="#">backup-2023.tar.gz</a></div></td>
+            <td class="hide-sm muted">Home server</td>
+            <td class="num"><span class="badge badge--warn">Tomorrow</span></td>
+            <td class="col-num hide-sm">4.1 GB</td>
+            <td class="col-actions hide-sm"><span class="row-actions"><button class="btn btn--sm btn--quiet" aria-label="Restore backup-2023.tar.gz"><svg class="icon"><use href="#i-restore"/></svg>Restore</button></span></td>
+          </tr>
+        </tbody>
+      </table>
+    </main>

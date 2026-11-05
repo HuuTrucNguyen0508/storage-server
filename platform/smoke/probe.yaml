@@ -1,0 +1,18 @@
+# A curl pod for network checks. scripts/smoke.sh renders it once per probe
+# (PROBE_NAMESPACE, PROBE_NAME, PROBE_APP_NAME).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ${PROBE_NAME}
+  namespace: ${PROBE_NAMESPACE}
+  labels: {app.kubernetes.io/name: "${PROBE_APP_NAME}", lab/smoke: "true", app.kubernetes.io/part-of: lab, app.kubernetes.io/component: smoke}
+spec:
+  automountServiceAccountToken: false
+  terminationGracePeriodSeconds: 1
+  securityContext: {runAsNonRoot: true, runAsUser: 100, runAsGroup: 101, seccompProfile: {type: RuntimeDefault}}
+  containers:
+    - name: probe
+      image: ${CURL_IMAGE}
+      command: [sleep, "3600"]
+      resources: {requests: {cpu: 5m, memory: 16Mi}, limits: {cpu: 200m, memory: 64Mi}}
+      securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}

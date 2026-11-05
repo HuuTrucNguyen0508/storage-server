@@ -1,0 +1,49 @@
+<!-- title: Storage, public share page (guest) -->
+<!-- app: storage -->
+<!-- shell: public -->
+<style>
+  .guest { min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; }
+  .guest__bar { display: flex; align-items: center; gap: var(--sp-3); height: var(--topbar-h); padding: 0 var(--sp-4) 0 0; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .guest__main { width: min(60rem, 100%); margin: 0 auto; padding: var(--sp-6) var(--sp-5) var(--sp-7); display: flex; flex-direction: column; gap: var(--sp-5); }
+  .guest__head { display: flex; align-items: flex-start; gap: var(--sp-4); flex-wrap: wrap; }
+  .guest__head h1 { font-size: var(--fs-7); letter-spacing: -0.015em; line-height: 1.15; word-break: break-all; }
+  .guest__facts { color: var(--ink-2); display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); font-variant-numeric: tabular-nums; }
+  .guest__actions { display: flex; gap: var(--sp-2); margin-left: auto; align-self: center; }
+  .guest__preview { display: grid; place-items: center; min-height: 24rem; background: #0f1412; border-radius: var(--r-3); overflow: hidden; }
+  .guest__foot { padding: var(--sp-4) var(--sp-5); color: var(--ink-3); font-size: var(--fs-2); text-align: center; }
+  @media (max-width: 720px) {
+    .guest__main { padding: var(--sp-5) var(--gutter) var(--sp-7); }
+    .guest__head h1 { font-size: var(--fs-6); }
+    .guest__actions { margin-left: 0; width: 100%; }
+    .guest__actions .btn { flex: 1; }
+    .guest__preview { min-height: 14rem; }
+  }
+</style>
+<div class="guest">
+  <header class="guest__bar">
+    <span class="topbar__app" style="height:100%">Storage</span>
+    <span class="muted text-2">Shared by Alice</span>
+    <span class="topbar__spacer"></span>
+    <a class="topbar__link text-2" href="#">Sign in</a>
+  </header>
+  <main class="guest__main">
+    <div class="guest__head">
+      <svg class="ficon ficon--image ficon--lg" style="margin-top: 2px"><use href="#f-page"/><text class="ficon__ext" x="10" y="19" style="font-size:5.5px">JPG</text></svg>
+      <div class="stack stack--sm">
+        <h1>living-room-01.jpg</h1>
+        <div class="guest__facts"><span>3.1 MB</span><span>4032 × 3024</span><span>Shared 2 Nov</span><span>Link works until 5 Dec</span></div>
+      </div>
+      <div class="guest__actions">
+        <button class="btn btn--lg btn--primary"><svg class="icon"><use href="#i-download"/></svg>Download</button>
+      </div>
+    </div>
+    <div class="guest__preview">
+      <div class="ph-big" style="width:100%; aspect-ratio: 3/2" role="img" aria-label="Living room with a large window"></div>
+    </div>
+    <div class="notice">
+      <svg class="icon"><use href="#i-lock"/></svg>
+      <div>Only people with this link can see this file. It was shared from a private server, not a public service. If you weren't expecting it, you can close the page; nothing was saved to your device.</div>
+    </div>
+  </main>
+  <footer class="guest__foot">8 downloads left on this link.</footer>
+</div>

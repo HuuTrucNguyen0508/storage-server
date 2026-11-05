@@ -1,0 +1,133 @@
+contrast: 116/116 pairs pass (0 fail), light + dark, measured from packages/ui/tokens.css
+
+== light ==
+pass  14.80:1  (min 4.5)  --ink #1b201e on --bg #f1f3f0  body text on page
+pass  16.51:1  (min 4.5)  --ink #1b201e on --surface #ffffff  body text on panel
+pass  13.61:1  (min 4.5)  --ink #1b201e on --surface-2 #e7eae6  body text on table head / hover
+pass  12.48:1  (min 4.5)  --ink #1b201e on --surface-3 #dde1dc  body text on pressed
+pass   7.10:1  (min 4.5)  --ink-2 #4b534f on --bg #f1f3f0  secondary text on page
+pass   7.93:1  (min 4.5)  --ink-2 #4b534f on --surface #ffffff  secondary text on panel
+pass   6.53:1  (min 4.5)  --ink-2 #4b534f on --surface-2 #e7eae6  secondary text on hover
+pass   4.99:1  (min 4.5)  --ink-3 #626a66 on --bg #f1f3f0  muted text on page
+pass   5.57:1  (min 4.5)  --ink-3 #626a66 on --surface #ffffff  muted text / placeholder on panel
+pass   4.59:1  (min 4.5)  --ink-3 #626a66 on --surface-2 #e7eae6  muted text on table head
+pass   3.86:1  (min 3)  --line-strong #7a847f on --surface #ffffff  control border on panel
+pass   3.46:1  (min 3)  --line-strong #7a847f on --bg #f1f3f0  control border on page
+pass   3.19:1  (min 3)  --line-strong #7a847f on --surface-2 #e7eae6  control border on hover
+pass   4.82:1  (min 4.5)  --ok #1d7a3e on --bg #f1f3f0  success text on page
+pass   5.38:1  (min 4.5)  --ok #1d7a3e on --surface #ffffff  success text on panel
+pass   5.78:1  (min 4.5)  --warn #8a5100 on --bg #f1f3f0  warning text on page
+pass   6.45:1  (min 4.5)  --warn #8a5100 on --surface #ffffff  warning text on panel
+pass   5.89:1  (min 4.5)  --danger #b42318 on --bg #f1f3f0  danger text on page
+pass   6.57:1  (min 4.5)  --danger #b42318 on --surface #ffffff  danger text on panel
+pass   5.38:1  (min 4.5)  --on-status #ffffff on --ok #1d7a3e  text on success fill
+pass   6.45:1  (min 4.5)  --on-status #ffffff on --warn #8a5100  text on warning fill
+pass   6.57:1  (min 4.5)  --on-status #ffffff on --danger #b42318  text on danger fill
+pass   5.58:1  (min 4.5)  --danger #b42318 on --danger-wash #f8e9e8  danger text on danger wash
+pass   4.56:1  (min 4.5)  --ok #1d7a3e on --ok-wash #e4efe8  success text on success wash
+pass   5.26:1  (min 4.5)  --warn #8a5100 on --warn-wash #efe7db  warning text on warning wash
+pass   5.39:1  (min 4.5)  --accent-lab #1f6f5e on --bg #f1f3f0  accent-lab as link text on page
+pass   6.01:1  (min 4.5)  --accent-lab #1f6f5e on --surface #ffffff  accent-lab as link text on panel
+pass   4.95:1  (min 4.5)  --accent-lab #1f6f5e on --surface-2 #e7eae6  accent-lab as link text on hover
+pass   6.01:1  (min 4.5)  --on-accent #ffffff on --accent-lab #1f6f5e  button text on accent-lab
+pass   5.39:1  (min 3)  --accent-lab #1f6f5e on --bg #f1f3f0  accent-lab focus ring on page
+pass   6.01:1  (min 3)  --accent-lab #1f6f5e on --surface #ffffff  accent-lab focus ring on panel
+pass   6.04:1  (min 4.5)  --accent-storage #2956b8 on --bg #f1f3f0  accent-storage as link text on page
+pass   6.74:1  (min 4.5)  --accent-storage #2956b8 on --surface #ffffff  accent-storage as link text on panel
+pass   5.55:1  (min 4.5)  --accent-storage #2956b8 on --surface-2 #e7eae6  accent-storage as link text on hover
+pass   6.74:1  (min 4.5)  --on-accent #ffffff on --accent-storage #2956b8  button text on accent-storage
+pass   6.04:1  (min 3)  --accent-storage #2956b8 on --bg #f1f3f0  accent-storage focus ring on page
+pass   6.74:1  (min 3)  --accent-storage #2956b8 on --surface #ffffff  accent-storage focus ring on panel
+pass   5.78:1  (min 4.5)  --accent-todo #8a5100 on --bg #f1f3f0  accent-todo as link text on page
+pass   6.45:1  (min 4.5)  --accent-todo #8a5100 on --surface #ffffff  accent-todo as link text on panel
+pass   5.31:1  (min 4.5)  --accent-todo #8a5100 on --surface-2 #e7eae6  accent-todo as link text on hover
+pass   6.45:1  (min 4.5)  --on-accent #ffffff on --accent-todo #8a5100  button text on accent-todo
+pass   5.78:1  (min 3)  --accent-todo #8a5100 on --bg #f1f3f0  accent-todo focus ring on page
+pass   6.45:1  (min 3)  --accent-todo #8a5100 on --surface #ffffff  accent-todo focus ring on panel
+
+== light, app-accent = accent-lab ==
+pass  13.95:1  (min 4.5)  --ink #1b201e on --accent-wash #e4eeec  text on selected row
+pass   6.70:1  (min 4.5)  --ink-2 #4b534f on --accent-wash #e4eeec  secondary text on selected row
+pass   5.08:1  (min 4.5)  --app-accent #1f6f5e on --accent-wash #e4eeec  accent text on selected row
+pass  11.96:1  (min 4.5)  --ink #1b201e on --accent-wash-strong #cedfdc  text on strong wash
+pass   4.35:1  (min 3)  --app-accent #1f6f5e on --accent-wash-strong #cedfdc  accent icon on strong wash
+
+== light, app-accent = accent-storage ==
+pass  13.79:1  (min 4.5)  --ink #1b201e on --accent-wash #e5ebf6  text on selected row
+pass   6.62:1  (min 4.5)  --ink-2 #4b534f on --accent-wash #e5ebf6  secondary text on selected row
+pass   5.63:1  (min 4.5)  --app-accent #2956b8 on --accent-wash #e5ebf6  accent text on selected row
+pass  11.76:1  (min 4.5)  --ink #1b201e on --accent-wash-strong #d0daef  text on strong wash
+pass   4.80:1  (min 3)  --app-accent #2956b8 on --accent-wash-strong #d0daef  accent icon on strong wash
+
+== light, app-accent = accent-todo ==
+pass  13.83:1  (min 4.5)  --ink #1b201e on --accent-wash #f1eae0  text on selected row
+pass   6.64:1  (min 4.5)  --ink-2 #4b534f on --accent-wash #f1eae0  secondary text on selected row
+pass   5.40:1  (min 4.5)  --app-accent #8a5100 on --accent-wash #f1eae0  accent text on selected row
+pass  11.86:1  (min 4.5)  --ink #1b201e on --accent-wash-strong #e5d9c7  text on strong wash
+pass   4.63:1  (min 3)  --app-accent #8a5100 on --accent-wash-strong #e5d9c7  accent icon on strong wash
+
+== dark ==
+pass  14.63:1  (min 4.5)  --ink #e7ebe8 on --bg #151a18  body text on page
+pass  13.43:1  (min 4.5)  --ink #e7ebe8 on --surface #1c2220  body text on panel
+pass  11.70:1  (min 4.5)  --ink #e7ebe8 on --surface-2 #262d2a  body text on table head / hover
+pass   9.86:1  (min 4.5)  --ink #e7ebe8 on --surface-3 #313936  body text on pressed
+pass   8.85:1  (min 4.5)  --ink-2 #b1bab4 on --bg #151a18  secondary text on page
+pass   8.12:1  (min 4.5)  --ink-2 #b1bab4 on --surface #1c2220  secondary text on panel
+pass   7.08:1  (min 4.5)  --ink-2 #b1bab4 on --surface-2 #262d2a  secondary text on hover
+pass   6.53:1  (min 4.5)  --ink-3 #96a09a on --bg #151a18  muted text on page
+pass   6.00:1  (min 4.5)  --ink-3 #96a09a on --surface #1c2220  muted text / placeholder on panel
+pass   5.23:1  (min 4.5)  --ink-3 #96a09a on --surface-2 #262d2a  muted text on table head
+pass   3.55:1  (min 3)  --line-strong #6d796f on --surface #1c2220  control border on panel
+pass   3.87:1  (min 3)  --line-strong #6d796f on --bg #151a18  control border on page
+pass   3.09:1  (min 3)  --line-strong #6d796f on --surface-2 #262d2a  control border on hover
+pass   8.80:1  (min 4.5)  --ok #63cc84 on --bg #151a18  success text on page
+pass   8.08:1  (min 4.5)  --ok #63cc84 on --surface #1c2220  success text on panel
+pass   9.19:1  (min 4.5)  --warn #e6b35a on --bg #151a18  warning text on page
+pass   8.44:1  (min 4.5)  --warn #e6b35a on --surface #1c2220  warning text on panel
+pass   7.37:1  (min 4.5)  --danger #f28b82 on --bg #151a18  danger text on page
+pass   6.77:1  (min 4.5)  --danger #f28b82 on --surface #1c2220  danger text on panel
+pass   9.30:1  (min 4.5)  --on-status #0f1412 on --ok #63cc84  text on success fill
+pass   9.71:1  (min 4.5)  --on-status #0f1412 on --warn #e6b35a  text on warning fill
+pass   7.79:1  (min 4.5)  --on-status #0f1412 on --danger #f28b82  text on danger fill
+pass   5.30:1  (min 4.5)  --danger #f28b82 on --danger-wash #3a312e  danger text on danger wash
+pass   5.85:1  (min 4.5)  --ok #63cc84 on --ok-wash #273d30  success text on success wash
+pass   6.06:1  (min 4.5)  --warn #e6b35a on --warn-wash #3c3929  warning text on warning wash
+pass   8.68:1  (min 4.5)  --accent-lab #5fc8ad on --bg #151a18  accent-lab as link text on page
+pass   7.97:1  (min 4.5)  --accent-lab #5fc8ad on --surface #1c2220  accent-lab as link text on panel
+pass   6.94:1  (min 4.5)  --accent-lab #5fc8ad on --surface-2 #262d2a  accent-lab as link text on hover
+pass   9.17:1  (min 4.5)  --on-accent #0f1412 on --accent-lab #5fc8ad  button text on accent-lab
+pass   8.68:1  (min 3)  --accent-lab #5fc8ad on --bg #151a18  accent-lab focus ring on page
+pass   7.97:1  (min 3)  --accent-lab #5fc8ad on --surface #1c2220  accent-lab focus ring on panel
+pass   8.70:1  (min 4.5)  --accent-storage #93b6ff on --bg #151a18  accent-storage as link text on page
+pass   7.99:1  (min 4.5)  --accent-storage #93b6ff on --surface #1c2220  accent-storage as link text on panel
+pass   6.96:1  (min 4.5)  --accent-storage #93b6ff on --surface-2 #262d2a  accent-storage as link text on hover
+pass   9.19:1  (min 4.5)  --on-accent #0f1412 on --accent-storage #93b6ff  button text on accent-storage
+pass   8.70:1  (min 3)  --accent-storage #93b6ff on --bg #151a18  accent-storage focus ring on page
+pass   7.99:1  (min 3)  --accent-storage #93b6ff on --surface #1c2220  accent-storage focus ring on panel
+pass   9.19:1  (min 4.5)  --accent-todo #e6b35a on --bg #151a18  accent-todo as link text on page
+pass   8.44:1  (min 4.5)  --accent-todo #e6b35a on --surface #1c2220  accent-todo as link text on panel
+pass   7.35:1  (min 4.5)  --accent-todo #e6b35a on --surface-2 #262d2a  accent-todo as link text on hover
+pass   9.71:1  (min 4.5)  --on-accent #0f1412 on --accent-todo #e6b35a  button text on accent-todo
+pass   9.19:1  (min 3)  --accent-todo #e6b35a on --bg #151a18  accent-todo focus ring on page
+pass   8.44:1  (min 3)  --accent-todo #e6b35a on --surface #1c2220  accent-todo focus ring on panel
+
+== dark, app-accent = accent-lab ==
+pass   9.64:1  (min 4.5)  --ink #e7ebe8 on --accent-wash #273d37  text on selected row
+pass   5.83:1  (min 4.5)  --ink-2 #b1bab4 on --accent-wash #273d37  secondary text on selected row
+pass   5.72:1  (min 4.5)  --app-accent #5fc8ad on --accent-wash #273d37  accent text on selected row
+pass   7.39:1  (min 4.5)  --ink #e7ebe8 on --accent-wash-strong #2f5047  text on strong wash
+pass   4.39:1  (min 3)  --app-accent #5fc8ad on --accent-wash-strong #2f5047  accent icon on strong wash
+
+== dark, app-accent = accent-storage ==
+pass   9.64:1  (min 4.5)  --ink #e7ebe8 on --accent-wash #2f3a44  text on selected row
+pass   5.83:1  (min 4.5)  --ink-2 #b1bab4 on --accent-wash #2f3a44  secondary text on selected row
+pass   5.73:1  (min 4.5)  --app-accent #93b6ff on --accent-wash #2f3a44  accent text on selected row
+pass   7.37:1  (min 4.5)  --ink #e7ebe8 on --accent-wash-strong #3d4b5e  text on strong wash
+pass   4.38:1  (min 3)  --app-accent #93b6ff on --accent-wash-strong #3d4b5e  accent icon on strong wash
+
+== dark, app-accent = accent-todo ==
+pass   9.64:1  (min 4.5)  --ink #e7ebe8 on --accent-wash #3c3929  text on selected row
+pass   5.83:1  (min 4.5)  --ink-2 #b1bab4 on --accent-wash #3c3929  secondary text on selected row
+pass   6.06:1  (min 4.5)  --app-accent #e6b35a on --accent-wash #3c3929  accent text on selected row
+pass   7.16:1  (min 4.5)  --ink #e7ebe8 on --accent-wash-strong #554b30  text on strong wash
+pass   4.50:1  (min 3)  --app-accent #e6b35a on --accent-wash-strong #554b30  accent icon on strong wash

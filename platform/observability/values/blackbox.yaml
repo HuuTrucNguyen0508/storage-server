@@ -1,0 +1,49 @@
+# Blackbox exporter (chart version pinned in install.sh). Rendered with scripts/lib.sh
+# `render` for DOMAIN_REGEX. Probes (manifests/probes.yaml) pick a module per URL.
+fullnameOverride: blackbox-exporter
+commonLabels:
+  app.kubernetes.io/part-of: lab
+resources:
+  requests: {cpu: 10m, memory: 24Mi}
+  limits: {memory: 96Mi}
+# The lab root CA (ConfigMap lab-ca, created by install.sh from .local/ca.crt).
+extraConfigmapMounts:
+  - name: lab-ca
+    mountPath: /etc/lab-ca
+    configMap: lab-ca
+    readOnly: true
+    defaultMode: 420
+config:
+  modules:
+    # Public routes: 200 straight away, valid TLS.
+    http_2xx:
+      prober: http
+      timeout: 10s
+      http:
+        method: GET
+        preferred_ip_protocol: ip4
+        valid_status_codes: [200]
+        follow_redirects: false
+        fail_if_not_ssl: true
+        tls_config:
+          ca_file: /etc/lab-ca/ca.crt
+    # SSO routes: a browser with no session gets redirected to the Authelia portal.
+    http_sso_redirect:
+      prober: http
+      timeout: 10s
+      http:
+        method: GET
+        headers:
+          Accept: text/html
+        preferred_ip_protocol: ip4
+        valid_status_codes: [302, 303]
+        follow_redirects: false
+        fail_if_not_ssl: true
+        fail_if_header_not_matches:
+          - header: Location
+            regexp: '^https://auth\.${DOMAIN_REGEX}/'
+        tls_config:
+          ca_file: /etc/lab-ca/ca.crt
+serviceMonitor:
+  selfMonitor:
+    enabled: true

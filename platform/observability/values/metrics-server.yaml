@@ -1,0 +1,12 @@
+# metrics-server (chart version pinned in install.sh): the resource metrics API behind
+# `kubectl top` and HorizontalPodAutoscalers. kind's kubelets serve self-signed
+# certificates, hence --kubelet-insecure-tls (local cluster only).
+fullnameOverride: metrics-server
+args:
+  - --kubelet-insecure-tls
+  - --kubelet-preferred-address-types=InternalIP
+podLabels:
+  app.kubernetes.io/part-of: lab
+resources:
+  requests: {cpu: 20m, memory: 48Mi}
+  limits: {memory: 192Mi}

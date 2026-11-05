@@ -1,0 +1,125 @@
+<!-- title: Todo, today view with task detail -->
+<!-- app: todo -->
+<!-- shell: todo -->
+<!-- nav: today -->
+    <main class="main">
+      <div class="page-head" style="margin-bottom: var(--sp-2)">
+        <h1>Today <span class="page-head__sub">Wednesday 5 November</span></h1>
+        <label class="select select--quiet select--sm hide-sm"><select aria-label="Sort"><option>By priority</option><option>By project</option><option>By time</option></select></label>
+      </div>
+
+      <div class="quickadd">
+        <svg class="icon"><use href="#i-plus"/></svg>
+        <input class="input" placeholder="Add a task. Try: Pay rent tomorrow 9am p1 #Flat" aria-label="Add a task">
+        <span class="quickadd__hint hide-sm">Enter to add</span>
+      </div>
+
+      <div class="section-head section-head--danger">Overdue <span class="nav__count">2</span><span class="grow"></span><button class="btn btn--sm btn--quiet">Move all to today</button></div>
+      <ul class="tasks">
+        <li class="task">
+          <input class="check check--round p1" type="checkbox" aria-label="Complete Send lease comments to agent">
+          <div><div class="task__title">Send lease comments to agent</div>
+            <div class="task__meta"><span class="task__due--overdue"><svg class="icon"><use href="#i-calendar"/></svg>Yesterday</span><span class="task__project" style="--dot:var(--accent-todo)">Flat move</span><span class="label" style="--dot:var(--danger)">urgent</span><span><svg class="icon"><use href="#i-subtask"/></svg>1 of 3</span></div></div>
+          <div class="task__end"><span class="avatar">B</span></div>
+        </li>
+        <li class="task">
+          <input class="check check--round p3" type="checkbox" aria-label="Complete Renew domain">
+          <div><div class="task__title">Renew domain</div>
+            <div class="task__meta"><span class="task__due--overdue"><svg class="icon"><use href="#i-calendar"/></svg>3 Nov</span><span class="task__project" style="--dot:var(--accent-storage)">Home server</span><span><svg class="icon"><use href="#i-repeat"/></svg>Yearly</span></div></div>
+          <div class="task__end"></div>
+        </li>
+      </ul>
+
+      <div class="section-head">Today <span class="nav__count">6</span></div>
+      <ul class="tasks">
+        <li class="task is-selected" aria-current="true">
+          <input class="check check--round p1" type="checkbox" aria-label="Complete Pay rent">
+          <div><div class="task__title">Pay rent</div>
+            <div class="task__meta"><span class="task__due--today"><svg class="icon"><use href="#i-clock"/></svg>09:00</span><span class="task__project" style="--dot:var(--accent-todo)">Flat move</span><span><svg class="icon"><use href="#i-repeat"/></svg>Monthly</span><span><svg class="icon"><use href="#i-comment"/></svg>2</span></div></div>
+          <div class="task__end"></div>
+        </li>
+        <li class="task">
+          <input class="check check--round p2" type="checkbox" aria-label="Complete Book van for the 14th">
+          <div><div class="task__title">Book van for the 14th</div>
+            <div class="task__meta"><span class="task__project" style="--dot:var(--accent-todo)">Flat move</span><span class="label" style="--dot:var(--ok)">errand</span></div></div>
+          <div class="task__end"><span class="avatar">B</span></div>
+        </li>
+        <li class="task">
+          <input class="check check--round p2" type="checkbox" aria-label="Complete Rotate backup drive">
+          <div><div class="task__title">Rotate backup drive</div>
+            <div class="task__meta"><span class="task__project" style="--dot:var(--accent-storage)">Home server</span><span><svg class="icon"><use href="#i-repeat"/></svg>Every 2 weeks</span></div></div>
+          <div class="task__end"></div>
+        </li>
+        <li class="task">
+          <input class="check check--round p3" type="checkbox" aria-label="Complete Reply to Bob about the itinerary">
+          <div><div class="task__title">Reply to Bob about the itinerary</div>
+            <div class="task__meta"><span class="task__due--today"><svg class="icon"><use href="#i-clock"/></svg>18:00</span><span class="task__project" style="--dot:var(--accent-lab)">Hanoi trip</span><span class="label" style="--dot:var(--accent-storage)">waiting</span></div></div>
+          <div class="task__end"></div>
+        </li>
+        <li class="task">
+          <input class="check check--round p4" type="checkbox" aria-label="Complete Finish chapter 4">
+          <div><div class="task__title">Finish chapter 4</div>
+            <div class="task__meta"><span class="task__project" style="--dot:var(--ink-3)">Reading list</span></div></div>
+          <div class="task__end"></div>
+        </li>
+        <li class="task is-done">
+          <input class="check check--round p4" type="checkbox" checked aria-label="Reopen Water plants">
+          <div><div class="task__title">Water plants</div>
+            <div class="task__meta"><span><svg class="icon"><use href="#i-repeat"/></svg>Every 3 days</span></div></div>
+          <div class="task__end">08:12</div>
+        </li>
+      </ul>
+    </main>
+
+    <aside class="panel" aria-label="Task details">
+      <div class="panel__head">
+        <input class="check check--round p1" type="checkbox" aria-label="Complete Pay rent">
+        <span class="grow text-2 muted">in <span class="task__project" style="--dot:var(--accent-todo)">Flat move</span></span>
+        <button class="btn btn--sm btn--quiet btn--icon" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button>
+        <button class="btn btn--sm btn--quiet btn--icon" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="panel__body">
+        <div>
+          <input class="input input--quiet" value="Pay rent" aria-label="Title" style="font-size: var(--fs-5); font-weight: var(--fw-semibold); height: 2.5rem; margin-left: calc(-1 * var(--sp-2)); width: calc(100% + var(--sp-2))">
+          <textarea class="textarea input--quiet" aria-label="Description" style="min-height: 3.5rem; margin-left: calc(-1 * var(--sp-2)); width: calc(100% + var(--sp-2))">Standing order goes out at 09:00. Check it landed and file the receipt in Storage under Flat move.</textarea>
+        </div>
+        <div class="stack stack--sm">
+          <div class="prop"><span class="prop__name">Due</span><div class="prop__value"><button class="chip"><svg class="icon"><use href="#i-calendar"/></svg>Today, 09:00</button></div></div>
+          <div class="prop"><span class="prop__name">Repeats</span><div class="prop__value"><button class="chip"><svg class="icon"><use href="#i-repeat"/></svg>Monthly on the 5th</button></div></div>
+          <div class="prop"><span class="prop__name">Priority</span><div class="prop__value">
+            <div class="seg" role="radiogroup" aria-label="Priority">
+              <label class="seg__opt"><input class="sr-only" type="radio" name="p" checked><span style="color:var(--danger)">P1</span></label>
+              <label class="seg__opt"><input class="sr-only" type="radio" name="p"><span>P2</span></label>
+              <label class="seg__opt"><input class="sr-only" type="radio" name="p"><span>P3</span></label>
+              <label class="seg__opt"><input class="sr-only" type="radio" name="p"><span>P4</span></label>
+            </div></div></div>
+          <div class="prop"><span class="prop__name">Labels</span><div class="prop__value"><button class="chip"><span class="label" style="--dot:var(--danger)">urgent</span></button><button class="chip chip--empty"><svg class="icon"><use href="#i-plus"/></svg>Add label</button></div></div>
+          <div class="prop"><span class="prop__name">Assigned to</span><div class="prop__value"><button class="chip"><span class="avatar avatar--sm" style="width:1rem;height:1rem;font-size:0.5rem">A</span>Alice</button></div></div>
+        </div>
+
+        <div>
+          <div class="row row--between" style="margin-bottom: var(--sp-1)"><h3>Subtasks</h3><span class="text-2 muted">1 of 3</span></div>
+          <div class="progress progress--thin" style="margin-bottom: var(--sp-2)"><div class="progress__bar" style="--value:33%"></div></div>
+          <ul class="tasks">
+            <li class="task task--sub is-done"><input class="check check--round" type="checkbox" checked aria-label="Reopen"><div class="task__title">Check standing order amount</div></li>
+            <li class="task task--sub"><input class="check check--round" type="checkbox" aria-label="Complete"><div class="task__title">Confirm it landed</div></li>
+            <li class="task task--sub"><input class="check check--round" type="checkbox" aria-label="Complete"><div class="task__title">File receipt in Storage</div></li>
+          </ul>
+          <input class="input input--quiet input--sm" placeholder="Add a subtask" aria-label="Add a subtask" style="margin-left: calc(-1 * var(--sp-2))">
+        </div>
+
+        <div class="stack stack--sm">
+          <h3>Activity</h3>
+          <div class="comment"><span class="avatar avatar--sm">B</span><div><span class="comment__who">Bob</span><span class="comment__when">Yesterday</span><div class="comment__text">Landlord confirmed the new account number, same bank.</div></div></div>
+          <div class="comment"><span class="avatar avatar--sm">A</span><div><span class="comment__who">Alice</span><span class="comment__when">Yesterday</span><div class="comment__text">Updated the standing order.</div></div></div>
+          <div class="row"><span class="avatar avatar--sm">A</span><input class="input input--sm grow" placeholder="Write a comment" aria-label="Write a comment"></div>
+        </div>
+        <p class="text-1 faint">Created 5 Jun by Alice. Completed 5 times.</p>
+      </div>
+    </aside>
+
+    <div class="actionbar">
+      <button class="btn btn--primary"><svg class="icon"><use href="#i-plus"/></svg>Add task</button>
+      <button class="btn btn--icon" aria-label="Views"><svg class="icon"><use href="#i-list"/></svg></button>
+      <button class="btn btn--icon" aria-label="Search"><svg class="icon"><use href="#i-search"/></svg></button>
+    </div>

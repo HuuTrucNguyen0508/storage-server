@@ -1,0 +1,117 @@
+<!-- title: Storage, drag and drop upload with progress -->
+<!-- app: storage -->
+<!-- shell: storage -->
+<!-- nav: files -->
+    <main class="main main--flush" style="position:relative">
+      <div style="padding: var(--sp-4) var(--sp-4) 0">
+        <nav class="crumbs" aria-label="Folder path">
+          <a href="#">Files</a>
+          <span class="crumbs__sep"><svg class="icon"><use href="#i-chev-r"/></svg></span>
+          <h1 class="crumbs__here">Projects</h1>
+        </nav>
+        <div class="toolbar" style="margin-top: var(--sp-3); margin-bottom: var(--sp-3)">
+          <label class="input-wrap grow hide-sm" style="max-width: 20rem">
+            <svg class="icon"><use href="#i-search"/></svg>
+            <input class="input" type="search" placeholder="Search files">
+            <span class="kbd">/</span>
+          </label>
+          <span class="toolbar__spacer"></span>
+          <button class="btn hide-sm"><svg class="icon"><use href="#i-plus"/></svg>New folder</button>
+          <div class="btn-group" role="group" aria-label="View">
+            <button class="btn btn--icon" aria-pressed="true" aria-label="List"><svg class="icon"><use href="#i-list"/></svg></button>
+            <button class="btn btn--icon" aria-pressed="false" aria-label="Grid"><svg class="icon"><use href="#i-grid"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <table class="table" aria-label="Files in Projects">
+        <thead>
+          <tr>
+            <th class="col-check"><input class="check" type="checkbox" aria-label="Select all"></th>
+            <th aria-sort="ascending">Name <svg class="icon"><use href="#i-sort"/></svg></th>
+            <th class="hide-sm">Shared</th>
+            <th class="hide-sm">Modified</th>
+            <th class="col-num">Size</th>
+            <th class="col-actions hide-sm"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="is-drop-target">
+            <td class="col-check"><input class="check" type="checkbox" aria-label="Select Lease renewal"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--folder"><use href="#f-folder"/></svg><a href="#">Lease renewal</a></div></td>
+            <td class="hide-sm"><span class="row"><span class="avatar avatar--sm">B</span><span class="text-2 muted">Bob can edit</span></span></td>
+            <td class="hide-sm num">Today, 09:14</td>
+            <td class="col-num muted">8 items</td>
+            <td class="col-actions hide-sm"></td>
+          </tr>
+          <tr>
+            <td class="col-check"><input class="check" type="checkbox" aria-label="Select Home server"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--folder"><use href="#f-folder"/></svg><a href="#">Home server</a></div></td>
+            <td class="hide-sm"><span class="faint">Only you</span></td>
+            <td class="hide-sm num">2 Nov</td>
+            <td class="col-num muted">23 items</td>
+            <td class="col-actions hide-sm"></td>
+          </tr>
+          <tr>
+            <td class="col-check"><input class="check" type="checkbox" aria-label="Select Hanoi trip"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--folder"><use href="#f-folder"/></svg><a href="#">Hanoi trip</a></div></td>
+            <td class="hide-sm"><span class="row"><span class="avatar avatar--sm">B</span><span class="text-2 muted">Bob can edit</span></span></td>
+            <td class="hide-sm num">19 Oct</td>
+            <td class="col-num muted">140 items</td>
+            <td class="col-actions hide-sm"></td>
+          </tr>
+          <tr>
+            <td class="col-check"><input class="check" type="checkbox" aria-label="Select tax-2025.pdf"></td>
+            <td><div class="name-cell"><svg class="ficon ficon--pdf"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">PDF</text></svg><a href="#">tax-2025.pdf</a></div></td>
+            <td class="hide-sm"><span class="faint">Only you</span></td>
+            <td class="hide-sm num">4 Oct</td>
+            <td class="col-num">3.2 MB</td>
+            <td class="col-actions hide-sm"></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Drag state: files are over the window. Dropping on a folder row puts them there. -->
+      <div class="dropzone" aria-hidden="true">
+        <div class="dropzone__card">
+          <svg class="icon"><use href="#i-upload"/></svg>
+          <strong>Drop to upload into Lease renewal</strong>
+          <span class="muted text-2">Drop anywhere else to upload into Projects</span>
+        </div>
+      </div>
+
+      <!-- Transfers in flight. Stays while you browse; collapses when done. -->
+      <aside class="tray" aria-label="Uploads">
+        <div class="tray__head">Uploading 3 of 5 <span class="faint">1.2 GB left, about 4 min</span><span class="grow"></span><button class="btn btn--sm btn--quiet btn--icon" aria-label="Hide"><svg class="icon"><use href="#i-chev-d"/></svg></button></div>
+        <div class="tray__item">
+          <svg class="ficon ficon--video"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">MOV</text></svg>
+          <span class="tray__name">kitchen-walkthrough.mov</span>
+          <span class="tray__state">48 %, 22 MB/s</span>
+          <div class="progress"><div class="progress__bar" style="--value:48%"></div></div>
+        </div>
+        <div class="tray__item">
+          <svg class="ficon ficon--image"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">RAW</text></svg>
+          <span class="tray__name">DSC_0412.ARW</span>
+          <span class="tray__state">12 %</span>
+          <div class="progress"><div class="progress__bar" style="--value:12%"></div></div>
+        </div>
+        <div class="tray__item">
+          <svg class="ficon ficon--pdf"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">PDF</text></svg>
+          <span class="tray__name">inspection-report.pdf</span>
+          <span class="tray__state">Waiting</span>
+          <div class="progress"><div class="progress__bar" style="--value:0%"></div></div>
+        </div>
+        <div class="tray__item">
+          <svg class="ficon ficon--doc"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">DOC</text></svg>
+          <span class="tray__name">deposit-letter.docx</span>
+          <span class="tray__state" style="color:var(--ok)">Done</span>
+          <div class="progress progress--ok"><div class="progress__bar" style="--value:100%"></div></div>
+        </div>
+        <div class="tray__item">
+          <svg class="ficon"><use href="#f-page"/><text class="ficon__ext" x="10" y="19">ZIP</text></svg>
+          <span class="tray__name">archive-2019.zip</span>
+          <span class="tray__state" style="color:var(--danger)">Too large, 6 GB limit</span>
+          <div class="progress progress--danger"><div class="progress__bar" style="--value:100%"></div></div>
+        </div>
+      </aside>
+    </main>

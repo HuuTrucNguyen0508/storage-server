@@ -1,0 +1,34 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: home
+  labels: {app.kubernetes.io/component: web}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`home.${DOMAIN}`)
+      kind: Rule
+      middlewares:
+        - name: sso-chain
+          namespace: auth
+      services:
+        - {name: home, port: 8080}
+    # The bare domain sends people to Home.
+    - match: Host(`${DOMAIN}`)
+      kind: Rule
+      middlewares:
+        - name: to-home
+      services:
+        - {name: home, port: 8080}
+  tls: {}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: to-home
+  labels: {app.kubernetes.io/component: web}
+spec:
+  redirectRegex:
+    regex: ^https?://[^/]+/.*
+    replacement: ${HOME_URL}
+    permanent: false

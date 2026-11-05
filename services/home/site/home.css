@@ -1,0 +1,105 @@
+/* Home portal. Builds on ui/tokens.css and ui/base.css. */
+
+.home {
+  width: min(64rem, 100%);
+  margin: 0 auto;
+  padding: var(--sp-8) var(--sp-5) var(--sp-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.home__intro { display: flex; flex-direction: column; gap: var(--sp-2); }
+.home__wordmark {
+  font-size: var(--fs-8);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  border-left: var(--spine-w) solid var(--app-accent);
+  padding-left: calc(var(--sp-4) - var(--spine-w));
+}
+.home__domain {
+  padding-left: var(--sp-4);
+  color: var(--ink-2);
+  font-size: var(--fs-4);
+  font-variant-numeric: tabular-nums;
+}
+.home__lede {
+  padding-left: var(--sp-4);
+  margin-top: var(--sp-3);
+  font-size: var(--fs-4);
+  line-height: var(--lh-reading);
+  color: var(--ink-2);
+}
+
+/* Doors: four large entries. Each carries its app's spine color. */
+.doors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+.door {
+  --door: var(--app-accent);
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  column-gap: var(--sp-4);
+  row-gap: var(--sp-1);
+  padding: var(--sp-5) var(--sp-5) var(--sp-4) calc(var(--sp-5) - var(--spine-w));
+  min-height: 10.5rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: var(--spine-w) solid var(--door);
+  border-radius: var(--r-3);
+  color: var(--ink);
+  text-decoration: none;
+  transition: background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+.door:hover { text-decoration: none; background: var(--surface-2); border-color: var(--line-strong); border-left-color: var(--door); }
+.door:focus-visible { outline-color: var(--door); }
+.door--storage { --door: var(--accent-storage); }
+.door--todo { --door: var(--accent-todo); }
+/* Third-party apps are not ours to color; they borrow the platform green. */
+.door--pdf, .door--grafana { --door: var(--accent-lab); }
+
+.door__icon {
+  grid-row: 1 / span 3;
+  width: 2rem; height: 2rem;
+  fill: none; stroke: var(--door); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;
+  margin-top: 0.2rem;
+}
+.door__name { font-size: var(--fs-6); font-weight: var(--fw-semibold); line-height: var(--lh-tight); letter-spacing: -0.01em; }
+.door__what { color: var(--ink-2); line-height: var(--lh-body); max-width: 30ch; }
+.door__host { margin-top: var(--sp-3); color: var(--ink-3); font-size: var(--fs-2); font-variant-numeric: tabular-nums; }
+.door__key { position: absolute; top: var(--sp-3); right: var(--sp-3); }
+
+.admin { display: grid; grid-template-columns: minmax(0, 18rem) minmax(0, 1fr); gap: var(--sp-2) var(--sp-6); align-items: start; }
+.admin__title { grid-column: 1; font-size: var(--fs-4); }
+.admin__note { grid-column: 1; font-size: var(--fs-2); max-width: 26ch; }
+.admin__list { grid-column: 2; grid-row: 1 / span 2; list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
+.admin__link {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-2);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink); text-decoration: none;
+}
+.admin__link:hover { background: var(--surface-2); text-decoration: none; }
+.admin__name { font-weight: var(--fw-medium); }
+.admin__host { color: var(--ink-3); font-size: var(--fs-2); font-variant-numeric: tabular-nums; }
+
+.home__foot { width: min(64rem, 100%); margin: 0 auto; padding: 0 var(--sp-5) var(--sp-6); font-size: var(--fs-2); }
+.home__foot p { padding-left: var(--sp-4); }
+
+@media (max-width: 720px) {
+  .home { padding: var(--sp-6) var(--gutter) var(--sp-6); gap: var(--sp-6); }
+  .home__wordmark { font-size: var(--fs-7); }
+  .doors { grid-template-columns: minmax(0, 1fr); }
+  .door { min-height: 0; padding: var(--sp-4) var(--sp-4) var(--sp-4) calc(var(--sp-4) - var(--spine-w)); }
+  .door__key { display: none; }
+  .door__what { max-width: none; }
+  .admin { grid-template-columns: minmax(0, 1fr); }
+  .admin__list { grid-column: 1; grid-row: auto; margin-top: var(--sp-2); }
+  .home__foot { padding: 0 var(--gutter) var(--sp-6); }
+  .home__foot p { padding-left: 0; }
+}

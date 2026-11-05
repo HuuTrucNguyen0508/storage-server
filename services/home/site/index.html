@@ -25,9 +25,10 @@
       <a class="topbar__link" data-host="storage" href="#">Storage</a>
       <a class="topbar__link" data-host="todo" href="#">Todo</a>
       <a class="topbar__link" data-host="pdf" href="#">PDF</a>
-      <a class="topbar__link" data-host="grafana" href="#">Grafana</a>
+      <a class="topbar__link" data-host="grafana" data-admin-only href="#">Grafana</a>
     </nav>
     <span class="topbar__spacer"></span>
+    <span class="topbar__user" id="me" hidden><span class="avatar" id="me-initial" aria-hidden="true"></span><span id="me-name"></span></span>
     <a class="topbar__link" id="signout" data-signout href="#">Sign out</a>
   </header>
 
@@ -60,7 +61,7 @@
         <span class="door__what">Merge, split, compress, sign and convert. Stirling PDF, running here.</span>
         <span class="door__host" data-host-label="pdf"></span>
       </a>
-      <a class="door door--grafana" data-host="grafana" href="#" data-key="4">
+      <a class="door door--grafana" data-host="grafana" data-admin-only href="#" data-key="4">
         <span class="door__key kbd" aria-hidden="true">4</span>
         <svg class="door__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5h16"/><path d="M5.5 15.5 9 11l3.5 3 3-5 3 3.5"/></svg>
         <span class="door__name">Grafana</span>
@@ -69,7 +70,7 @@
       </a>
     </section>
 
-    <section class="admin" aria-labelledby="admin-h">
+    <section class="admin" aria-labelledby="admin-h" data-admin-only>
       <h2 id="admin-h" class="admin__title">For admins</h2>
       <p class="admin__note muted">These need the admins group. Anyone else gets turned away at sign-in.</p>
       <ul class="admin__list" role="list">

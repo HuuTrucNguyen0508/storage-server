@@ -39,12 +39,32 @@
     signout.href = url("auth") + "logout?rd=" + encodeURIComponent(url("home"));
   }
 
-  // Number keys open the four doors. Ignored while typing or with modifiers.
+  // Show who is signed in, and hide links that only admins can open. Authelia
+  // still enforces access; this only spares friends a door that refuses them.
+  fetch("/api/me", { credentials: "same-origin", redirect: "manual", cache: "no-store" })
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (me) {
+      if (!me || !me.user) return;
+      var name = me.name || me.user;
+      var meEl = document.getElementById("me");
+      document.getElementById("me-name").textContent = name;
+      document.getElementById("me-initial").textContent = name.charAt(0).toUpperCase();
+      meEl.title = me.email ? name + " (" + me.email + ")" : name;
+      meEl.hidden = false;
+      var groups = (me.groups || "").split(",");
+      if (groups.indexOf("admins") === -1) {
+        var adminOnly = document.querySelectorAll("[data-admin-only]");
+        for (var k = 0; k < adminOnly.length; k++) adminOnly[k].hidden = true;
+      }
+    })
+    .catch(function () { /* Leave every link visible; access control is Authelia's job. */ });
+
+  // Number keys open the visible doors. Ignored while typing or with modifiers.
   document.addEventListener("keydown", function (e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     var t = e.target;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-    var door = document.querySelector('.door[data-key="' + e.key + '"]');
+    var door = document.querySelector('.door[data-key="' + e.key + '"]:not([hidden])');
     if (door) {
       e.preventDefault();
       location.assign(door.href);

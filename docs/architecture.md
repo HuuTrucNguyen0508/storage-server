@@ -153,6 +153,7 @@ Namespace `monitoring`. The observability task owns everything there.
   - Storage: `storage_upload_bytes_total`; `storage_download_bytes_total{kind="download|preview|public"}`; `storage_uploads_total{result="ok|error|quota|too_large"}`; `storage_files` (gauge, all users); `storage_used_bytes` (gauge); `storage_shares_active{type="user|link"}` (gauge); `storage_volume_free_bytes` (gauge); `storage_preview_requests_total{kind="image|video|audio|pdf|text|markdown|office|other"}`; `storage_thumbnail_duration_seconds` (histogram).
   - Todo: `todo_tasks_created_total`; `todo_tasks_completed_total`; `todo_tasks_open` (gauge); `todo_projects` (gauge); `todo_live_connections` (gauge, server-sent event clients).
 - Health: `GET /healthz` (process alive, no dependencies) and `GET /readyz` (database reachable) on the app port.
+- Database metrics come from the observability task's PodMonitor for every CloudNativePG cluster (port 9187); app NetworkPolicies allow that port from Prometheus pods. Apps don't ship their own database PodMonitor.
 - Alerts route to an in-cluster webhook sink by default (its received alerts land in Loki), so alert delivery is testable without outside services.
 
 ## Kubernetes conventions
@@ -173,7 +174,7 @@ Namespace `monitoring`. The observability task owns everything there.
 ## Cross-app integration
 
 - Stirling PDF 3.2.2 has no free Prometheus metrics (`/actuator/prometheus` returns 404 without a paid licence); it is covered by Traefik service metrics, probes and logs.
-- Storage previews Office documents (docx, xlsx, pptx, odt, ods, odp) by converting them to PDF through Stirling PDF at `STIRLING_URL=http://stirling-pdf.pdf.svc.cluster.local:8080`, with a concurrency limit and a cache. If conversion fails, the viewer offers a download instead. The API calls are documented in `platform/stirling-pdf/README.md`.
+- Storage previews Office documents (docx, xlsx, pptx, odt, ods, odp) by converting them to PDF through Stirling PDF at `STIRLING_URL=http://stirling-pdf.pdf.svc.cluster.local:8080`, with a concurrency limit and a cache. If conversion fails, the viewer offers a download instead. The API calls are documented in `platform/stirling-pdf/README.md`. The preview endpoint answers `202` while converting and the viewer polls it, because a request that sends no response headers for about 15 seconds gets closed by the client side (Traefik logs `499`). Any app endpoint that can take that long must answer early and be polled, and SSE streams must send heartbeats more often than that.
 - Home, Storage and Todo share one top bar: an app switcher (Home, Storage, Todo, PDF, Grafana for admins), the signed-in user, and a sign-out link. Visual tokens come from `packages/ui/tokens.css`. Stirling PDF and Grafana keep their own UI.
 
 ## Repo layout and ownership

@@ -29,6 +29,9 @@ busy=$(ss -Hltn "( sport = :$HTTP_PORT or sport = :$HTTPS_PORT )" | awk -v want=
 }')
 [ -z "$busy" ] || die "another process listens on ${busy//$'\n'/, } and kube-proxy would take that traffic over; stop it, or set LISTEN_ADDRESS, HTTP_PORT or HTTPS_PORT in config/override.env"
 
+# The API server reads time zones from the host, and the backup CronJobs set timeZone.
+[ -e /usr/share/zoneinfo/Etc/UTC ] || die "the host has no time zone data (/usr/share/zoneinfo); install the tzdata package"
+
 [ -x "$K3S_DOWNLOAD" ] && [ -f "$K3S_INSTALLER" ] || die "$K3S_DOWNLOAD is missing; run scripts/tools.sh"
 cfg="$LOCAL_DIR/k3s-config.yaml"
 render "$ROOT/cluster/k3s.yaml" > "$cfg"

@@ -12,10 +12,10 @@ A self-hosted platform for you and your friends, on Kubernetes. One sign-in open
 
 ## Start it
 
-You need Linux with systemd, `sudo`, Docker (it builds the app images), `helm`, `jq`, `envsubst`, `openssl`, `curl` and `make`. `make up` installs a single-node [k3s](https://k3s.io) server system-wide and imports the app images into it with `sudo`, so it asks for your password, and again later in the run if sudo's cached credential has expired. The pinned `kubectl` and k3s binaries are downloaded into `.local/` and checksum-verified.
+You need Linux with systemd, `sudo`, Docker (it builds the app images), `helm`, `jq`, `envsubst`, `openssl`, `curl`, `make` and the time zone data (`tzdata`). `make up` installs a single-node [k3s](https://k3s.io) server system-wide and imports the app images into it with `sudo`, so it asks for your password, and again later in the run if sudo's cached credential has expired. The pinned `kubectl` and k3s binaries are downloaded into `.local/` and checksum-verified.
 
 ```sh
-make up      # install k3s and deploy everything (TODO(measure) from scratch)
+make up      # install k3s and deploy everything (about 8 minutes from scratch, 3.5 to rerun)
 make creds   # print the URLs and the generated logins
 ```
 

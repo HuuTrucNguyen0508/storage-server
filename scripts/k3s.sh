@@ -42,6 +42,7 @@ installed=$("$K3S_BIN" --version 2>/dev/null | awk 'NR == 1 {print $3}' || true)
 [ "$installed" = "$K3S_VERSION" ] || changes="$changes; installed: ${installed:-none}"
 cmp -s "$cfg" "$K3S_CONFIG" 2>/dev/null || changes="$changes; $K3S_CONFIG differs from cluster/k3s.yaml"
 systemctl is-active --quiet k3s || changes="$changes; the k3s service is not running"
+systemctl is-enabled --quiet k3s 2>/dev/null || changes="$changes; the k3s service does not start on boot"
 
 if [ -n "$changes" ]; then
   log "installing k3s $K3S_VERSION (${changes#; }); sudo may ask for your password"

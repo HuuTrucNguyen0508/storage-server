@@ -199,21 +199,25 @@ groups:
           summary: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full"
           description: "The volume is more than 85% full."
 
-      # kind's local-path and hostPath volumes report no kubelet_volume_stats, so the rule
-      # above stays silent there. Every PVC and DATA_DIR live on the host filesystems behind
-      # the nodes' /var and /data: alert on those at the same 85%.
+      # local-path and hostPath volumes report no kubelet_volume_stats, so the rule above
+      # stays silent for them. They are directories on the host's own filesystems (PVCs
+      # under /var/lib/rancher/k3s/storage, DATA_DIR wherever it is set), so alert on every
+      # real host filesystem at the same 85%. Left out: in-memory, overlay and other virtual
+      # filesystems, FUSE mounts (fuseblk, a FUSE driver for a local disk, stays), and
+      # /boot, /run and /snap. One alert per device: btrfs subvolumes and bind mounts of
+      # one filesystem count once.
       - alert: LabHostVolumeAlmostFull
         expr: |
-          max by (mountpoint) (
-            1 - node_filesystem_avail_bytes{mountpoint=~"/var|/data", fstype!="tmpfs"}
-              / node_filesystem_size_bytes{mountpoint=~"/var|/data", fstype!="tmpfs"}
+          max by (device) (
+            1 - node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|overlay|squashfs|nsfs|autofs|fuse|fuse[.].+", mountpoint!~"/(boot|run|snap)(/.*)?"}
+              / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs|overlay|squashfs|nsfs|autofs|fuse|fuse[.].+", mountpoint!~"/(boot|run|snap)(/.*)?"}
           ) > 0.85
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "Host filesystem behind {{ $labels.mountpoint }} is {{ $value | humanizePercentage }} full"
-          description: "Persistent volumes (/var) or DATA_DIR (/data) share this host filesystem; it is more than 85% full."
+          summary: "Host filesystem {{ $labels.device }} is {{ $value | humanizePercentage }} full"
+          description: "A host filesystem is more than 85% full. Persistent volumes, DATA_DIR and container images live on the host's filesystems; `findmnt --source {{ $labels.device }}` shows where this one is mounted."
 
       - alert: LabStorageVolumeLowFreeSpace
         expr: |

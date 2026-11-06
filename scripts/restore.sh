@@ -30,6 +30,10 @@ if [ -n "${DUMP:-}" ]; then f="/backups/$DUMP"; else
   f=$(ls -1 /backups/ | grep -E "^${APP}-[0-9]{8}T[0-9]{6}Z\.dump$" | sort | tail -n 1); f="/backups/$f"; fi
 [ -f "$f" ] || { echo "no dump found for ${APP} in /backups" >&2; exit 1; }
 echo "restoring $f"
+# kube-router admits a new pod to the database a moment after it starts, so wait.
+i=0; until pg_isready -q -d "$RESTORE_URI"; do
+  i=$((i + 1)); [ "$i" -lt 60 ] || { echo "the database is not reachable" >&2; exit 1; }; sleep 1
+done
 # Extensions are created by the database bootstrap as the superuser, which the app user
 # cannot drop, so the restore leaves them out of its table of contents.
 pg_restore -l "$f" | grep -vE " (EXTENSION -|COMMENT - EXTENSION) " \

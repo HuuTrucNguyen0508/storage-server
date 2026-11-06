@@ -1,4 +1,5 @@
-# Host-backed volumes under ${DATA_DIR} (mounted at /data in every kind node).
+# Host-backed volumes: directories under DATA_DIR on the k3s host. scripts/up.sh creates
+# them (world-writable: hostPath ignores fsGroup) and applies this file through render.
 # No provisioner: each PV is pre-bound to one claim and survives cluster rebuilds.
 # Claims must use storageClassName lab-host, ReadWriteOnce, and request at most the capacity below.
 apiVersion: storage.k8s.io/v1
@@ -21,7 +22,7 @@ spec:
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   claimRef: {namespace: storage, name: storage-data}
-  hostPath: {path: /data/storage, type: Directory}
+  hostPath: {path: "${DATA_DIR}/storage", type: Directory}
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -34,7 +35,7 @@ spec:
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   claimRef: {namespace: storage, name: storage-backups}
-  hostPath: {path: /data/backups/storage, type: Directory}
+  hostPath: {path: "${DATA_DIR}/backups/storage", type: Directory}
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -47,7 +48,7 @@ spec:
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   claimRef: {namespace: todo, name: todo-backups}
-  hostPath: {path: /data/backups/todo, type: Directory}
+  hostPath: {path: "${DATA_DIR}/backups/todo", type: Directory}
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -60,4 +61,4 @@ spec:
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   claimRef: {namespace: auth, name: auth-data}
-  hostPath: {path: /data/auth, type: Directory}
+  hostPath: {path: "${DATA_DIR}/auth", type: Directory}

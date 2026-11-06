@@ -364,7 +364,7 @@
       "id": 7,
       "type": "gauge",
       "title": "Host CPU",
-      "description": "kind nodes share the host kernel, so node-exporter reports the host.",
+      "description": "The k3s node is the host itself, so node-exporter reports the whole machine.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -498,7 +498,7 @@
       "id": 9,
       "type": "gauge",
       "title": "Host disk",
-      "description": "Fullest of the host filesystems behind /var (images, PVCs) and /data (DATA_DIR).",
+      "description": "Fullest real host filesystem. PVCs live under /var/lib/rancher/k3s/storage, DATA_DIR wherever it is set.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -516,7 +516,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "1 - min(node_filesystem_avail_bytes{mountpoint=~\"/|/var|/data\", fstype!=\"tmpfs\"} / node_filesystem_size_bytes{mountpoint=~\"/|/var|/data\", fstype!=\"tmpfs\"})",
+          "expr": "1 - min(node_filesystem_avail_bytes{fstype!~\"tmpfs|ramfs|overlay|squashfs|nsfs|autofs|fuse|fuse[.].+\", mountpoint!~\"/(boot|run|snap)(/.*)?\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|ramfs|overlay|squashfs|nsfs|autofs|fuse|fuse[.].+\", mountpoint!~\"/(boot|run|snap)(/.*)?\"})",
           "legendFormat": "",
           "range": true
         }

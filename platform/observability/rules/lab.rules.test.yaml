@@ -171,13 +171,40 @@ tests:
         values: '9x15'
       - series: 'kubelet_volume_stats_capacity_bytes{namespace="monitoring", persistentvolumeclaim="storage-loki-0"}'
         values: '10x15'
-      - series: 'node_filesystem_avail_bytes{instance="172.18.0.2:9100", mountpoint="/var", fstype="btrfs"}'
+      # Host filesystems as node-exporter reports them on the k3s node. Fire: the btrfs root
+      # (two subvolume mounts, one alert) and a fuseblk disk. Stay quiet: DATA_DIR's ext4
+      # disk at 50%, and full tmpfs, /boot, /run/media and sshfs mounts.
+      - series: 'node_filesystem_avail_bytes{instance="10.42.0.9:9100", device="/dev/nvme0n1p2", mountpoint="/", fstype="btrfs"}'
         values: '10x15'
-      - series: 'node_filesystem_size_bytes{instance="172.18.0.2:9100", mountpoint="/var", fstype="btrfs"}'
+      - series: 'node_filesystem_size_bytes{instance="10.42.0.9:9100", device="/dev/nvme0n1p2", mountpoint="/", fstype="btrfs"}'
         values: '100x15'
-      - series: 'node_filesystem_avail_bytes{instance="172.18.0.2:9100", mountpoint="/data", fstype="btrfs"}'
+      - series: 'node_filesystem_avail_bytes{instance="10.42.0.9:9100", device="/dev/nvme0n1p2", mountpoint="/home", fstype="btrfs"}'
+        values: '10x15'
+      - series: 'node_filesystem_size_bytes{instance="10.42.0.9:9100", device="/dev/nvme0n1p2", mountpoint="/home", fstype="btrfs"}'
+        values: '100x15'
+      - series: 'node_filesystem_avail_bytes{instance="10.42.0.9:9100", device="/dev/sdb1", mountpoint="/srv/lab", fstype="ext4"}'
         values: '50x15'
-      - series: 'node_filesystem_size_bytes{instance="172.18.0.2:9100", mountpoint="/data", fstype="btrfs"}'
+      - series: 'node_filesystem_size_bytes{instance="10.42.0.9:9100", device="/dev/sdb1", mountpoint="/srv/lab", fstype="ext4"}'
+        values: '100x15'
+      - series: 'node_filesystem_avail_bytes{instance="10.42.0.9:9100", device="/dev/sdc1", mountpoint="/mnt/archive", fstype="fuseblk"}'
+        values: '5x15'
+      - series: 'node_filesystem_size_bytes{instance="10.42.0.9:9100", device="/dev/sdc1", mountpoint="/mnt/archive", fstype="fuseblk"}'
+        values: '100x15'
+      - series: 'node_filesystem_avail_bytes{instance="10.42.0.9:9100", device="tmpfs", mountpoint="/tmp", fstype="tmpfs"}'
+        values: '1x15'
+      - series: 'node_filesystem_size_bytes{instance="10.42.0.9:9100", device="tmpfs", mountpoint="/tmp", fstype="tmpfs"}'
+        values: '100x15'
+      - series: 'node_filesystem_avail_bytes{instance="10.42.0.9:9100", device="/dev/nvme0n1p1", mountpoint="/boot", fstype="vfat"}'
+        values: '1x15'
+      - series: 'node_filesystem_size_bytes{instance="10.42.0.9:9100", device="/dev/nvme0n1p1", mountpoint="/boot", fstype="vfat"}'
+        values: '100x15'
+      - series: 'node_filesystem_avail_bytes{instance="10.42.0.9:9100", device="/dev/sdd1", mountpoint="/run/media/lab/usb", fstype="exfat"}'
+        values: '1x15'
+      - series: 'node_filesystem_size_bytes{instance="10.42.0.9:9100", device="/dev/sdd1", mountpoint="/run/media/lab/usb", fstype="exfat"}'
+        values: '100x15'
+      - series: 'node_filesystem_avail_bytes{instance="10.42.0.9:9100", device="lab@backup:/", mountpoint="/mnt/backup", fstype="fuse.sshfs"}'
+        values: '1x15'
+      - series: 'node_filesystem_size_bytes{instance="10.42.0.9:9100", device="lab@backup:/", mountpoint="/mnt/backup", fstype="fuse.sshfs"}'
         values: '100x15'
       - series: 'storage_volume_free_bytes{namespace="storage", job="storage", pod="storage-1"}'
         values: '5x15'
@@ -219,10 +246,16 @@ tests:
         exp_alerts:
           - exp_labels:
               severity: warning
-              mountpoint: /var
+              device: /dev/nvme0n1p2
             exp_annotations:
-              summary: "Host filesystem behind /var is 90% full"
-              description: "Persistent volumes (/var) or DATA_DIR (/data) share this host filesystem; it is more than 85% full."
+              summary: "Host filesystem /dev/nvme0n1p2 is 90% full"
+              description: "A host filesystem is more than 85% full. Persistent volumes, DATA_DIR and container images live on the host's filesystems; `findmnt --source /dev/nvme0n1p2` shows where this one is mounted."
+          - exp_labels:
+              severity: warning
+              device: /dev/sdc1
+            exp_annotations:
+              summary: "Host filesystem /dev/sdc1 is 95% full"
+              description: "A host filesystem is more than 85% full. Persistent volumes, DATA_DIR and container images live on the host's filesystems; `findmnt --source /dev/sdc1` shows where this one is mounted."
       - alertname: LabStorageVolumeLowFreeSpace
         eval_time: 6m
         exp_alerts:

@@ -3,7 +3,7 @@ import { createReadStream, mkdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { type Browser, type BrowserContext, expect, type Page, test } from "@playwright/test";
 
-// End-to-end proof in the kind cluster, through Traefik and real Authelia
+// End-to-end proof in the lab cluster, through Traefik and real Authelia
 // sign-in. Run with e2e/cluster-proof.sh, which sets:
 //   CLUSTER=1 BASE_URL=https://storage.<domain> AUTH_URL=https://auth.<domain>
 //   ALICE_PASSWORD BOB_PASSWORD FIXTURES SHOTS [BIG_FILE]

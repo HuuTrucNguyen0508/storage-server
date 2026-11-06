@@ -11,7 +11,7 @@ spec:
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   claimRef: {namespace: smoke, name: smoke-data}
-  hostPath: {path: /data/smoke, type: Directory}
+  hostPath: {path: "${DATA_DIR}/smoke", type: Directory}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

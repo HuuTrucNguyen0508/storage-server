@@ -12,10 +12,10 @@ A self-hosted platform for you and your friends, on Kubernetes. One sign-in open
 
 ## Start it
 
-You need Linux with Docker, `helm`, `jq`, `envsubst`, `openssl`, `curl` and `make`. Everything else (pinned `kind` and `kubectl`) is downloaded into `.local/bin/`.
+You need Linux with systemd, `sudo`, Docker (it builds the app images), `helm`, `jq`, `envsubst`, `openssl`, `curl`, `make` and the time zone data (`tzdata`). `make up` installs a single-node [k3s](https://k3s.io) server system-wide and imports the app images into it with `sudo`, so it asks for your password, and again later in the run if sudo's cached credential has expired. The pinned `kubectl` and k3s binaries are downloaded into `.local/` and checksum-verified.
 
 ```sh
-make up      # build the cluster and deploy everything (about 8 minutes from scratch)
+make up      # install k3s and deploy everything (about 8 minutes from scratch, 3.5 to rerun)
 make creds   # print the URLs and the generated logins
 ```
 
@@ -32,7 +32,7 @@ Open **https://lab.localhost**. It sends you to sign in, then to the Home portal
 
 Add a friend with `scripts/users.sh add <username> <email>`. It prints their password. Add `--admin` to give them the admin group.
 
-Locally the platform listens only on `127.0.0.1`. To let a friend in from their own device, use the `remote` profile: a real domain or your Tailscale address, Let's Encrypt certificates, and two-factor sign-in. See [platform/README.md](platform/README.md#run-it-for-friends-remote-profile).
+Locally the apps listen only on `127.0.0.1`. k3s's own API server and kubelet listen on every interface and require client certificates; [platform/README.md](platform/README.md#security-on-the-server) says when to firewall them. To let a friend in from their own device, use the `remote` profile: a real domain or your Tailscale address, Let's Encrypt certificates, and two-factor sign-in. See [platform/README.md](platform/README.md#run-it-for-friends-remote-profile).
 
 ## Everyday commands
 
@@ -45,7 +45,7 @@ Locally the platform listens only on `127.0.0.1`. To let a friend in from their 
 | `make e2e` | Browser tests of the main journeys through real sign-in. |
 | `make load-smoke`, `make load-load`, `make load-stress` | k6 runs inside the cluster; results land in Grafana. |
 | `make backup`, `make restore` | Dump both databases to the host now; restore the newest dumps. |
-| `make down CONFIRM=1` | Delete the cluster. Your files, backups and `.local/` stay on disk. |
+| `make down CONFIRM=1` | Uninstall k3s from this machine, which deletes the cluster. Your files, backups and `.local/` stay on disk. |
 
 ## How it fits together
 
@@ -65,7 +65,7 @@ Prometheus scrapes every app, database, Traefik and Authelia; k6 remote-writes i
 ```
 
 - Traefik strips any `Remote-*` header a client sends, then asks Authelia. Apps trust the headers only because NetworkPolicies let traffic in from Traefik alone. `make smoke` proves both.
-- Files and database backups live under `DATA_DIR` on the host, so deleting the cluster loses nothing.
+- Files and database dumps live under `DATA_DIR` on the host and survive `make down`. The live databases don't: run `make backup` first, or changes since the last nightly dump are lost.
 - Uploaded HTML, SVG and XML are never rendered on the app's origin. PDFs render with pdf.js; Markdown renders with raw HTML disabled.
 
 ## Where to read more
@@ -85,7 +85,7 @@ Prometheus scrapes every app, database, Traefik and Authelia; k6 remote-writes i
 ## Repo layout
 
 ```
-cluster/    kind cluster configs          platform/   Traefik, Authelia, cert-manager, CNPG, Stirling PDF, observability
+cluster/    k3s server config             platform/   Traefik, Authelia, cert-manager, CNPG, Stirling PDF, observability
 config/     defaults and pinned versions  services/   storage, todo, home
 scripts/    make targets                  packages/ui shared design tokens and CSS
 loadgen/    k6 scripts and Jobs           tests/e2e/  platform browser tests

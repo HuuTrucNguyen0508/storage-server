@@ -9,9 +9,10 @@ commonLabels:
 crds:
   enabled: false
 
-# kind runs the controller manager, scheduler, etcd and kube-proxy bound to 127.0.0.1
-# inside the node container, so Prometheus can't reach them. Turning them off removes
-# their scrape jobs, dashboards and rules (no permanent *Down alerts).
+# k3s runs the controller manager, scheduler and kube-proxy inside its one server process
+# and binds their metrics to 127.0.0.1, so Prometheus can't reach them; there is no etcd
+# (k3s keeps cluster state in SQLite through kine). Turning them off removes their scrape
+# jobs, dashboards and rules (no permanent *Down alerts).
 kubeControllerManager: {enabled: false}
 kubeScheduler: {enabled: false}
 kubeEtcd: {enabled: false}
@@ -28,7 +29,8 @@ defaultRules:
   rules:
     windows: false
   disabled:
-    # kind nodes share the host kernel and filesystems; these fire on any busy laptop.
+    # node-exporter reports the host itself (a laptop in the local profile); this fires on
+    # any busy one.
     NodeMemoryMajorPagesFaults: true
     # Replaced by LabPodCrashLooping (rules/lab.rules.yaml), which fires sooner.
     KubePodCrashLooping: true
@@ -160,6 +162,12 @@ kube-state-metrics:
     - namespaces=[app.kubernetes.io/part-of]
 
 prometheus-node-exporter:
+  # The chart defaults to the host network, which on native k3s would serve unauthenticated
+  # host metrics on 0.0.0.0:9100 (the LAN). In the pod network it has no host port, and
+  # NetworkPolicy node-exporter (manifests/) admits only Prometheus. hostPID and
+  # the read-only /proc, /sys and / mounts still report the host's CPU, memory and disks;
+  # node_network_* now describe the pod's own interface (README, Known limits).
+  hostNetwork: false
   resources:
     requests: {cpu: 10m, memory: 24Mi}
     limits: {memory: 96Mi}

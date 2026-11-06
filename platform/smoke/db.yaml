@@ -69,6 +69,10 @@ spec:
                 - |
                   set -eu
                   f="/backups/smokedb-$(date -u +%Y%m%dT%H%M%SZ).dump"
+                  # kube-router admits a new pod to the database a moment after it starts, so wait.
+                  i=0; until pg_isready -q -d "$DATABASE_URL"; do
+                    i=$((i + 1)); [ "$i" -lt 60 ] || { echo "the database is not reachable" >&2; exit 1; }; sleep 1
+                  done
                   pg_dump --format=custom --file="$f.partial" "$DATABASE_URL"
                   mv "$f.partial" "$f"
                   ls -1 /backups | grep -E '^smokedb-[0-9]{8}T[0-9]{6}Z\.dump$' | sort -r | tail -n +8 | sed 's|^|/backups/|' | xargs -r rm -f

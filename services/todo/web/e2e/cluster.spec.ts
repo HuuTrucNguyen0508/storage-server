@@ -1,4 +1,4 @@
-// Proof in the kind cluster, through Traefik and real Authelia sign-in.
+// Proof in the lab cluster, through Traefik and real Authelia sign-in.
 // Run with e2e/cluster-proof.sh, which sets CLUSTER=1, BASE_URL, ALICE_PASSWORD,
 // BOB_PASSWORD and SHOTS.
 

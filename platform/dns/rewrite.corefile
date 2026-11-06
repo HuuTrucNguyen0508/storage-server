@@ -1,6 +1,7 @@
-    # lab-domain-begin (managed by scripts/up.sh)
-    rewrite stop {
-        name regex (?i)^([a-z0-9-]+\.)*${DOMAIN_REGEX}\.$ traefik.traefik.svc.cluster.local.
-        answer auto
-    }
-    # lab-domain-end
+# Every name under ${DOMAIN} resolves to Traefik's Service inside the cluster. scripts/up.sh
+# step 2 stores this in ConfigMap kube-system/coredns-custom (key lab-domain.override),
+# which k3s's CoreDNS imports into its main server block.
+rewrite stop {
+    name regex (?i)^([a-z0-9-]+\.)*${DOMAIN_REGEX}\.$ traefik.traefik.svc.cluster.local.
+    answer auto
+}

@@ -106,6 +106,18 @@ if want tls; then
   if openssl s_client -connect "${LISTEN_ADDRESS}:${HTTPS_PORT}" -servername "storage.${DOMAIN}" -CAfile "$CA" -verify_return_error </dev/null >/dev/null 2>&1; then
     ok "wildcard certificate verifies against .local/ca.crt (storage.${DOMAIN})"
   else bad "wildcard certificate does not verify against .local/ca.crt"; fi
+  # kube-proxy serves the node ports only on LISTEN_ADDRESS (cluster/k3s.yaml): ask for the
+  # lab on every other IPv4 address of this host. Another service there fails --cacert.
+  if [ "$LISTEN_ADDRESS" != 0.0.0.0 ]; then
+    others=$(ip -4 -o addr show 2>/dev/null | awk -v l="$LISTEN_ADDRESS" '{split($4, a, "/"); if (a[1] != l && a[1] !~ /^127\./) print a[1]}' || true)
+    exposed=""
+    for ip in $others; do
+      if curl -s -o /dev/null --cacert "$CA" --connect-to "::${ip}:${HTTPS_PORT}" --connect-timeout 3 --max-time 5 "https://auth.${DOMAIN}/api/health"; then
+        exposed="$exposed $ip"
+      fi
+    done
+    check "the lab answers on ${LISTEN_ADDRESS}:${HTTPS_PORT} only, not on $(wc -w <<<"$others") other host address(es)${exposed:+ (exposed on:$exposed)}" [ -z "$exposed" ]
+  fi
   # *.localhost resolves to ::1 and 127.0.0.1; nothing listens on ::1, so clients fall back to IPv4.
   if [ "$LISTEN_ADDRESS" = 127.0.0.1 ]; then
     r=$(curl -sS -o /dev/null -w '%{http_code} %{remote_ip}' --cacert "$CA" "https://auth.${DOMAIN}/api/health" || true)

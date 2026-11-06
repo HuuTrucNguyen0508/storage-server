@@ -211,7 +211,8 @@ spec:
           podSelector: {matchLabels: {app.kubernetes.io/name: prometheus}}
       ports: [{port: 8080, protocol: TCP}, {port: 8081, protocol: TCP}]
 ---
-# node-exporter runs on the host network, where NetworkPolicy doesn't apply; listed for completeness.
+# node-exporter: scraped by Prometheus. It runs in the pod network (hostNetwork: false in
+# values/kube-prometheus-stack.yaml), so it has no host port and this policy applies.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

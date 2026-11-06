@@ -1,0 +1,23 @@
+# k3s server configuration for every profile (local, ci, remote). scripts/k3s.sh renders it
+# (scripts/lib.sh render) to .local/k3s-config.yaml and installs it as
+# /etc/rancher/k3s/config.yaml (mode 0644: it holds no secrets). Changing it restarts k3s.
+
+# Only root reads k3s's admin kubeconfig (/etc/rancher/k3s/k3s.yaml); scripts/k3s.sh copies
+# it to .local/kubeconfig.
+write-kubeconfig-mode: "0600"
+# The platform installs its own Traefik (platform/traefik) and metrics-server
+# (platform/observability). servicelb would bind host ports for LoadBalancer Services;
+# the lab exposes Traefik through a NodePort Service instead.
+disable: [traefik, servicelb, metrics-server]
+# Traefik's nodeSelector (platform/traefik/values.yaml).
+node-label: ["ingress-ready=true"]
+# Traefik's Service uses the host ports themselves (HTTP_PORT, HTTPS_PORT) as node ports, so
+# the range starts at the lower of the two. Only that Service sets node ports; a NodePort
+# Service without one would get a random port from this range.
+service-node-port-range: "${NODE_PORT_RANGE}"
+# One node needs no tunnel between nodes. host-gw routes pod traffic directly; the default
+# vxlan backend would listen on UDP 8472 on every interface, without authentication.
+flannel-backend: host-gw
+# kube-proxy serves node ports only on LISTEN_ADDRESS (127.0.0.1 in the local profile;
+# 0.0.0.0/0 when LISTEN_ADDRESS=0.0.0.0).
+kube-proxy-arg: ["nodeport-addresses=${NODE_PORT_ADDRESSES}"]

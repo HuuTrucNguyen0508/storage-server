@@ -230,7 +230,8 @@ func (o *Office) PDF(ctx context.Context, blobID, name string, size int64) (stri
 		if o.Log != nil {
 			o.Log.WarnContext(bg, "office conversion failed", "blob", blobID, "err", err)
 		}
-		os.WriteFile(failed, []byte(err.Error()), 0o600) //nolint:errcheck
+		msg := err.Error()
+		o.dir.WriteAtomic(failed, func(w io.Writer) error { _, werr := io.WriteString(w, msg); return werr }) //nolint:errcheck
 	}()
 	return "", ErrPending
 }

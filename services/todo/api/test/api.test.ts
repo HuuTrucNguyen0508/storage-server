@@ -688,3 +688,62 @@ it("delivers a notification that arrives while the stream is reading", async () 
   }
   expect(text).toContain("during read");
 });
+it("reconnects a terminated LISTEN backend and catches up SSE before the heartbeat", async () => {
+  const address = b.app.server.listening
+    ? `http://127.0.0.1:${(b.app.server.address() as { port: number }).port}`
+    : await b.app.listen({ host: "127.0.0.1", port: 0 });
+  const p = (
+    await call("POST", "/api/projects", { name: "listener recovery" })
+  ).body.id;
+  const events = b.store.events.bind(b.store);
+  let initialRead!: () => void;
+  const ready = new Promise<void>((resolve) => (initialRead = resolve));
+  const spy = vi
+    .spyOn(b.store, "events")
+    .mockImplementationOnce(async (user, after) => {
+      const rows = await events(user, after);
+      initialRead();
+      return rows;
+    });
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), 3000);
+  let text = "";
+  try {
+    const response = await fetch(address + "/api/events", {
+      headers: headers(),
+      signal: ctrl.signal,
+    });
+    const reader = response.body!.getReader();
+    await reader.read();
+    await ready;
+    const terminated = await a.pool.query(
+      "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=current_database() AND query ILIKE 'LISTEN todo_events%'",
+    );
+    expect(terminated.rowCount).toBe(2);
+    await call("POST", `/api/projects/${p}/tasks`, {
+      title: "written while listener disconnected",
+    });
+    while (!text.includes("written while listener disconnected")) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      text += new TextDecoder().decode(chunk.value);
+    }
+    expect(text).toContain("written while listener disconnected");
+    await call("POST", `/api/projects/${p}/tasks`, {
+      title: "written after listener reconnected",
+    });
+    while (!text.includes("written after listener reconnected")) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      text += new TextDecoder().decode(chunk.value);
+    }
+  } catch (err) {
+    if (!ctrl.signal.aborted) throw err;
+  } finally {
+    clearTimeout(timeout);
+    ctrl.abort();
+    spy.mockRestore();
+  }
+  expect(text).toContain("written while listener disconnected");
+  expect(text).toContain("written after listener reconnected");
+});

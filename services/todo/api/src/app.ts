@@ -936,18 +936,64 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
     });
   });
   const streams = new Set<() => void>();
-  const listener = await pool.connect();
-  await listener.query("LISTEN todo_events");
   const wake = new Set<() => void>();
-  listener.on("notification", () => {
+  let listener: pg.PoolClient | undefined;
+  let listenerClosed = false;
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  let reconnecting: Promise<void> | undefined;
+  let reconnectDelay = 1000;
+  const notify = () => {
     for (const fn of wake) fn();
-  });
-  listener.on("error", (err) =>
-    app.log.error(
-      { err },
-      "Postgres LISTEN failed; periodic SSE resync remains active",
-    ),
-  );
+  };
+  const retryListener = (err: unknown) => {
+    if (listenerClosed || reconnectTimer) return;
+    app.log.warn(
+      { err, retry_ms: reconnectDelay },
+      "Postgres LISTEN failed; reconnecting while periodic SSE resync remains active",
+    );
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = undefined;
+      reconnecting = connectListener();
+    }, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 2, 30_000);
+  };
+  const connectListener = async () => {
+    let client: pg.PoolClient | undefined;
+    try {
+      client = await pool.connect();
+      if (listenerClosed) {
+        client.release(true);
+        return;
+      }
+      listener = client;
+      const current = client;
+      const disconnected = (err: Error) => {
+        if (listener !== current) return;
+        listener = undefined;
+        current.removeListener("notification", notify);
+        current.release(err);
+        retryListener(err);
+      };
+      current.on("error", disconnected);
+      current.on("end", () =>
+        disconnected(new Error("Postgres LISTEN connection ended")),
+      );
+      current.on("notification", notify);
+      await current.query("LISTEN todo_events");
+      if (listener !== current || listenerClosed) return;
+      reconnectDelay = 1000;
+      app.log.info("Postgres LISTEN connected");
+      notify();
+    } catch (err) {
+      if (client && listener === client) {
+        listener = undefined;
+        client.removeListener("notification", notify);
+        client.release(err instanceof Error ? err : true);
+      }
+      retryListener(err);
+    }
+  };
+  await connectListener();
   app.get("/api/events", async (req, reply) => {
     const last = z
       .string()
@@ -1090,12 +1136,20 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
     for (const close of streams) close();
   });
   app.addHook("onClose", async () => {
+    listenerClosed = true;
+    clearTimeout(reconnectTimer);
+    if (listener) {
+      const current = listener;
+      listener = undefined;
+      current.removeListener("notification", notify);
+      current.release(true);
+    }
+    await reconnecting;
     clearInterval(reminders);
     await new Promise<void>((r) => {
       if (metricServer.listening) metricServer.close(() => r());
       else r();
     });
-    listener.release();
     await pool.end();
     m.registry.clear();
   });

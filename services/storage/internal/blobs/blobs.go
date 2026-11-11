@@ -421,8 +421,6 @@ func (d *Dir) FixModes(warn func(path string, err error)) FixResult {
 		}
 		var want fs.FileMode
 		switch {
-		case p == d.root:
-			return nil
 		case e.IsDir():
 			want = dirMode
 		case e.Type().IsRegular():

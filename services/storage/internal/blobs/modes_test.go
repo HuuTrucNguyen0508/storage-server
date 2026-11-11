@@ -150,10 +150,13 @@ func TestFixModes(t *testing.T) {
 	var warnings []string
 	warn := func(p string, err error) { warnings = append(warnings, p+": "+err.Error()) }
 	r := d.FixModes(warn)
-	// 6 layout dirs + blobs/ab + 2 files; changed: blobs/ab, the blob, the quarantined file, uploads.
-	if r.Checked != 9 || r.Changed != 4 || r.Failed != 0 || len(warnings) != 0 {
+	// The root (ours here; in the pod it is the host's volume and skipped) + 6 layout dirs
+	// + blobs/ab + 2 files; changed: the root (t.TempDir makes it 0700), blobs/ab, the blob,
+	// the quarantined file, uploads.
+	if r.Checked != 10 || r.Changed != 5 || r.Failed != 0 || len(warnings) != 0 {
 		t.Fatalf("first run: %+v, warnings %v", r, warnings)
 	}
+	wantMode(t, root, 0o750)
 	wantMode(t, filepath.Dir(blob), 0o750)
 	wantMode(t, blob, 0o640)
 	wantMode(t, quarantined, 0o640)
@@ -167,7 +170,7 @@ func TestFixModes(t *testing.T) {
 		t.Errorf("blob group %d, want %d", st.Gid, gid)
 	}
 
-	if r := d.FixModes(warn); r.Checked != 9 || r.Changed != 0 || r.Failed != 0 || len(warnings) != 0 {
+	if r := d.FixModes(warn); r.Checked != 10 || r.Changed != 0 || r.Failed != 0 || len(warnings) != 0 {
 		t.Fatalf("second run: %+v, warnings %v", r, warnings)
 	}
 }

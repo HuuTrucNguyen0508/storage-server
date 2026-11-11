@@ -77,7 +77,17 @@ func run(log *slog.Logger) error {
 
 	bgCtx, bgCancel := context.WithCancel(ctx)
 	defer bgCancel()
-	go srv.RunBackground(bgCtx)
+	// Data from older versions is 0700/0600 in group 65532; make it readable to
+	// the host owner's group (DATA_GID) without holding up readiness. It runs
+	// before the background cleanup, which moves files between directories the
+	// walk may already have passed.
+	go func() {
+		start := time.Now()
+		r := dir.FixModes(func(p string, err error) { log.Warn("cannot fix data dir permissions", "path", p, "err", err) })
+		log.Info("data dir permissions checked", "checked", r.Checked, "changed", r.Changed, "failed", r.Failed,
+			"gid", os.Getgid(), "took", time.Since(start).Round(time.Millisecond))
+		srv.RunBackground(bgCtx)
+	}()
 
 	errc := make(chan error, 2)
 	go func() { errc <- app.ListenAndServe() }()

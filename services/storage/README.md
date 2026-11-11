@@ -39,7 +39,7 @@ Environment variables only.
 | Variable | Default | Meaning |
 |---|---|---|
 | `DATABASE_URL` | (required) | PostgreSQL URL. In the cluster: secret `storage-db-app`, key `uri`. The app retries until it answers, then migrates under an advisory lock. |
-| `DATA_DIR` | `/data` | Volume for blobs, upload scratch files and caches. |
+| `DATA_DIR` | `/data` | Volume for blobs, upload scratch files and caches. Directories are 0750 and files 0640 in the process's group, whatever the umask, and a background pass at startup moves older entries the process owns to that group and those modes. In the cluster that group is the host owner's (`runAsGroup: ${DATA_GID}`), so `make offsite` can read the files. |
 | `DOMAIN` | | Lab domain; builds the top bar's app links and the defaults below. |
 | `PUBLIC_URL` | `https://storage.${DOMAIN}` | The app's own origin: the only accepted `Origin`, and the base of share links. |
 | `AUTH_PUBLIC_URL` | `https://auth.${DOMAIN}` | Authelia, for the sign-out link. |

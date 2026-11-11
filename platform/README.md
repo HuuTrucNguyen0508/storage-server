@@ -146,7 +146,7 @@ Set it up once:
 3. Run `make offsite` from a terminal. The first run creates the repository and generates its password in `.local/restic-password` (`RESTIC_PASSWORD_FILE` overrides the path). **Copy that password off the machine now**, for example into a password manager. It sits on the same disk as the data, and nobody can open the backup without it. Only a run from a terminal (or with `OFFSITE_INIT=1`) creates a repository: the nightly run fails instead, so an unmounted second disk never gets a new repository on the wrong disk.
 4. Run `make offsite-timer`. It checks that the repository opens with its password, then installs and enables the systemd user units `lab-offsite.service` and `lab-offsite.timer`: every night at 03:30 UTC, after the 03:00 UTC dumps. `Persistent=true` runs a missed backup when the machine comes back on. User timers run only while you are logged in, unless you run `sudo loginctl enable-linger $USER`. Read the logs with `journalctl --user -u lab-offsite.service`.
 
-The storage app writes its files as UID 65532 into directories with mode 700 (`DATA_DIR/storage/blobs/` and its siblings), which your user cannot read. restic then saves an incomplete snapshot and lists the paths it could not read. `make offsite` still applies the retention policy, then exits with code 3, so the nightly unit shows as failed. Until restic can read those directories, the off-disk copy does not contain the uploaded files.
+restic runs as your user, so it must be able to read the uploaded files. The storage pod runs as UID 65532 in group `DATA_GID`, which defaults to your primary group (`id -g`). It creates its directories under `DATA_DIR/storage/` with mode 750 and its files with mode 640, so your user reads them through the group. To use another of your groups, set `DATA_GID` in `config/override.env` and run `make deploy-storage`; the scripts refuse group 0. Files written before this change (mode 700 and 600, group 65532) are fixed by the storage app itself: at startup, in the background, it gives every file and directory it owns under `DATA_DIR/storage/` its own group and these modes, then logs `data dir permissions checked` with the counts. With that, `make offsite` completes and exits 0. It still exits with code 3 (after applying the retention policy) when restic could not read a path. restic lists those paths; the snapshot is incomplete, and the nightly unit shows as failed.
 
 To restore from the off-disk copy, for example onto a new disk:
 
@@ -167,7 +167,7 @@ To restore from the off-disk copy, for example onto a new disk:
    # DATA_DIR outside .local/: sudo cp -a /var/tmp/lab-restore/<old DATA_DIR>/. "<DATA_DIR>/"
    ```
 
-4. Run `make up`, then `make restore`. `make restore` loads the newest dump of each app from `DATA_DIR/backups/<app>/` into its new database. Put the restic password in `.local/restic-password` (mode 600) before the next `make offsite`.
+4. Run `make up`, then `make restore`. When your group ID differs from the old machine's, the storage app moves its files to the new `DATA_GID` when it starts. `make restore` loads the newest dump of each app from `DATA_DIR/backups/<app>/` into its new database. Put the restic password in `.local/restic-password` (mode 600) before the next `make offsite`.
 
 ## Run it for friends (`remote` profile)
 

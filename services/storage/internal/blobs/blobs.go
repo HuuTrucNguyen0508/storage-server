@@ -35,16 +35,41 @@ var ErrBadID = errors.New("bad blob id")
 //	thumbs/<blob>-<size>.jpg   cached thumbnails
 //	previews/<blob>.pdf        cached Office-to-PDF conversions
 //	tmp/                       scratch space for atomic writes
+//
+// Directories are 0750 and files 0640 whatever the umask: the group is the
+// host owner's (the pod's runAsGroup, DATA_GID), so an off-disk backup that
+// runs as the owner can read everything.
 type Dir struct{ root string }
+
+const (
+	dirMode  fs.FileMode = 0o750
+	fileMode fs.FileMode = 0o640
+)
 
 // Open creates the layout below root if needed.
 func Open(root string) (*Dir, error) {
+	if err := os.MkdirAll(root, dirMode); err != nil {
+		return nil, err
+	}
 	for _, sub := range []string{"blobs", "quarantine", "uploads", "thumbs", "previews", "tmp"} {
-		if err := os.MkdirAll(filepath.Join(root, sub), 0o700); err != nil {
+		if err := mkdir(filepath.Join(root, sub)); err != nil {
 			return nil, err
 		}
 	}
 	return &Dir{root: root}, nil
+}
+
+// mkdir creates directory p with dirMode. An existing p is left as it is;
+// FixModes corrects old ones at startup.
+func mkdir(p string) error {
+	err := os.Mkdir(p, dirMode)
+	if errors.Is(err, fs.ErrExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return os.Chmod(p, dirMode)
 }
 
 // NewID returns a fresh random blob id.
@@ -98,7 +123,18 @@ func (d *Dir) PreviewPath(id string) (string, error) {
 }
 
 // TempFile creates a scratch file on the same filesystem, for atomic writes.
-func (d *Dir) TempFile() (*os.File, error) { return os.CreateTemp(filepath.Join(d.root, "tmp"), "w-*") }
+func (d *Dir) TempFile() (*os.File, error) {
+	f, err := os.CreateTemp(filepath.Join(d.root, "tmp"), "w-*")
+	if err != nil {
+		return nil, err
+	}
+	if err := f.Chmod(fileMode); err != nil {
+		f.Close()
+		os.Remove(f.Name())
+		return nil, err
+	}
+	return f, nil
+}
 
 // WriteAtomic writes a cache file through a temp file and a rename.
 func (d *Dir) WriteAtomic(dst string, write func(w io.Writer) error) error {
@@ -134,7 +170,7 @@ func (d *Dir) AppendChunk(session string, offset int64, state []byte, r io.Reade
 			return offset, state, fmt.Errorf("restore upload hash: %w", err)
 		}
 	}
-	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE, 0o600)
+	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE, fileMode)
 	if err != nil {
 		return offset, state, err
 	}
@@ -142,6 +178,11 @@ func (d *Dir) AppendChunk(session string, offset int64, state []byte, r io.Reade
 	st, err := f.Stat()
 	if err != nil {
 		return offset, state, err
+	}
+	if st.Mode().Perm() != fileMode {
+		if err := f.Chmod(fileMode); err != nil {
+			return offset, state, err
+		}
 	}
 	if st.Size() < offset {
 		return offset, state, fmt.Errorf("upload scratch file is shorter (%d) than the recorded offset (%d)", st.Size(), offset)
@@ -201,11 +242,14 @@ func (d *Dir) Commit(session, blobID string) error {
 	}
 	if _, err := os.Stat(src); errors.Is(err, fs.ErrNotExist) {
 		// A zero-byte upload never wrote a scratch file.
-		if err := os.WriteFile(src, nil, 0o600); err != nil {
+		if err := os.WriteFile(src, nil, fileMode); err != nil {
+			return err
+		}
+		if err := os.Chmod(src, fileMode); err != nil {
 			return err
 		}
 	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0o700); err != nil {
+	if err := mkdir(filepath.Dir(dst)); err != nil {
 		return err
 	}
 	return os.Rename(src, dst)
@@ -266,7 +310,7 @@ func (d *Dir) Unquarantine(id string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0o700); err != nil {
+	if err := mkdir(filepath.Dir(dst)); err != nil {
 		return err
 	}
 	return os.Rename(filepath.Join(d.root, "quarantine", id), dst)
@@ -349,4 +393,70 @@ func (d *Dir) Orphans(minAge time.Duration, blob func(id string), upload func(se
 		}
 	}
 	return nil
+}
+
+// FixResult counts what FixModes looked at: entries this process owns,
+// entries it changed, and entries it failed to read or change.
+type FixResult struct{ Checked, Changed, Failed int }
+
+// FixModes walks the data dir once and gives every directory and regular
+// file this process owns its primary group and dirMode or fileMode, so data
+// written by older versions (0700, 0600, group 65532) becomes readable to the
+// host owner's group. Entries that are already right cost one lstat.
+// Symlinks, other file types and entries owned by someone else are left
+// alone; each failure goes to warn and the walk goes on.
+func (d *Dir) FixModes(warn func(path string, err error)) FixResult {
+	var r FixResult
+	uid, gid := os.Getuid(), os.Getgid()
+	fail := func(p string, err error) {
+		if !errors.Is(err, fs.ErrNotExist) { // removed while walking
+			r.Failed++
+			warn(p, err)
+		}
+	}
+	filepath.WalkDir(d.root, func(p string, e fs.DirEntry, err error) error { //nolint:errcheck // the callback never returns an error
+		if err != nil {
+			fail(p, err)
+			return nil
+		}
+		var want fs.FileMode
+		switch {
+		case e.IsDir():
+			want = dirMode
+		case e.Type().IsRegular():
+			want = fileMode
+		default:
+			return nil
+		}
+		info, err := e.Info()
+		if err != nil {
+			fail(p, err)
+			return nil
+		}
+		st, ok := info.Sys().(*syscall.Stat_t)
+		if !ok || int(st.Uid) != uid {
+			return nil
+		}
+		r.Checked++
+		changed := false
+		if int(st.Gid) != gid {
+			if err := os.Lchown(p, -1, gid); err != nil {
+				fail(p, err)
+				return nil
+			}
+			changed = true
+		}
+		if info.Mode().Perm() != want {
+			if err := os.Chmod(p, want); err != nil {
+				fail(p, err)
+				return nil
+			}
+			changed = true
+		}
+		if changed {
+			r.Changed++
+		}
+		return nil
+	})
+	return r
 }

@@ -19,7 +19,9 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
-        runAsGroup: 65532
+        # The host owner's group (DATA_GID, scripts/lib.sh): files under DATA_DIR/storage
+        # are 0640 in it, so make offsite (restic as the owner) can read them.
+        runAsGroup: ${DATA_GID}
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: storage

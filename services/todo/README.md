@@ -32,6 +32,8 @@ From the repository root, `make deploy-todo` builds the image, imports it into k
 | `WEB_ROOT` | ../web/dist | built web root relative to API working directory; image uses /app/web/dist |
 | `AUTH_PUBLIC_URL` | https://auth.lab.localhost | logout/login portal for UI |
 | `HOME_URL` | https://home.lab.localhost/ | shared portal URL |
+| `REMINDER_POLL_MS` | 10000 | how often each replica checks for due reminders; a reminder can arrive this late |
+| `SSE_HEARTBEAT_MS` | 10000 | live-stream heartbeat and fallback poll for a lost notification; at most 14000, because a stream silent for about 15 s is closed |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | unset | enables traces, deployment uses http://alloy.monitoring.svc.cluster.local:4318 |
 | `OTEL_SERVICE_NAME` | SDK default | deployment sets todo |
 | `OTEL_RESOURCE_ATTRIBUTES` | unset | deployment sets environment and service.namespace=lab |

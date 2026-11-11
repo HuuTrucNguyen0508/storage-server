@@ -245,7 +245,7 @@ test("alice plans, shares, and bob sees changes live; viewers are read-only", as
       body: JSON.stringify({ version: t.version, reminderAt: new Date(Date.now() + 1500).toISOString() }),
     });
   }, pingId);
-  await expect(alice.getByRole("status").filter({ hasText: "Reminder: “Ping the landlord”" })).toBeVisible({ timeout: 15_000 });
+  await expect(alice.getByRole("status").filter({ hasText: "Reminder: “Ping the landlord”" })).toBeVisible({ timeout: 25_000 });
 
   // j moves the selection, x completes the selected task.
   await alice.goto("/today");

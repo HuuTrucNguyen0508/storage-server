@@ -32,6 +32,12 @@ if [ "${1:-}" = --print ]; then
 fi
 [ -z "${1:-}" ] || die "usage: $0 [--print]"
 [ -n "${RESTIC_REPOSITORY:-}" ] || die "set RESTIC_REPOSITORY in config/override.env and run make offsite once before installing the timer"
+# The nightly run never creates a repository or a password, so one must exist and open now.
+command -v restic >/dev/null || die "restic is not installed (Arch/CachyOS: sudo pacman -S restic)"
+pw="${RESTIC_PASSWORD_FILE:-$LOCAL_DIR/restic-password}"
+case "$pw" in /*) ;; *) pw="$ROOT/$pw" ;; esac
+RESTIC_REPOSITORY="$RESTIC_REPOSITORY" RESTIC_PASSWORD_FILE="$pw" restic cat config >/dev/null 2>&1 \
+  || die "cannot open restic repository $RESTIC_REPOSITORY with $pw: run make offsite from a terminal first, which creates the repository and its password"
 
 unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 mkdir -p "$unit_dir"

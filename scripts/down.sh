@@ -22,6 +22,10 @@ if [ -x "$uninstall" ]; then
     warn_newest_dumps
   elif ! cluster_exists; then
     refuse_without_dumps "cannot dump the databases: cluster $CLUSTER_NAME is not running (k3s stopped or $KUBECONFIG missing)"
+  elif ! uncovered=$(databases_without_backup); then
+    refuse_without_dumps "cannot list the databases to check that each one has a backup CronJob"
+  elif [ -n "$uncovered" ]; then
+    refuse_without_dumps "no <app>-db-backup CronJob dumps these databases: $(echo "$uncovered" | tr '\n' ' ')"
   elif ! "$ROOT/scripts/backup.sh"; then
     refuse_without_dumps "the database dumps failed (see above)"
   fi

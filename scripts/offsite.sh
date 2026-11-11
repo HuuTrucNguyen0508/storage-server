@@ -14,7 +14,9 @@ command -v restic >/dev/null \
 (RESTIC_REPOSITORY=/mnt/backup/lab) or any restic backend (sftp:, rest:, s3:, b2:, rclone:...). \
 A repository on the same disk as $DATA_DIR does not count: it dies with that disk"
 export RESTIC_REPOSITORY
-export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-$LOCAL_DIR/restic-password}"
+RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-$LOCAL_DIR/restic-password}"
+case "$RESTIC_PASSWORD_FILE" in /*) ;; *) RESTIC_PASSWORD_FILE="$ROOT/$RESTIC_PASSWORD_FILE" ;; esac
+export RESTIC_PASSWORD_FILE
 secrets="${OFFSITE_SECRETS_DIR:-$LOCAL_DIR}"
 [ -d "$secrets" ] || die "$secrets does not exist; run make secrets"
 [ -d "$DATA_DIR" ] || die "DATA_DIR=$DATA_DIR does not exist"
@@ -29,7 +31,7 @@ esac
 if [ -n "$repo_path" ]; then
   case "$repo_path" in /*) ;; *) die "RESTIC_REPOSITORY=$RESTIC_REPOSITORY: use an absolute path" ;; esac
   repo_real=$(realpath -m -- "$repo_path")
-  for d in "$ROOT" "$data" "$secrets"; do
+  for d in "$(realpath -- "$ROOT")" "$data" "$secrets"; do
     case "$repo_real/" in "$d"/*) die "RESTIC_REPOSITORY=$repo_path is inside $d: a backup there is lost with what it backs up. Use a second disk or another machine" ;; esac
   done
   if command -v findmnt >/dev/null; then
@@ -50,6 +52,11 @@ case "$rc" in
   0|12) new_repo="" ;;
   *) die "cannot open restic repository $RESTIC_REPOSITORY: $out" ;;
 esac
+# Only a run from a terminal creates the repository: an unattended run that finds none (second disk
+# not mounted) must fail instead of quietly starting a new repository on the wrong disk.
+if [ -n "$new_repo" ] && [ "${OFFSITE_INIT:-}" != 1 ] && [ ! -t 0 ]; then
+  die "restic repository $RESTIC_REPOSITORY does not exist (is its disk mounted?). Create it by running make offsite from a terminal, or with OFFSITE_INIT=1"
+fi
 if [ ! -s "$RESTIC_PASSWORD_FILE" ]; then
   [ -n "$new_repo" ] || die "repository $RESTIC_REPOSITORY exists, but its password file $RESTIC_PASSWORD_FILE is missing. Put back the copy you kept off this machine"
   (umask 077; mkdir -p "$(dirname "$RESTIC_PASSWORD_FILE")"
@@ -94,7 +101,7 @@ restic backup --tag lab-offsite "${excludes[@]}" "${targets[@]}" >&2 || brc=$?
 case "$brc" in
   0) restic forget --tag lab-offsite --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune >&2 ;;
   3) warn "the snapshot is INCOMPLETE: restic could not read the paths listed above (pods write some files as their own UIDs; see platform/README.md, Off-disk backups)"
-     warn "not applying the retention policy, so incomplete snapshots never push out complete ones"
+     restic forget --tag lab-offsite --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune >&2
      rc=3 ;;
   *) die "restic backup failed (exit $brc)" ;;
 esac

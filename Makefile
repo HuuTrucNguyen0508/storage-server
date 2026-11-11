@@ -1,7 +1,7 @@
 # Lab platform. See platform/README.md. Every target is safe to rerun.
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
-.PHONY: help up down status creds tools secrets backup restore e2e smoke users
+.PHONY: help up down status creds tools secrets backup restore offsite offsite-timer e2e smoke users
 
 help: ## List targets
 	@grep -hE '^[a-z0-9%-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -9,8 +9,8 @@ help: ## List targets
 up: ## Install or converge k3s (may ask for sudo) and everything on it
 	@scripts/up.sh
 
-down: ## Uninstall k3s and its cluster (keeps DATA_DIR and .local/; needs CONFIRM=1)
-	@CONFIRM=$(CONFIRM) scripts/down.sh
+down: ## Dump every database, then uninstall k3s and its cluster (keeps DATA_DIR and .local/; needs CONFIRM=1; SKIP_BACKUP=1 skips the dump)
+	@CONFIRM=$(CONFIRM) SKIP_BACKUP=$(SKIP_BACKUP) scripts/down.sh
 
 status: ## Nodes, releases, unhealthy pods, volumes, routes
 	@scripts/status.sh
@@ -32,6 +32,12 @@ backup: ## Run every <app>-db-backup CronJob now and wait
 
 restore: ## Restore the newest dump of every app (or APPS="todo") into its database
 	@scripts/restore.sh $(APPS)
+
+offsite: ## Copy DATA_DIR and .local/ secrets to the restic repository in RESTIC_REPOSITORY (fresh dumps first)
+	@scripts/offsite.sh
+
+offsite-timer: ## Install a systemd user timer that runs make offsite every night at 03:30 UTC
+	@scripts/offsite-timer.sh
 
 load-%: ## Run a k6 scenario from loadgen/ (for example make load-smoke)
 	@if [ -x loadgen/run.sh ] || [ -f loadgen/run.sh ]; then bash loadgen/run.sh $*; else echo "loadgen/run.sh does not exist yet" >&2; exit 1; fi

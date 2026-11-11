@@ -13,7 +13,7 @@ make up        # install or converge k3s and everything on it
 make creds     # URLs and every login
 make status    # nodes, Helm releases, unhealthy pods, volumes, routes, certificates
 make smoke     # security checks against the running cluster (about 2 minutes)
-make down CONFIRM=1   # uninstall k3s from this machine; .local/ and the data directory stay
+make down CONFIRM=1   # dump the databases, then uninstall k3s from this machine; .local/ and the data directory stay
 ```
 
 `make up` is idempotent: rerun it after a failure or a change. It runs these steps:
@@ -104,7 +104,11 @@ Changes go to Secret `auth/authelia-users`. A sidecar copies the Secret into Aut
 
 ## Data and backups
 
-Data that must survive a rebuild lives on the host under `DATA_DIR` (default `.local/data`). `DATA_DIR` must not sit inside `/var/lib/rancher`, `/var/lib/kubelet`, `/run/k3s`, `/etc/rancher` or `/var/lib/cni`, because `make down` deletes those; the scripts refuse such a path. The host-backed volumes point at these directories directly:
+Data that must survive a rebuild lives on the host under `DATA_DIR` (default `.local/data`). `DATA_DIR` must not sit inside `/var/lib/rancher`, `/var/lib/kubelet`, `/run/k3s`, `/etc/rancher` or `/var/lib/cni`, because `make down` deletes those; the scripts refuse such a path.
+
+For a new install, set `DATA_DIR` in `config/override.env` to a directory outside the checkout, for example `DATA_DIR=/srv/lab-data` or a path on a second disk. The default `.local/data` sits inside the git checkout. Deleting the checkout, or running `git clean -fdx` (which also removes ignored files), deletes every uploaded file, every dump and Authelia's database with it. Moving the data of an existing install is not automated.
+
+The host-backed volumes point at these directories directly:
 
 | Path | What |
 |---|---|
@@ -122,19 +126,54 @@ Data that must survive a rebuild lives on the host under `DATA_DIR` (default `.l
   3. scales the Deployments back.
 
   `DUMP=<file>` picks a specific dump. `pg_restore --clean` drops only objects that are in the dump: rows come back exactly, but tables created after the dump stay.
-- A full rebuild with data: `make backup && make down CONFIRM=1 && make up && make restore`.
+- `make down` runs `make backup` before it uninstalls k3s. It refuses when the cluster is not running (start it with `sudo systemctl start k3s`) or a dump fails, and prints the newest dump of each app. `SKIP_BACKUP=1` uninstalls anyway and loses every change since those dumps.
+- A full rebuild with data: `make down CONFIRM=1 && make up && make restore`.
 
-To back up the machine, copy `DATA_DIR` (pods write files there as their own UIDs, so use `sudo cp -a` or `sudo tar`). Also copy these from `.local/`:
+### Off-disk backups
 
-- `credentials.env`, `passwords/` and `users.json` (the accounts)
-- `authelia/` (session, storage and JWT keys; without `storage_encryption_key`, Authelia cannot read its own database)
-- `ca.key` and `ca.crt` (the CA browsers already trust)
+Everything above is on one disk. `make offsite` copies it to a [restic](https://restic.net) repository somewhere else:
+
+- `DATA_DIR`: uploaded files, the dumps, Authelia's database;
+- `.local/` without what `make up` regenerates (`bin/`, `k3s/`, `kubeconfig`, `cluster-ready`). This keeps the accounts (`credentials.env`, `passwords/`, `users.json`), Authelia's keys (`authelia/`; without `storage_encryption_key`, Authelia cannot read its own database) and the CA browsers already trust (`ca.key`, `ca.crt`). When `DATA_DIR` is inside `.local/`, it is copied once, as part of `.local/`;
+- `config/override.env`.
+
+When the cluster is running, `make offsite` runs `make backup` first. When it is not, it copies the existing dumps and names the newest one of each app. Then it keeps 7 daily, 4 weekly and 6 monthly snapshots (tag `lab-offsite`) and prunes the rest.
+
+Set it up once:
+
+1. Install restic: `sudo pacman -S restic` on Arch and CachyOS.
+2. In `config/override.env`, set `RESTIC_REPOSITORY` to a path on a second disk (`RESTIC_REPOSITORY=/mnt/backup/lab`) or to a remote restic backend (`sftp:`, `rest:`, `s3:`, `b2:`, `rclone:`; put the backend's credentials in the same file). A repository on the same disk does not count: it dies with that disk. `make offsite` refuses a path inside the checkout, `DATA_DIR` or `.local/`, and warns when the path is on the same device as `DATA_DIR`.
+3. Run `make offsite`. The first run creates the repository and generates its password in `.local/restic-password` (`RESTIC_PASSWORD_FILE` overrides the path). **Copy that password off the machine now**, for example into a password manager. It sits on the same disk as the data, and nobody can open the backup without it.
+4. Run `make offsite-timer`. It installs and enables the systemd user units `lab-offsite.service` and `lab-offsite.timer`: every night at 03:30 UTC, after the 03:00 UTC dumps. `Persistent=true` runs a missed backup when the machine comes back on. User timers run only while you are logged in, unless you run `sudo loginctl enable-linger $USER`. Read the logs with `journalctl --user -u lab-offsite.service`.
+
+The storage app writes its files as UID 65532 into directories with mode 700 (`DATA_DIR/storage/blobs/` and its siblings), which your user cannot read. restic then saves an incomplete snapshot and lists the paths it could not read. `make offsite` exits with code 3 and skips the retention policy, so incomplete snapshots never push out complete ones. Until restic can read those directories, the off-disk copy does not contain the uploaded files.
+
+To restore from the off-disk copy, for example onto a new disk:
+
+1. Clone the repository. Do not run `make up` yet: it would generate new secrets and a new CA.
+2. Install restic and restore a snapshot into an empty directory. restic stores absolute paths, so the files land under the paths they had when the snapshot was taken. Run it with `sudo`, so the files keep the owners the pods need:
+
+   ```sh
+   restic -r /mnt/backup/lab --password-file ~/restic-password snapshots --tag lab-offsite  # pick one; latest is the newest
+   sudo restic -r /mnt/backup/lab --password-file ~/restic-password restore latest --target /var/tmp/lab-restore
+   ```
+
+3. Copy the files into place. `old` is the checkout path in the snapshot:
+
+   ```sh
+   old=/var/tmp/lab-restore/home/you/storage-server
+   sudo cp -a "$old/.local/." .local/                   # secrets, and DATA_DIR when it was .local/data
+   sudo cp -a "$old/config/override.env" config/
+   # DATA_DIR outside .local/: sudo cp -a /var/tmp/lab-restore/<old DATA_DIR>/. "<DATA_DIR>/"
+   ```
+
+4. Run `make up`, then `make restore`. `make restore` loads the newest dump of each app from `DATA_DIR/backups/<app>/` into its new database. Put the restic password in `.local/restic-password` (mode 600) before the next `make offsite`.
 
 ## Run it for friends (`remote` profile)
 
 The local profile listens only on `127.0.0.1`. To let friends in, run the same stack on a machine they can reach, with a real domain:
 
-1. **Pick an address.** The easiest is a Tailscale tailnet: invite your friends, then use the machine's Tailscale IP (`tailscale ip -4`). Ports 443 and 80 on that address must be free: kube-proxy takes them over, so a program already listening there stops getting traffic. On this machine `tailscale serve` already holds `100.82.114.81:443`; stop it or use another address. A public IP also works, but then the whole internet reaches your Authelia login.
+1. **Pick an address.** The easiest is a Tailscale tailnet: invite your friends, then use the machine's Tailscale IP (`tailscale ip -4`). Ports 443 and 80 on that address must be free: kube-proxy takes them over, so a program already listening there stops getting traffic. If `tailscale serve` already holds port 443 on that address, stop it or use another address. A public IP also works, but then the whole internet reaches your Authelia login.
 2. **DNS:** create the records `lab.example.com` and `*.lab.example.com` pointing at that address.
 3. **Configure:** `cp config/remote.env.example config/override.env` and set `DOMAIN`, `LISTEN_ADDRESS`, `ACME_EMAIL`. The example sets `AUTH_POLICY=two_factor` and `CERT_ISSUER=letsencrypt-dns01`.
 4. **Certificates:** `platform/cert-manager/letsencrypt-dns01.yaml` issues the wildcard through Let's Encrypt DNS-01, so no inbound port 80 is needed. It is written for Cloudflare; put an API token with `Zone:DNS:Edit` in `.local/dns01-api-token`. For another DNS provider, swap the solver. **This template is unverified.** It needs a real domain and DNS credentials, so it was not tested here. Point it at Let's Encrypt staging first: the file says how.
@@ -175,6 +214,7 @@ Browsers that trust `.local/ca.crt` keep trusting it: the CA is the same.
 | `scripts/users.sh` | SSO users |
 | `scripts/deploy-app.sh` | build and deploy one app |
 | `scripts/backup.sh`, `scripts/restore.sh` | database dumps |
+| `scripts/offsite.sh`, `scripts/offsite-timer.sh` | off-disk copy with restic, and its nightly systemd user timer (`--print` shows the units) |
 | `scripts/smoke.sh` | security and platform checks (`ONLY=sso,netpol,...`, `KEEP=1`) |
 | `platform/namespaces/` | namespaces with Pod Security labels |
 | `platform/storage/` | StorageClass `lab-host` and the static host volumes |

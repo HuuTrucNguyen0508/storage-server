@@ -13,10 +13,8 @@ while read -r ns app; do
   k -n "$ns" create job "$job" --from="cronjob/${app}-db-backup" >/dev/null
   if wait_job "$ns" "$job" "${BACKUP_TIMEOUT:-1800}"; then
     k -n "$ns" logs "job/$job" --all-containers --tail=5 2>/dev/null | sed 's/^/    /' || true
-    if [ -d "$DATA_DIR/backups/$app" ]; then
-      newest=$(find "$DATA_DIR/backups/$app" -maxdepth 1 -type f -name "${app}-*T*Z.dump" -printf '%f\n' 2>/dev/null | sort | tail -n 1 || true)
-      [ -n "$newest" ] && log "newest dump: $DATA_DIR/backups/$app/$newest"
-    fi
+    newest=$(newest_dump "$app")
+    [ -n "$newest" ] && log "newest dump: $DATA_DIR/backups/$app/$newest"
     log "$app backup OK"
   else
     warn "$app backup FAILED"; rc=1

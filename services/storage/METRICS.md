@@ -27,7 +27,7 @@ Prometheus text (OpenMetrics, so exemplars are included) at `GET /metrics` on po
 | `storage_office_conversion_duration_seconds` | histogram | | Stirling PDF conversion time. Buckets 0.5 … 120 s. |
 | `storage_link_unlock_attempts_total` | counter | `result` = `ok` \| `wrong` \| `limited` | Public link password attempts. A rise in `wrong` or `limited` means guessing. |
 | `storage_forgery_refused_total` | counter | `reason` = `header` \| `origin` \| `content_type` | Mutating requests refused by the request-forgery rules. |
-| `storage_purged_total` | counter | `kind` = `trash` \| `upload` \| `blob` | Background cleanup: trash older than 30 days, abandoned upload sessions, unreferenced blob files. |
+| `storage_purged_total` | counter | `kind` = `trash` \| `upload` \| `blob` | Background cleanup: trash older than 30 days, abandoned upload sessions, blob files deleted after their quarantine retention (not when they enter quarantine). |
 
 ## Runtime
 

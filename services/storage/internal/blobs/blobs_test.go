@@ -7,7 +7,9 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
+	"time"
 )
 
 type failAfter struct {
@@ -82,4 +84,53 @@ func must(p string, err error) string {
 		panic(err)
 	}
 	return p
+}
+
+func TestQuarantineRoundTrip(t *testing.T) {
+	d, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := NewID()
+	p := must(d.Path(id))
+	os.MkdirAll(filepath.Dir(p), 0o700)
+	os.WriteFile(p, []byte("data"), 0o600)
+	old := time.Now().Add(-48 * time.Hour)
+	os.Chtimes(p, old, old)
+	thumb := must(d.ThumbPath(id, 256))
+	os.WriteFile(thumb, []byte("jpg"), 0o600)
+	if err := d.Quarantine(id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(p); !os.IsNotExist(err) {
+		t.Fatal("blob still in place")
+	}
+	if _, err := os.Stat(thumb); !os.IsNotExist(err) {
+		t.Fatal("thumbnail kept")
+	}
+	var seen []string
+	d.Quarantined(func(qid string, since time.Time) {
+		seen = append(seen, qid)
+		if time.Since(since) > time.Minute {
+			t.Errorf("quarantine time %v not refreshed", since)
+		}
+	})
+	if len(seen) != 1 || seen[0] != id {
+		t.Fatalf("quarantined %v", seen)
+	}
+	// Quarantining a blob that is already gone is not an error.
+	if err := d.Quarantine(id); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Unquarantine(id); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(p); string(got) != "data" {
+		t.Fatalf("unquarantined content %q", got)
+	}
+	for _, bad := range []string{"../x", "ABC", ""} {
+		if d.Quarantine(bad) == nil || d.Unquarantine(bad) == nil || d.Purge(bad) == nil {
+			t.Errorf("%q accepted", bad)
+		}
+	}
 }

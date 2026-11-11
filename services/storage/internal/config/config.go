@@ -41,6 +41,10 @@ type Config struct {
 	UploadTTL      time.Duration // UPLOAD_SESSION_TTL, default 24h
 	TextPreviewCap int64         // TEXT_PREVIEW_BYTES, default 1 MiB
 
+	// QuarantineRetention keeps removed blob files restorable for longer
+	// than the nightly database dumps are kept (7).
+	QuarantineRetention time.Duration // BLOB_QUARANTINE_RETENTION, default 192h
+
 	StirlingURL       string        // STIRLING_URL
 	OfficeConcurrency int           // OFFICE_CONCURRENCY, default 2
 	OfficeTimeout     time.Duration // OFFICE_TIMEOUT, default 120s
@@ -91,6 +95,7 @@ func Load() (Config, error) {
 	c.OfficeMaxBytes = num("OFFICE_MAX_BYTES", 100<<20)
 	c.TrashRetention = dur("TRASH_RETENTION", 30*24*time.Hour)
 	c.UploadTTL = dur("UPLOAD_SESSION_TTL", 24*time.Hour)
+	c.QuarantineRetention = dur("BLOB_QUARANTINE_RETENTION", 8*24*time.Hour)
 	c.OfficeTimeout = dur("OFFICE_TIMEOUT", 120*time.Second)
 	c.ShutdownTimeout = dur("SHUTDOWN_TIMEOUT", 30*time.Second)
 	mf, err := strconv.ParseFloat(env("MIN_FREE_PERCENT", "5"), 64)

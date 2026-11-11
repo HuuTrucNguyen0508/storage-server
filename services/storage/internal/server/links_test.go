@@ -66,8 +66,11 @@ func TestPublicLinkPasswordLimitAndRevoke(t *testing.T) {
 	// Nothing outside the linked folder is reachable.
 	g.must(g.get(p+"/nodes/"+secret.ID+"/content"), 404)
 	g.must(g.get(p+"/nodes/"+root+"/children"), 404)
-	// Previews do not count; downloads do; a resumed range does not.
-	g.must(g.get(p+"/nodes/"+f.ID+"/raw"), 200)
+	// Previews of a kind the viewer shows do not count; downloads do; a
+	// resumed range does not.
+	if body := g.must(g.get(p+"/nodes/"+f.ID+"/raw"), 200).Body; string(body) != "public bytes" {
+		t.Fatalf("guest preview %q", body)
+	}
 	if body := g.must(g.get(p+"/nodes/"+f.ID+"/content"), 200).Body; string(body) != "public bytes" {
 		t.Fatalf("guest download %q", body)
 	}
@@ -258,4 +261,52 @@ func TestLinkHeadDoesNotConsumeDownload(t *testing.T) {
 	g.must(g.req("HEAD", p, nil), 200)
 	g.must(g.get(p), 200)
 	g.must(g.get(p), 410)
+}
+
+// The public /raw endpoint serves only kinds the guest viewer reads through
+// it, so a download limit can't be skipped by fetching a file as a preview.
+func TestPublicRawOnlyServesViewableKinds(t *testing.T) {
+	e := newEnv(t)
+	alice := e.as("alice")
+	root := alice.root()
+	dir := alice.mkdir(root, "shared")
+	ids := map[string]string{}
+	for _, name := range []string{"payload.bin", "setup.exe", "report.docx", "bundle.zip", "scan.tiff", "clip.mp4", "notes.md", "paper.pdf", "photo.png"} {
+		ids[name] = alice.upload(dir.ID, name, []byte("bytes of "+name)).ID
+	}
+	l := alice.link(dir.ID, map[string]any{"kind": "view", "maxDownloads": 2})
+	p := "/api/public/" + l.Token
+	g := e.guest()
+	// Office files preview through office-preview, ZIPs through archive, and
+	// the rest have no viewer: /raw refuses them.
+	for _, name := range []string{"payload.bin", "setup.exe", "report.docx", "bundle.zip", "scan.tiff"} {
+		g.must(g.get(p+"/nodes/"+ids[name]+"/raw"), http.StatusNotFound)
+		g.must(g.get(p+"/nodes/"+ids[name]+"/raw", "Range", "bytes=0-"), http.StatusNotFound)
+	}
+	// What the viewer shows stays free, however often it is viewed.
+	for range 3 {
+		for _, name := range []string{"clip.mp4", "notes.md", "paper.pdf", "photo.png"} {
+			if body := g.must(g.get(p+"/nodes/"+ids[name]+"/raw"), 200).Body; string(body) != "bytes of "+name {
+				t.Fatalf("%s preview %q", name, body)
+			}
+		}
+	}
+	// The unviewable file is still a download, and it counts.
+	if body := g.must(g.get(p+"/nodes/"+ids["payload.bin"]+"/content"), 200).Body; string(body) != "bytes of payload.bin" {
+		t.Fatalf("download %q", body)
+	}
+	var links struct {
+		Items []struct {
+			DownloadCount int `json:"downloadCount"`
+		}
+	}
+	alice.must(alice.get("/api/links"), 200).json(&links)
+	if len(links.Items) != 1 || links.Items[0].DownloadCount != 1 {
+		t.Fatalf("download count: %+v", links.Items)
+	}
+	// The signed-in viewer endpoint is unchanged.
+	r := alice.must(alice.get("/api/nodes/"+ids["payload.bin"]+"/raw"), 200)
+	if r.Header.Get("Content-Type") != "application/octet-stream" {
+		t.Fatalf("owner raw type %q", r.Header.Get("Content-Type"))
+	}
 }

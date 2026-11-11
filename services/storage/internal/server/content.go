@@ -54,18 +54,19 @@ func userContentHeaders(w http.ResponseWriter, ctype, disp, name string) {
 
 // rawType decides how the viewer endpoint serves a file: only allowlisted
 // media inline; PDFs and text as attachments the SPA reads with fetch;
-// everything else as an opaque download.
-func rawType(name string) (ctype, disp string) {
+// everything else as an opaque download. viewable is false for that last
+// case: the SPA has no viewer that reads such a file through /raw.
+func rawType(name string) (ctype, disp string, viewable bool) {
 	ft := filetype.Detect(name)
 	switch {
 	case ft.InlineType != "":
-		return ft.InlineType, "inline"
+		return ft.InlineType, "inline", true
 	case ft.Kind == filetype.PDF:
-		return "application/pdf", "attachment"
+		return "application/pdf", "attachment", true
 	case filetype.IsTextual(ft.Kind):
-		return "text/plain; charset=utf-8", "attachment"
+		return "text/plain; charset=utf-8", "attachment", true
 	}
-	return "application/octet-stream", "attachment"
+	return "application/octet-stream", "attachment", false
 }
 
 // sendFile serves a file node's blob with Range support.
@@ -82,7 +83,7 @@ func (s *Server) sendFile(w http.ResponseWriter, r *http.Request, n *store.Node,
 	defer f.Close()
 	ctype, disp := "application/octet-stream", "attachment"
 	if raw {
-		ctype, disp = rawType(n.Name)
+		ctype, disp, _ = rawType(n.Name)
 	}
 	userContentHeaders(w, ctype, disp, n.Name)
 	w.Header().Set("ETag", `"`+n.BlobID+`"`)

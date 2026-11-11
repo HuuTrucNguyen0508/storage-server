@@ -30,6 +30,7 @@ var ErrBadID = errors.New("bad blob id")
 // Dir is the root of the volume layout:
 //
 //	blobs/<2 hex>/<32 hex>     finished file contents
+//	quarantine/<32 hex>        removed blobs, kept until retention ends
 //	uploads/<session uuid>     bytes of unfinished uploads
 //	thumbs/<blob>-<size>.jpg   cached thumbnails
 //	previews/<blob>.pdf        cached Office-to-PDF conversions
@@ -38,7 +39,7 @@ type Dir struct{ root string }
 
 // Open creates the layout below root if needed.
 func Open(root string) (*Dir, error) {
-	for _, sub := range []string{"blobs", "uploads", "thumbs", "previews", "tmp"} {
+	for _, sub := range []string{"blobs", "quarantine", "uploads", "thumbs", "previews", "tmp"} {
 		if err := os.MkdirAll(filepath.Join(root, sub), 0o700); err != nil {
 			return nil, err
 		}
@@ -231,13 +232,77 @@ func (d *Dir) Remove(id string) error {
 	if err := os.Remove(p); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
+	d.dropCaches(id)
+	return nil
+}
+
+// Quarantine moves a blob into quarantine/ instead of deleting it, so a
+// database restore that references it again can bring it back. Its mtime is
+// set to now: retention counts from the move. Cached thumbnails and the
+// preview are dropped.
+func (d *Dir) Quarantine(id string) error {
+	src, err := d.Path(id)
+	if err != nil {
+		return err
+	}
+	dst := filepath.Join(d.root, "quarantine", id)
+	if err := os.Rename(src, dst); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	} else if err == nil {
+		now := time.Now()
+		if err := os.Chtimes(dst, now, now); err != nil {
+			return err
+		}
+	}
+	d.dropCaches(id)
+	return nil
+}
+
+// Unquarantine moves a quarantined blob back to its place in blobs/.
+func (d *Dir) Unquarantine(id string) error {
+	dst, err := d.Path(id)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), 0o700); err != nil {
+		return err
+	}
+	return os.Rename(filepath.Join(d.root, "quarantine", id), dst)
+}
+
+// Quarantined calls fn for every quarantined blob with the time it was
+// quarantined.
+func (d *Dir) Quarantined(fn func(id string, since time.Time)) error {
+	entries, err := os.ReadDir(filepath.Join(d.root, "quarantine"))
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if info, err := e.Info(); err == nil && info.Mode().IsRegular() && idRE.MatchString(e.Name()) {
+			fn(e.Name(), info.ModTime())
+		}
+	}
+	return nil
+}
+
+// Purge deletes a quarantined blob for good.
+func (d *Dir) Purge(id string) error {
+	if !idRE.MatchString(id) {
+		return ErrBadID
+	}
+	if err := os.Remove(filepath.Join(d.root, "quarantine", id)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return nil
+}
+
+func (d *Dir) dropCaches(id string) {
 	thumbs, _ := filepath.Glob(filepath.Join(d.root, "thumbs", id+"-*"))
 	for _, t := range thumbs {
 		os.Remove(t)
 	}
 	os.Remove(filepath.Join(d.root, "previews", id+".pdf"))
 	os.Remove(filepath.Join(d.root, "previews", id+".failed"))
-	return nil
 }
 
 // Space reports the volume's total and available bytes.
@@ -250,7 +315,8 @@ func (d *Dir) Space() (total, avail uint64, err error) {
 }
 
 // Orphans calls fn for blob files and upload scratch files older than
-// minAge, so the caller can delete the ones the database does not know.
+// minAge, so the caller can quarantine or delete the ones the database does
+// not know.
 func (d *Dir) Orphans(minAge time.Duration, blob func(id string), upload func(session string)) error {
 	cutoff := time.Now().Add(-minAge)
 	err := filepath.WalkDir(filepath.Join(d.root, "blobs"), func(p string, e fs.DirEntry, err error) error {

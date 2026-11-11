@@ -87,7 +87,11 @@ func (s *Server) sendFile(w http.ResponseWriter, r *http.Request, n *store.Node,
 	}
 	userContentHeaders(w, ctype, disp, n.Name)
 	w.Header().Set("ETag", `"`+n.BlobID+`"`)
-	http.ServeContent(countingWriter{w, s.m.DownloadBytes.WithLabelValues(metricKind).Add}, r, "", n.ModifiedAt, f)
+	var content io.ReadSeeker = f
+	if raw && metricKind == "public" && filetype.IsTextual(filetype.Detect(n.Name).Kind) {
+		content = io.NewSectionReader(f, 0, min(n.Size, s.cfg.TextPreviewCap))
+	}
+	http.ServeContent(countingWriter{w, s.m.DownloadBytes.WithLabelValues(metricKind).Add}, r, "", n.ModifiedAt, content)
 }
 
 func (s *Server) authorizeFile(w http.ResponseWriter, r *http.Request, subj store.Subject) (*store.Node, bool) {

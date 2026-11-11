@@ -1,7 +1,9 @@
 package server_test
 
 import (
+	"bytes"
 	"context"
+	"github.com/HuuTrucNguyen0508/storage-server/services/storage/internal/config"
 	"net/http"
 	"strings"
 	"testing"
@@ -309,4 +311,35 @@ func TestPublicRawOnlyServesViewableKinds(t *testing.T) {
 	if r.Header.Get("Content-Type") != "application/octet-stream" {
 		t.Fatalf("owner raw type %q", r.Header.Get("Content-Type"))
 	}
+}
+
+func TestPublicRawTextCap(t *testing.T) {
+	e := newEnv(t, func(c *config.Config) { c.TextPreviewCap = 16 })
+	alice := e.as("alice")
+	data := bytes.Repeat([]byte("0123456789"), 10)
+	f := alice.upload(alice.root(), "large.csv", data)
+	l := alice.link(f.ID, map[string]any{"kind": "view", "maxDownloads": 1})
+	p := "/api/public/" + l.Token + "/nodes/" + f.ID
+	g := e.guest()
+	for range 2 {
+		r := g.must(g.get(p+"/raw"), 200)
+		if !bytes.Equal(r.Body, data[:16]) {
+			t.Fatalf("raw got %d bytes, want 16", len(r.Body))
+		}
+		if r.Header.Get("ETag") == "" || r.Header.Get("Content-Security-Policy") == "" {
+			t.Fatal("missing content headers")
+		}
+	}
+	r := g.must(g.get(p+"/raw", "Range", "bytes=12-99"), 206)
+	if !bytes.Equal(r.Body, data[12:16]) {
+		t.Fatalf("range escaped cap: %q", r.Body)
+	}
+	g.must(g.get(p+"/raw", "Range", "bytes=16-"), 416)
+	if body := alice.must(alice.get("/api/nodes/"+f.ID+"/raw"), 200).Body; !bytes.Equal(body, data) {
+		t.Fatal("authenticated raw was capped")
+	}
+	if body := g.must(g.get(p+"/content"), 200).Body; !bytes.Equal(body, data) {
+		t.Fatal("download was capped")
+	}
+	g.must(g.get(p+"/content"), 410)
 }

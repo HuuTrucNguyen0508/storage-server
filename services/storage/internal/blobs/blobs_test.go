@@ -134,3 +134,38 @@ func TestQuarantineRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+// A failed rename must leave a fresh source timestamp, so even a crash at
+// the rename boundary cannot leave an expired timestamp in quarantine.
+func TestQuarantineRefreshesBeforeRename(t *testing.T) {
+	d, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := NewID()
+	p := must(d.Path(id))
+	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte("bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-30 * 24 * time.Hour)
+	if err := os.Chtimes(p, old, old); err != nil {
+		t.Fatal(err)
+	}
+	// A directory at the destination makes the rename fail after timestamping.
+	if err := os.Mkdir(filepath.Join(d.root, "quarantine", id), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Quarantine(id); err == nil {
+		t.Fatal("rename unexpectedly succeeded")
+	}
+	info, err := os.Stat(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if time.Since(info.ModTime()) > time.Minute {
+		t.Fatal("source mtime was not refreshed before rename")
+	}
+}

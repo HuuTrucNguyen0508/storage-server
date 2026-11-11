@@ -3,6 +3,7 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/HuuTrucNguyen0508/storage-server/services/storage/internal/blobs"
+	"github.com/HuuTrucNguyen0508/storage-server/services/storage/internal/config"
 )
 
 func (e *env) blobPath(id string) string { return filepath.Join(e.dir, "blobs", id[:2], id) }
@@ -138,5 +140,85 @@ func TestQuarantineRetention(t *testing.T) {
 	fileHas(t, e.quarantinePath(kept), []byte("x"))
 	if got := e.metric(`storage_purged_total{kind="blob"}`); got != 1 {
 		t.Fatalf("purged blobs %v, want 1", got)
+	}
+}
+
+// Kept dumps can span weeks when the lab is off. Their mtimes protect bytes
+// even after wall-clock retention expires.
+func TestQuarantineKeptDump(t *testing.T) {
+	for _, removeDump := range []bool{false, true} {
+		t.Run(fmt.Sprint("removeDump=", removeDump), func(t *testing.T) {
+			backups := t.TempDir()
+			e := newEnv(t, func(c *config.Config) { c.BackupDir = backups })
+			dump := filepath.Join(backups, "storage-old.dump")
+			if err := os.WriteFile(dump, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			age(t, dump, 30*24*time.Hour)
+			id := blobs.NewID()
+			if err := os.WriteFile(e.quarantinePath(id), []byte("kept bytes"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			age(t, e.quarantinePath(id), 20*24*time.Hour)
+			e.s.Cleanup(context.Background())
+			fileHas(t, e.quarantinePath(id), []byte("kept bytes"))
+			if removeDump {
+				if err := os.Remove(dump); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				age(t, e.quarantinePath(id), 40*24*time.Hour)
+			}
+			e.s.Cleanup(context.Background())
+			gone(t, e.quarantinePath(id))
+		})
+	}
+}
+
+func TestQuarantineUnreadableBackupDir(t *testing.T) {
+	e := newEnv(t, func(c *config.Config) { c.BackupDir = filepath.Join(t.TempDir(), "missing") })
+	for range 2 {
+		id := blobs.NewID()
+		if err := os.WriteFile(e.quarantinePath(id), []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		age(t, e.quarantinePath(id), 9*24*time.Hour)
+	}
+	e.s.Cleanup(context.Background())
+	if got := strings.Count(e.logs.String(), "backup directory unreadable"); got != 1 {
+		t.Fatalf("warnings %d, want 1", got)
+	}
+	if got := e.metric(`storage_purged_total{kind="blob"}`); got != 2 {
+		t.Fatalf("purged %v, want 2", got)
+	}
+}
+
+// Losing authorization after the upload starts makes FinishUpload fail after
+// the scratch file was committed to disk. Those bytes must remain recoverable.
+func TestFailedFinishUploadQuarantinesBytes(t *testing.T) {
+	e := newEnv(t)
+	alice := e.as("alice")
+	parent := alice.mkdir(alice.root(), "uploads")
+	var created struct{ Upload struct{ ID string } }
+	alice.must(alice.req("POST", "/api/uploads", map[string]any{"parentId": parent.ID, "name": "keep.txt", "size": 4}), 201).json(&created)
+	alice.must(alice.req("DELETE", "/api/nodes/"+parent.ID, nil), 204)
+	r := alice.req("PUT", "/api/uploads/"+created.Upload.ID, []byte("keep"), "Upload-Offset", "0")
+	if r.Status < 400 {
+		t.Fatalf("finish status %d, want error", r.Status)
+	}
+	entries, err := os.ReadDir(filepath.Join(e.dir, "quarantine"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("quarantined %d files, want 1", len(entries))
+	}
+	fileHas(t, e.quarantinePath(entries[0].Name()), []byte("keep"))
+	var sessions int
+	if err := e.st.Pool.QueryRow(context.Background(), "SELECT count(*) FROM upload_sessions WHERE id = $1", created.Upload.ID).Scan(&sessions); err != nil {
+		t.Fatal(err)
+	}
+	if sessions != 0 {
+		t.Fatal("failed upload session was not cleaned up")
 	}
 }

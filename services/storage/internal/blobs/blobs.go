@@ -246,13 +246,15 @@ func (d *Dir) Quarantine(id string) error {
 		return err
 	}
 	dst := filepath.Join(d.root, "quarantine", id)
-	if err := os.Rename(src, dst); err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return err
-	} else if err == nil {
-		now := time.Now()
-		if err := os.Chtimes(dst, now, now); err != nil {
+	// Refresh before moving: an interrupted rename must not expose an old mtime
+	// in quarantine. A failed move only delays orphan collection of the source.
+	now := time.Now()
+	if err := os.Chtimes(src, now, now); err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
+	} else if err := os.Rename(src, dst); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
 	}
 	d.dropCaches(id)
 	return nil

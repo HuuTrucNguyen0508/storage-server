@@ -8,6 +8,8 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -275,9 +277,18 @@ func (s *Server) Cleanup(ctx context.Context) {
 }
 
 // sweepQuarantine moves quarantined blobs the database references again (a
-// restore) back into place, and deletes the rest once retention has passed.
+// restore) back into place, and deletes the rest once retention has passed
+// and they predate the oldest kept dump.
 func (s *Server) sweepQuarantine(ctx context.Context) {
 	cutoff := time.Now().Add(-s.cfg.QuarantineRetention)
+	if s.cfg.BackupDir != "" {
+		oldest, err := oldestDump(s.cfg.BackupDir)
+		if err != nil {
+			s.log.WarnContext(ctx, "backup directory unreadable; using quarantine retention only", "err", err)
+		} else if !oldest.IsZero() && oldest.Before(cutoff) {
+			cutoff = oldest
+		}
+	}
 	err := s.blobs.Quarantined(func(id string, since time.Time) {
 		ok, err := s.store.BlobExists(ctx, id)
 		switch {
@@ -318,4 +329,27 @@ func (s *Server) collectBlobs(ctx context.Context) {
 			s.log.WarnContext(ctx, "blob quarantine failed", "blob", id, "err", err)
 		}
 	}
+}
+
+// oldestDump needs directory read/execute permissions, not access to dump contents.
+func oldestDump(dir string) (time.Time, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return time.Time{}, err
+	}
+	var oldest time.Time
+	for _, entry := range entries {
+		match, _ := filepath.Match("storage-*.dump", entry.Name())
+		if !match {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return time.Time{}, err
+		}
+		if info.Mode().IsRegular() && (oldest.IsZero() || info.ModTime().Before(oldest)) {
+			oldest = info.ModTime()
+		}
+	}
+	return oldest, nil
 }

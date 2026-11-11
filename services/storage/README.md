@@ -56,7 +56,7 @@ Environment variables only.
 | `MIN_FREE_PERCENT` | `5` | Uploads and copies are refused when they would leave less free space on the volume. |
 | `TRASH_RETENTION` | `720h` | How long trash is kept. |
 | `UPLOAD_SESSION_TTL` | `24h` | Idle upload sessions are purged after this. |
-| `BLOB_QUARANTINE_RETENTION` | `192h` | Minimum time a removed blob stays in `quarantine/`. With `BACKUP_DIR` set, it must also predate the oldest kept dump before deletion. |
+| `BLOB_QUARANTINE_RETENTION` | `192h` | Minimum time a removed blob stays in `quarantine/`. With `BACKUP_DIR` set, it must also predate the oldest kept dump (the start time in its `storage-<UTC timestamp>.dump` name) before deletion. |
 | `BACKUP_DIR` | empty | Directory of kept `storage-*.dump` files; the Deployment mounts `storage-backups` read-only at `/backups`. Empty, unset or unreadable directories fall back to retention only; unreadable directories log a warning each sweep. Only directory read/execute permissions are needed to stat dump mtimes. |
 | `TEXT_PREVIEW_BYTES` | 1048576 | The web app shows at most this much of a text file ("download to see the rest"). Public `/raw` also enforces this cap, including Range requests. |
 | `STIRLING_URL` | | Stirling PDF base URL; empty turns Office previews off. |

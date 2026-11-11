@@ -143,18 +143,17 @@ func TestQuarantineRetention(t *testing.T) {
 	}
 }
 
-// Kept dumps can span weeks when the lab is off. Their mtimes protect bytes
-// even after wall-clock retention expires.
+// Kept dumps can span weeks when the lab is off. The start time in their
+// names protects bytes even after wall-clock retention expires.
 func TestQuarantineKeptDump(t *testing.T) {
 	for _, removeDump := range []bool{false, true} {
 		t.Run(fmt.Sprint("removeDump=", removeDump), func(t *testing.T) {
 			backups := t.TempDir()
 			e := newEnv(t, func(c *config.Config) { c.BackupDir = backups })
-			dump := filepath.Join(backups, "storage-old.dump")
+			dump := filepath.Join(backups, "storage-"+time.Now().Add(-30*24*time.Hour).UTC().Format("20060102T150405Z")+".dump")
 			if err := os.WriteFile(dump, nil, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			age(t, dump, 30*24*time.Hour)
 			id := blobs.NewID()
 			if err := os.WriteFile(e.quarantinePath(id), []byte("kept bytes"), 0o600); err != nil {
 				t.Fatal(err)
@@ -173,6 +172,25 @@ func TestQuarantineKeptDump(t *testing.T) {
 			gone(t, e.quarantinePath(id))
 		})
 	}
+}
+
+// A blob quarantined while a dump was running is in that dump: the dump
+// started (its name) before the quarantine, though it finished (its mtime) after.
+func TestQuarantineDuringDump(t *testing.T) {
+	backups := t.TempDir()
+	e := newEnv(t, func(c *config.Config) { c.BackupDir = backups })
+	dump := filepath.Join(backups, "storage-"+time.Now().Add(-20*24*time.Hour-time.Minute).UTC().Format("20060102T150405Z")+".dump")
+	if err := os.WriteFile(dump, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	age(t, dump, 20*24*time.Hour-time.Minute)
+	id := blobs.NewID()
+	if err := os.WriteFile(e.quarantinePath(id), []byte("in the dump"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	age(t, e.quarantinePath(id), 20*24*time.Hour)
+	e.s.Cleanup(context.Background())
+	fileHas(t, e.quarantinePath(id), []byte("in the dump"))
 }
 
 func TestQuarantineUnreadableBackupDir(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -331,7 +331,13 @@ func (s *Server) collectBlobs(ctx context.Context) {
 	}
 }
 
-// oldestDump needs directory read/execute permissions, not access to dump contents.
+// dumpName matches the backup CronJob's file names. The timestamp in the name
+// is taken before pg_dump starts, so every blob the dump references was still
+// in place at that time; the file's mtime (when the dump finished) is too late.
+var dumpName = regexp.MustCompile(`^storage-([0-9]{8}T[0-9]{6}Z)\.dump$`)
+
+// oldestDump returns the start time of the oldest kept storage dump, read
+// from the file names alone (no stat, so pruning during the scan can't fail it).
 func oldestDump(dir string) (time.Time, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -339,16 +345,13 @@ func oldestDump(dir string) (time.Time, error) {
 	}
 	var oldest time.Time
 	for _, entry := range entries {
-		match, _ := filepath.Match("storage-*.dump", entry.Name())
-		if !match {
+		m := dumpName.FindStringSubmatch(entry.Name())
+		if m == nil {
 			continue
 		}
-		info, err := entry.Info()
-		if err != nil {
-			return time.Time{}, err
-		}
-		if info.Mode().IsRegular() && (oldest.IsZero() || info.ModTime().Before(oldest)) {
-			oldest = info.ModTime()
+		at, err := time.Parse("20060102T150405Z", m[1])
+		if err == nil && (oldest.IsZero() || at.Before(oldest)) {
+			oldest = at
 		}
 	}
 	return oldest, nil

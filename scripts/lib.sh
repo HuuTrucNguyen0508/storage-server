@@ -31,7 +31,7 @@ load_env_file() {
 
 if [ -z "${__LAB_LOADED:-}" ]; then
   __LAB_ENV_KEYS=""
-  for __k in PROFILE DOMAIN CLUSTER_NAME LISTEN_ADDRESS HTTP_PORT HTTPS_PORT AUTH_POLICY ENVIRONMENT DATA_DIR CERT_ISSUER ACME_EMAIL RESTIC_REPOSITORY RESTIC_PASSWORD_FILE; do
+  for __k in PROFILE DOMAIN CLUSTER_NAME LISTEN_ADDRESS HTTP_PORT HTTPS_PORT AUTH_POLICY ENVIRONMENT DATA_DIR DATA_GID CERT_ISSUER ACME_EMAIL RESTIC_REPOSITORY RESTIC_PASSWORD_FILE; do
     if [ -n "${!__k+x}" ]; then __LAB_ENV_KEYS="$__LAB_ENV_KEYS $__k"; fi
   done
   load_env_file "$ROOT/config/local.env"
@@ -48,6 +48,13 @@ __data_real=$(realpath -m -- "$DATA_DIR" 2>/dev/null || printf '%s' "$DATA_DIR")
 for __d in /etc/rancher /run/k3s /run/flannel /var/lib/rancher /var/lib/kubelet /var/lib/cni; do
   case "$__data_real/" in "$__d"/*) die "DATA_DIR=$DATA_DIR is inside $__d, which make down (k3s-uninstall.sh) deletes" ;; esac
 done
+# The storage pod's group (runAsGroup). It writes DATA_DIR/storage group-readable, so the
+# host user in this group can read the uploaded files: make offsite runs restic as that user.
+DATA_GID="${DATA_GID:-$(id -g)}"
+[[ "$DATA_GID" =~ ^[0-9]{1,10}$ ]] && [ "$DATA_GID" -le 2147483647 ] \
+  || die "DATA_GID=$DATA_GID: must be a numeric group ID"
+[ "$DATA_GID" -ne 0 ] || die "DATA_GID is 0 (root's group): run the lab as your own user, not root, or set DATA_GID in config/override.env to a non-root group"
+export DATA_GID
 # Traefik's Service takes HTTP_PORT and HTTPS_PORT as node ports (cluster/k3s.yaml), and
 # kube-proxy serves them on LISTEN_ADDRESS only.
 for __p in HTTP_PORT HTTPS_PORT; do
@@ -76,7 +83,7 @@ export PATH="$LOCAL_DIR/bin:$PATH"
 
 # Variables `render` may substitute. Anything else with a `$` is left alone.
 RENDER_VARS="PROFILE DOMAIN DOMAIN_REGEX CLUSTER_NAME LISTEN_ADDRESS HTTP_PORT HTTPS_PORT
-AUTH_POLICY ENVIRONMENT DATA_DIR IMAGE_TAG AUTH_PUBLIC_URL HOME_URL CERT_ISSUER ACME_EMAIL NODE_PORT_RANGE
+AUTH_POLICY ENVIRONMENT DATA_DIR DATA_GID IMAGE_TAG AUTH_PUBLIC_URL HOME_URL CERT_ISSUER ACME_EMAIL NODE_PORT_RANGE
 NODE_PORT_ADDRESSES AUTHELIA_IMAGE STIRLING_PDF_IMAGE NGINX_UNPRIVILEGED_IMAGE WHOAMI_IMAGE POSTGRES_CLIENT_IMAGE CURL_IMAGE"
 
 # render FILE... (or stdin): envsubst limited to RENDER_VARS.

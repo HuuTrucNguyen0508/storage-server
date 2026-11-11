@@ -1,6 +1,6 @@
 # Rendered at apply time by `make deploy-storage` (scripts/deploy-app.sh), which
 # substitutes ${DOMAIN}, ${IMAGE_TAG}, ${ENVIRONMENT}, ${AUTH_PUBLIC_URL},
-# ${HOME_URL} and ${POSTGRES_CLIENT_IMAGE}. The namespace is the platform's.
+# ${HOME_URL}, ${DATA_GID} and ${POSTGRES_CLIENT_IMAGE}. The namespace is the platform's.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: storage

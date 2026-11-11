@@ -100,7 +100,7 @@ brc=0
 restic backup --tag lab-offsite "${excludes[@]}" "${targets[@]}" >&2 || brc=$?
 case "$brc" in
   0) restic forget --tag lab-offsite --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune >&2 ;;
-  3) warn "the snapshot is INCOMPLETE: restic could not read the paths listed above (pods write some files as their own UIDs; see platform/README.md, Off-disk backups)"
+  3) warn "the snapshot is INCOMPLETE: restic could not read the paths listed above (check their owners and modes; see platform/README.md, Off-disk backups)"
      restic forget --tag lab-offsite --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune >&2
      rc=3 ;;
   *) die "restic backup failed (exit $brc)" ;;

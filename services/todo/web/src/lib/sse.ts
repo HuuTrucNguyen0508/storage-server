@@ -62,7 +62,7 @@ export interface StreamOptions {
   onState: (s: StreamState) => void;
   onSignedOut: () => void;
   fetchImpl?: typeof fetch;
-  /** Silence longer than this means the connection is dead (heartbeats come every second). */
+  /** Silence longer than this means the connection is dead (heartbeats come every 10 seconds). */
   staleMs?: number;
 }
 
@@ -73,7 +73,7 @@ export interface StreamOptions {
  */
 export function openStream(o: StreamOptions): () => void {
   const f = o.fetchImpl ?? fetch.bind(globalThis);
-  const staleMs = o.staleMs ?? 15_000;
+  const staleMs = o.staleMs ?? 30_000;
   let stopped = false;
   let attempt = 0;
   let ctrl: AbortController | null = null;

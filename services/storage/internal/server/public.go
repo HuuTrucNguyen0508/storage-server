@@ -259,11 +259,19 @@ func isRangeContinuation(r *http.Request, n *store.Node) bool {
 	return true
 }
 
+// pubRaw serves what the guest viewer shows, without counting a download.
+// Files it has no viewer for are refused, so /raw can't bypass the limit.
 func (s *Server) pubRaw(w http.ResponseWriter, r *http.Request) {
-	if _, n, _, ok := s.pubView(w, r); ok {
-		s.countPreview(n)
-		s.sendFile(w, r, n, true, "public")
+	_, n, _, ok := s.pubView(w, r)
+	if !ok {
+		return
 	}
+	if _, _, viewable := rawType(n.Name); !n.IsDir && !viewable {
+		writeError(w, http.StatusNotFound, "no_preview", "no preview for this file; download it instead")
+		return
+	}
+	s.countPreview(n)
+	s.sendFile(w, r, n, true, "public")
 }
 
 func (s *Server) pubThumbnail(w http.ResponseWriter, r *http.Request) {

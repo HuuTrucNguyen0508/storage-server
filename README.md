@@ -45,7 +45,8 @@ Locally the apps listen only on `127.0.0.1`. k3s's own API server and kubelet li
 | `make e2e` | Browser tests of the main journeys through real sign-in. |
 | `make load-smoke`, `make load-load`, `make load-stress` | k6 runs inside the cluster; results land in Grafana. |
 | `make backup`, `make restore` | Dump both databases to the host now; restore the newest dumps. |
-| `make down CONFIRM=1` | Uninstall k3s from this machine, which deletes the cluster. Your files, backups and `.local/` stay on disk. |
+| `make offsite`, `make offsite-timer` | Copy files, dumps and secrets to a restic repository on another disk or machine (`RESTIC_REPOSITORY` in `config/override.env`); install a nightly timer that does it. See [off-disk backups](platform/README.md#off-disk-backups). |
+| `make down CONFIRM=1` | Dump both databases, then uninstall k3s from this machine, which deletes the cluster. Your files, backups and `.local/` stay on disk. Refuses when the dump fails or k3s is stopped; `SKIP_BACKUP=1` skips the dump and loses changes since the last one. |
 
 ## How it fits together
 
@@ -65,7 +66,7 @@ Prometheus scrapes every app, database, Traefik and Authelia; k6 remote-writes i
 ```
 
 - Traefik strips any `Remote-*` header a client sends, then asks Authelia. Apps trust the headers only because NetworkPolicies let traffic in from Traefik alone. `make smoke` proves both.
-- Files and database dumps live under `DATA_DIR` on the host and survive `make down`. The live databases don't: run `make backup` first, or changes since the last nightly dump are lost.
+- Files and database dumps live under `DATA_DIR` on the host and survive `make down`. The live databases don't, so `make down` dumps them first. All of it is on one disk until you set up `make offsite`.
 - Uploaded HTML, SVG and XML are never rendered on the app's origin. PDFs render with pdf.js; Markdown renders with raw HTML disabled.
 
 ## Where to read more

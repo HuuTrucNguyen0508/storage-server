@@ -168,7 +168,7 @@ func (s *Server) finishUpload(w http.ResponseWriter, r *http.Request, subj store
 	n, err := s.store.FinishUpload(contextWithoutCancel(r), subj, up, blobID, sha)
 	if err != nil {
 		s.m.Uploads.WithLabelValues("error").Inc()
-		s.blobs.Remove(blobID)                               //nolint:errcheck
+		s.blobs.Quarantine(blobID)                           //nolint:errcheck
 		s.store.DeleteUpload(contextWithoutCancel(r), up.ID) //nolint:errcheck
 		s.fail(w, r, err)
 		return

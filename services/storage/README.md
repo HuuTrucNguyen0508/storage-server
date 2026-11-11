@@ -25,12 +25,12 @@ Dockerfile            node build → go build → distroless static, non-root
 
 ## How it works
 
-- **Data.** Metadata in PostgreSQL (`storage-db`, CloudNativePG). File bytes on the `storage-data` volume at `blobs/<2 hex>/<32 hex>`, named by a random id. No request value ever reaches a filesystem path. Copies share a blob; a blob is deleted when no file points at it.
+- **Data.** Metadata in PostgreSQL (`storage-db`, CloudNativePG). File bytes on the `storage-data` volume at `blobs/<2 hex>/<32 hex>`, named by a random id. No request value ever reaches a filesystem path. Copies share a blob. A blob no file points at, and a blob file the database has no row for (after 6 h, so uploads in flight are safe), is moved to `quarantine/<32 hex>` instead of being deleted. Cleanup moves a quarantined blob back when the database references it again (a restored dump), and deletes it only after `BLOB_QUARANTINE_RETENTION` and once its quarantine mtime is older than the oldest kept `storage-*.dump` in `BACKUP_DIR`.
 - **Access.** `store.Authorize` is the single decision for every node: owner, share (the strongest share on the node or any folder above it), or public link (the node is the link's node or below it). Things you can't see answer `404`, things you can see but not change answer `403`. Admins manage quotas and links, never other people's files.
 - **Two routers.** `/s/`, `/api/public/`, `/assets/`, `/favicon.svg` (and the probes) go to a router that never reads identity; everything else goes through the identity middleware. The split matches the two IngressRoutes, so a public path can never fall through to a private handler.
 - **Uploads.** Chunked and resumable (`POST /api/uploads`, then `PUT` chunks with `Upload-Offset`). Each chunk is appended, fsynced and recorded with the running SHA-256 state, so a dropped connection resumes from the last byte that arrived. The browser remembers session ids, so the same file dropped again after a reload resumes too. The declared size is reserved against the quota until the upload ends; sessions idle for 24 h are purged.
 - **Previews.** Images, video and audio are served inline from an allowlist (with HTTP Range); everything script-capable is plain text or a download. PDFs render in the browser with pdf.js; text, code (highlight.js), Markdown (markdown-it with HTML off, then DOMPurify), JSON and CSV are fetched as text and rendered escaped. Thumbnails and Office conversions are cached on the volume by blob id. Office conversion runs at most `OFFICE_CONCURRENCY` at a time with a timeout; failures show the download.
-- **Background jobs** (in-process, every 15 min): purge trash older than 30 days, abandoned uploads, unreferenced blobs and orphan files; gauges every 30 s.
+- **Background jobs** (in-process, every 15 min): purge trash older than 30 days and abandoned uploads; quarantine unreferenced blobs and orphan files, rescue quarantined blobs the database references again, delete quarantined blobs past retention and older than the oldest kept dump; gauges every 30 s.
 
 ## Configuration
 
@@ -56,7 +56,9 @@ Environment variables only.
 | `MIN_FREE_PERCENT` | `5` | Uploads and copies are refused when they would leave less free space on the volume. |
 | `TRASH_RETENTION` | `720h` | How long trash is kept. |
 | `UPLOAD_SESSION_TTL` | `24h` | Idle upload sessions are purged after this. |
-| `TEXT_PREVIEW_BYTES` | 1048576 | The web app shows at most this much of a text file ("download to see the rest"). |
+| `BLOB_QUARANTINE_RETENTION` | `192h` | Minimum time a removed blob stays in `quarantine/`. With `BACKUP_DIR` set, it must also predate the oldest kept dump (the start time in its `storage-<UTC timestamp>.dump` name) before deletion. |
+| `BACKUP_DIR` | empty | Directory of kept `storage-*.dump` files; the Deployment mounts `storage-backups` read-only at `/backups`. Empty, unset or unreadable directories fall back to retention only; unreadable directories log a warning each sweep. Only directory read/execute permissions are needed to stat dump mtimes. |
+| `TEXT_PREVIEW_BYTES` | 1048576 | The web app shows at most this much of a text file ("download to see the rest"). Public `/raw` also enforces this cap, including Range requests. |
 | `STIRLING_URL` | | Stirling PDF base URL; empty turns Office previews off. |
 | `OFFICE_CONCURRENCY` | `2` | Conversions at once. |
 | `OFFICE_TIMEOUT` | `120s` | Per conversion. |
@@ -95,7 +97,7 @@ services/storage/web/e2e/cluster-proof.sh     # headless Chromium through Traefi
 services/storage/web/e2e/cluster-proof.sh --big   # plus a 2 GiB upload and checksum-verified download
 ```
 
-`make backup` / `make restore` (platform) use the `storage-db-backup` CronJob. File contents need no backup job: `storage-data` lives on the host under `${DATA_DIR}/storage`.
+`make backup` / `make restore` (platform) use the `storage-db-backup` CronJob. File contents need no backup job: `storage-data` lives on the host under `${DATA_DIR}/storage`. After a restore, the app's next cleanup (at startup) moves blobs the restored database references back out of `quarantine/`. Files uploaded after the dump lose their rows; they are quarantined, not deleted, and stay in `quarantine/` until past `BLOB_QUARANTINE_RETENTION` and older than the oldest kept dump (their bytes only, without names).
 
 ## Keyboard
 

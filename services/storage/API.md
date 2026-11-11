@@ -173,7 +173,7 @@ Uploading into a folder shared with you with `edit` stores the file in the owner
 | `GET /api/public/{token}/nodes/{id}` | `200 {node, crumbs}` (only nodes at or below the link's node) |
 | `GET /api/public/{token}/nodes/{id}/children` | `200 {node, crumbs, items}` |
 | `GET /api/public/{token}/nodes/{id}/content` | download; **counts** one download (a `Range` that does not start at 0 does not) |
-| `GET /api/public/{token}/nodes/{id}/raw` | viewer bytes, same rules as `/raw`; does not count |
+| `GET /api/public/{token}/nodes/{id}/raw` | viewer bytes, same rules as `/raw` but only for kinds the viewer reads there (the "anything else" case answers `404 no_preview`); does not count |
 | `GET /api/public/{token}/nodes/{id}/thumbnail` / `office-preview` / `archive` | as the signed-in versions |
 | `GET /api/public/{token}/zip[?id=…]` | ZIP of the link's folder (or the given items); counts one download |
 | `POST/GET/PUT/DELETE /api/public/{token}/uploads[/{uid}]` | upload protocol above, `drop` links only; `parentId` is ignored (always the link's folder) |

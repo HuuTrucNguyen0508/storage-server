@@ -74,7 +74,7 @@ func newEnv(t *testing.T, tweak ...func(*config.Config)) *env {
 		PublicURL: origin, Domain: "lab.localhost", AuthPublicURL: "https://auth.lab.localhost", HomeURL: "https://home.lab.localhost/",
 		AuthMode: "header", AdminGroup: "admins", UserGroup: "users",
 		DefaultQuota: 50 * config.GiB, MaxFileSize: 10 * config.GiB, MaxChunkSize: 8 << 20, MinFreePercent: 0,
-		TrashRetention: 30 * 24 * time.Hour, UploadTTL: 24 * time.Hour, TextPreviewCap: 1 << 20,
+		TrashRetention: 30 * 24 * time.Hour, UploadTTL: 24 * time.Hour, QuarantineRetention: 8 * 24 * time.Hour, TextPreviewCap: 1 << 20,
 		OfficeConcurrency: 2, OfficeTimeout: 5 * time.Second, OfficeMaxBytes: 100 << 20,
 	}
 	for _, f := range tweak {

@@ -32,6 +32,7 @@ spec:
             - name: DATABASE_URL
               valueFrom: {secretKeyRef: {name: storage-db-app, key: uri}}
             - {name: DATA_DIR, value: /data}
+            - {name: BACKUP_DIR, value: /backups}
             - {name: DOMAIN, value: "${DOMAIN}"}
             - {name: PUBLIC_URL, value: "https://storage.${DOMAIN}"}
             - {name: AUTH_PUBLIC_URL, value: "${AUTH_PUBLIC_URL}"}
@@ -70,9 +71,12 @@ spec:
             capabilities: {drop: [ALL]}
           volumeMounts:
             - {name: data, mountPath: /data}
+            - {name: backups, mountPath: /backups, readOnly: true}
       volumes:
         - name: data
           persistentVolumeClaim: {claimName: storage-data}
+        - name: backups
+          persistentVolumeClaim: {claimName: storage-backups, readOnly: true}
 ---
 apiVersion: v1
 kind: Service

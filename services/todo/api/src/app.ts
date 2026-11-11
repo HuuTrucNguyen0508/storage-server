@@ -42,6 +42,14 @@ const configSchema = z.object({
   WEB_ROOT: z.string().default("../web/dist"),
   AUTH_PUBLIC_URL: z.string().default("https://auth.lab.localhost"),
   HOME_URL: z.string().default("https://home.lab.localhost/"),
+  REMINDER_POLL_MS: z.coerce.number().int().positive().default(10_000),
+  // Proxies close a stream that is silent for about 15 s.
+  SSE_HEARTBEAT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(14_000)
+    .default(10_000),
 });
 export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
   const cfg = configSchema.parse(env);
@@ -61,6 +69,11 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
       redact: ["req.headers.cookie", "req.headers.authorization"],
     },
   });
+  // username -> identity last written by this process, so reads skip the upsert.
+  const identities = new Map<
+    string,
+    { name: string; email: string; at: number }
+  >();
   app.decorateRequest("user", "");
   app.decorateRequest("started", 0);
   app.addHook("onRequest", async (req, reply) => {
@@ -93,11 +106,21 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
             ? header
             : "";
       if (!req.user) throw new ApiError(401, "Sign in required");
-      await store.identity(
-        req.user,
-        String(req.headers["remote-name"] ?? req.user),
-        String(req.headers["remote-email"] ?? ""),
-      );
+      const name = String(req.headers["remote-name"] ?? req.user);
+      const email = String(req.headers["remote-email"] ?? "");
+      const known = identities.get(req.user);
+      if (
+        !known ||
+        known.name !== name ||
+        known.email !== email ||
+        Date.now() - known.at > 60_000
+      ) {
+        await store.identity(req.user, name, email);
+        identities.delete(req.user);
+        if (identities.size >= 5000)
+          identities.delete(identities.keys().next().value!);
+        identities.set(req.user, { name, email, at: Date.now() });
+      }
     }
   });
   app.addHook("onResponse", async (req, reply) => {
@@ -913,18 +936,64 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
     });
   });
   const streams = new Set<() => void>();
-  const listener = await pool.connect();
-  await listener.query("LISTEN todo_events");
   const wake = new Set<() => void>();
-  listener.on("notification", () => {
+  let listener: pg.PoolClient | undefined;
+  let listenerClosed = false;
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  let reconnecting: Promise<void> | undefined;
+  let reconnectDelay = 1000;
+  const notify = () => {
     for (const fn of wake) fn();
-  });
-  listener.on("error", (err) =>
-    app.log.error(
-      { err },
-      "Postgres LISTEN failed; periodic SSE resync remains active",
-    ),
-  );
+  };
+  const retryListener = (err: unknown) => {
+    if (listenerClosed || reconnectTimer) return;
+    app.log.warn(
+      { err, retry_ms: reconnectDelay },
+      "Postgres LISTEN failed; reconnecting while periodic SSE resync remains active",
+    );
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = undefined;
+      reconnecting = connectListener();
+    }, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 2, 30_000);
+  };
+  const connectListener = async () => {
+    let client: pg.PoolClient | undefined;
+    try {
+      client = await pool.connect();
+      if (listenerClosed) {
+        client.release(true);
+        return;
+      }
+      listener = client;
+      const current = client;
+      const disconnected = (err: Error) => {
+        if (listener !== current) return;
+        listener = undefined;
+        current.removeListener("notification", notify);
+        current.release(err);
+        retryListener(err);
+      };
+      current.on("error", disconnected);
+      current.on("end", () =>
+        disconnected(new Error("Postgres LISTEN connection ended")),
+      );
+      current.on("notification", notify);
+      await current.query("LISTEN todo_events");
+      if (listener !== current || listenerClosed) return;
+      reconnectDelay = 1000;
+      app.log.info("Postgres LISTEN connected");
+      notify();
+    } catch (err) {
+      if (client && listener === client) {
+        listener = undefined;
+        client.removeListener("notification", notify);
+        client.release(err instanceof Error ? err : true);
+      }
+      retryListener(err);
+    }
+  };
+  await connectListener();
   app.get("/api/events", async (req, reply) => {
     const last = z
       .string()
@@ -951,10 +1020,17 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
     m.live.inc();
     let cursor = last;
     let busy = false;
+    let again = false;
     let ended = false;
-    const send = async () => {
-      if (busy || ended) return;
+    const send = async (): Promise<void> => {
+      if (ended) return;
+      // A notification during a read must trigger another read, not wait for the poll.
+      if (busy) {
+        again = true;
+        return;
+      }
       busy = true;
+      again = false;
       try {
         const events = await store.events(req.user, cursor);
         for (const e of events) {
@@ -986,11 +1062,12 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
       } finally {
         busy = false;
       }
+      if (again) return send();
     };
     const timer = setInterval(() => {
       if (!ended) reply.raw.write(": heartbeat\n\n");
       void send();
-    }, 1000);
+    }, cfg.SSE_HEARTBEAT_MS);
     const close = () => {
       if (ended) return;
       ended = true;
@@ -1032,7 +1109,7 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
       .finally(() => {
         ticking = false;
       });
-  }, 250);
+  }, cfg.REMINDER_POLL_MS);
   const metricServer = createServer(async (req, res) => {
     if (req.url !== "/metrics") {
       res.writeHead(404);
@@ -1059,12 +1136,20 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env) {
     for (const close of streams) close();
   });
   app.addHook("onClose", async () => {
+    listenerClosed = true;
+    clearTimeout(reconnectTimer);
+    if (listener) {
+      const current = listener;
+      listener = undefined;
+      current.removeListener("notification", notify);
+      current.release(true);
+    }
+    await reconnecting;
     clearInterval(reminders);
     await new Promise<void>((r) => {
       if (metricServer.listening) metricServer.close(() => r());
       else r();
     });
-    listener.release();
     await pool.end();
     m.registry.clear();
   });

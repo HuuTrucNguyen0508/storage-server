@@ -19,7 +19,7 @@ URLS
 if [ "${1:-}" = --urls ]; then urls; exit 0; fi
 
 echo "== k3s"
-if [ -x "$K3S_BIN" ]; then installed=$("$K3S_BIN" --version | head -n 1); else installed="not installed at $K3S_BIN"; fi
+if [ -x "$K3S_BIN" ]; then installed=$("$K3S_BIN" --version | sed -n 1p); else installed="not installed at $K3S_BIN"; fi
 echo "  $installed (pinned $K3S_VERSION)," \
   "service $(systemctl is-active k3s 2>/dev/null || true)"
 require_cluster

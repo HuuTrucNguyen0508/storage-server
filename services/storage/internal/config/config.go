@@ -20,6 +20,7 @@ type Config struct {
 	MetricsAddr string // METRICS_ADDR, default ":9464"
 	DatabaseURL string // DATABASE_URL, required
 	DataDir     string // DATA_DIR, default "/data"
+	BackupDir   string // BACKUP_DIR, empty disables dump-aware quarantine retention
 
 	PublicURL     string // PUBLIC_URL, the app's own origin, e.g. https://storage.lab.localhost
 	Domain        string // DOMAIN, used for the top bar's app links
@@ -41,6 +42,10 @@ type Config struct {
 	UploadTTL      time.Duration // UPLOAD_SESSION_TTL, default 24h
 	TextPreviewCap int64         // TEXT_PREVIEW_BYTES, default 1 MiB
 
+	// QuarantineRetention is the minimum time removed blobs stay restorable.
+	// With BackupDir set, blobs also stay until older than the oldest kept dump.
+	QuarantineRetention time.Duration // BLOB_QUARANTINE_RETENTION, default 192h
+
 	StirlingURL       string        // STIRLING_URL
 	OfficeConcurrency int           // OFFICE_CONCURRENCY, default 2
 	OfficeTimeout     time.Duration // OFFICE_TIMEOUT, default 120s
@@ -56,6 +61,7 @@ func Load() (Config, error) {
 		MetricsAddr:   env("METRICS_ADDR", ":9464"),
 		DatabaseURL:   os.Getenv("DATABASE_URL"),
 		DataDir:       env("DATA_DIR", "/data"),
+		BackupDir:     os.Getenv("BACKUP_DIR"),
 		PublicURL:     strings.TrimRight(os.Getenv("PUBLIC_URL"), "/"),
 		Domain:        os.Getenv("DOMAIN"),
 		AuthPublicURL: strings.TrimRight(os.Getenv("AUTH_PUBLIC_URL"), "/"),
@@ -91,6 +97,7 @@ func Load() (Config, error) {
 	c.OfficeMaxBytes = num("OFFICE_MAX_BYTES", 100<<20)
 	c.TrashRetention = dur("TRASH_RETENTION", 30*24*time.Hour)
 	c.UploadTTL = dur("UPLOAD_SESSION_TTL", 24*time.Hour)
+	c.QuarantineRetention = dur("BLOB_QUARANTINE_RETENTION", 8*24*time.Hour)
 	c.OfficeTimeout = dur("OFFICE_TIMEOUT", 120*time.Second)
 	c.ShutdownTimeout = dur("SHUTDOWN_TIMEOUT", 30*time.Second)
 	mf, err := strconv.ParseFloat(env("MIN_FREE_PERCENT", "5"), 64)

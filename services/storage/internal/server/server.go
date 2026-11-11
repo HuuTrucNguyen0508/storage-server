@@ -8,6 +8,8 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -199,7 +201,7 @@ func (s *Server) readyz(w http.ResponseWriter, r *http.Request) {
 }
 
 // RunBackground runs the periodic jobs until ctx ends: gauges every 30 s,
-// cleanup (trash purge, stale uploads, unreferenced blobs) every 15 min.
+// cleanup (trash purge, stale uploads, blob quarantine) every 15 min.
 func (s *Server) RunBackground(ctx context.Context) {
 	gauges := time.NewTicker(30 * time.Second)
 	cleanup := time.NewTicker(15 * time.Minute)
@@ -234,7 +236,9 @@ func (s *Server) updateGauges(ctx context.Context) {
 	}
 }
 
-// Cleanup purges old trash, abandoned uploads and unreferenced blobs.
+// Cleanup purges old trash and abandoned uploads, and quarantines
+// unreferenced blobs. Quarantined blobs are deleted only after
+// QuarantineRetention, so a database restore can still find them.
 func (s *Server) Cleanup(ctx context.Context) {
 	if n, err := s.store.PurgeTrash(ctx, time.Now().Add(-s.cfg.TrashRetention)); err != nil {
 		s.log.WarnContext(ctx, "trash purge failed", "err", err)
@@ -254,13 +258,16 @@ func (s *Server) Cleanup(ctx context.Context) {
 			s.log.InfoContext(ctx, "purged abandoned uploads", "sessions", len(ids))
 		}
 	}
+	s.sweepQuarantine(ctx)
 	s.collectBlobs(ctx)
 	// Files on disk the database does not know (a crash between writing and
-	// recording) are removed once they are old enough not to be in flight.
+	// recording, or uploads newer than a restored dump) are quarantined once
+	// they are old enough not to be in flight.
 	s.blobs.Orphans(6*time.Hour, func(id string) { //nolint:errcheck
 		if ok, err := s.store.BlobExists(ctx, id); err == nil && !ok {
-			s.blobs.Remove(id) //nolint:errcheck
-			s.m.Purged.WithLabelValues("blob").Inc()
+			if err := s.blobs.Quarantine(id); err != nil {
+				s.log.WarnContext(ctx, "orphan blob quarantine failed", "blob", id, "err", err)
+			}
 		}
 	}, func(session string) {
 		if ok, err := s.store.UploadExists(ctx, session); err == nil && !ok {
@@ -269,7 +276,44 @@ func (s *Server) Cleanup(ctx context.Context) {
 	})
 }
 
-// collectBlobs deletes blobs no node references any more.
+// sweepQuarantine moves quarantined blobs the database references again (a
+// restore) back into place, and deletes the rest once retention has passed
+// and they predate the oldest kept dump.
+func (s *Server) sweepQuarantine(ctx context.Context) {
+	cutoff := time.Now().Add(-s.cfg.QuarantineRetention)
+	if s.cfg.BackupDir != "" {
+		oldest, err := oldestDump(s.cfg.BackupDir)
+		if err != nil {
+			s.log.WarnContext(ctx, "backup directory unreadable; using quarantine retention only", "err", err)
+		} else if !oldest.IsZero() && oldest.Before(cutoff) {
+			cutoff = oldest
+		}
+	}
+	err := s.blobs.Quarantined(func(id string, since time.Time) {
+		ok, err := s.store.BlobExists(ctx, id)
+		switch {
+		case err != nil:
+			return
+		case ok:
+			if err := s.blobs.Unquarantine(id); err != nil {
+				s.log.WarnContext(ctx, "blob rescue failed", "blob", id, "err", err)
+				return
+			}
+			s.log.WarnContext(ctx, "rescued quarantined blob the database references again", "blob", id)
+		case since.Before(cutoff):
+			if err := s.blobs.Purge(id); err != nil {
+				s.log.WarnContext(ctx, "quarantined blob removal failed", "blob", id, "err", err)
+				return
+			}
+			s.m.Purged.WithLabelValues("blob").Inc()
+		}
+	})
+	if err != nil {
+		s.log.WarnContext(ctx, "quarantine sweep failed", "err", err)
+	}
+}
+
+// collectBlobs quarantines blobs no node references any more.
 func (s *Server) collectBlobs(ctx context.Context) {
 	ids, err := s.store.UnreferencedBlobs(ctx)
 	if err != nil {
@@ -281,10 +325,34 @@ func (s *Server) collectBlobs(ctx context.Context) {
 		if err != nil || !ok {
 			continue
 		}
-		if err := s.blobs.Remove(id); err != nil {
-			s.log.WarnContext(ctx, "blob file removal failed", "blob", id, "err", err)
+		if err := s.blobs.Quarantine(id); err != nil {
+			s.log.WarnContext(ctx, "blob quarantine failed", "blob", id, "err", err)
+		}
+	}
+}
+
+// dumpName matches the backup CronJob's file names. The timestamp in the name
+// is taken before pg_dump starts, so every blob the dump references was still
+// in place at that time; the file's mtime (when the dump finished) is too late.
+var dumpName = regexp.MustCompile(`^storage-([0-9]{8}T[0-9]{6}Z)\.dump$`)
+
+// oldestDump returns the start time of the oldest kept storage dump, read
+// from the file names alone (no stat, so pruning during the scan can't fail it).
+func oldestDump(dir string) (time.Time, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return time.Time{}, err
+	}
+	var oldest time.Time
+	for _, entry := range entries {
+		m := dumpName.FindStringSubmatch(entry.Name())
+		if m == nil {
 			continue
 		}
-		s.m.Purged.WithLabelValues("blob").Inc()
+		at, err := time.Parse("20060102T150405Z", m[1])
+		if err == nil && (oldest.IsZero() || at.Before(oldest)) {
+			oldest = at
+		}
 	}
+	return oldest, nil
 }
